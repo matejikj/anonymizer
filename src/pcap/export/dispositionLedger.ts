@@ -96,6 +96,25 @@ const STRUCTURAL_PRESERVE_SAFE = new Set<string>([
   'nflog',
 ])
 
+/**
+ * Coverage protocol ids that are structured children but are not matrix row ids
+ * (nested SDP, HTTP header/body slices, SSH banner framing, NBDS, …).
+ * Heuristic / payload / unknown must NOT be listed — residual sweep keeps them fail-closed.
+ */
+const STRUCTURED_COVERAGE_ALIASES = new Set<string>([
+  'sdp',
+  'http-headers',
+  'http-body',
+  'http-text',
+  'http-json',
+  'netbios-datagram',
+  'ssh-banner',
+  'ssh-kexinit',
+  'ssh-kex-reply',
+  'ssh-newkeys',
+  'ssh',
+])
+
 let structuredProtocolCache: ReadonlySet<string> | null = null
 
 /**
@@ -105,11 +124,26 @@ let structuredProtocolCache: ReadonlySet<string> | null = null
  */
 export function isStructuredPreserveSafeProtocol(protocol: string): boolean {
   if (STRUCTURAL_PRESERVE_SAFE.has(protocol)) return true
+  if (STRUCTURED_COVERAGE_ALIASES.has(protocol)) return true
   if (protocol.startsWith('ipv4') || protocol.startsWith('ipv6')) return true
   if (protocol.startsWith('tcp-') || protocol.startsWith('udp-') || protocol.startsWith('sctp-')) {
     return true
   }
-  return structuredPreserveSafeProtocols().has(protocol)
+  const set = structuredPreserveSafeProtocols()
+  if (set.has(protocol)) return true
+  // http-headers → http, rtp-telephone-event → rtp when parent is structured.
+  const dash = protocol.indexOf('-')
+  if (dash > 0) {
+    const parent = protocol.slice(0, dash)
+    if (
+      STRUCTURAL_PRESERVE_SAFE.has(parent)
+      || STRUCTURED_COVERAGE_ALIASES.has(parent)
+      || set.has(parent)
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 function structuredPreserveSafeProtocols(): ReadonlySet<string> {
@@ -450,12 +484,13 @@ export function buildPacketDispositionLedger(input: BuildPacketLedgerInput): Pac
 
     if (span.status !== 'covered') continue
 
-    // T63.2 — detailed field policy with wire locators: only those preserve spans
-    // are safe; remaining covered bytes stay unclaimed for residual sweep.
-    // Tables without locators yet keep the transitional structured rule.
+    // T63.2 — claim preserve-safe wire locators first (first-writer wins). Then fall
+    // through to transitional covered claim so intentionally unpatched map targets
+    // (well-known UDP/TCP ports, child spans like ipv4-id) are not residual-swept.
+    // Mapped identities must already be claimed by patches above; residual still
+    // catches bytes outside any covered/preserve/encrypted span.
     if (hasDetailedFieldPolicy(span.protocol)) {
       const table = getHandlerFieldPolicy(span.protocol)
-      let locatedPreserve = 0
       if (table) {
         for (const field of table.fields) {
           if (!fieldPolicyAllowsPreserveSafe(field, input.level)) continue
@@ -474,13 +509,12 @@ export function buildPacketDispositionLedger(input: BuildPacketLedgerInput): Pac
             span.protocol,
             `field-policy:${field.fieldPath}`,
           )
-          locatedPreserve += 1
         }
       }
-      if (locatedPreserve > 0) continue
     }
 
-    // Transitional: structured handlers (or detailed tables still missing locators).
+    // Transitional: structured handlers + coverage aliases (http-headers, sdp, …).
+    // Heuristic/unknown `covered` stays unclaimed so residual sweep fail-closes them.
     if (isStructuredPreserveSafeProtocol(span.protocol)) {
       claimBytes(
         claimed,

@@ -283,7 +283,12 @@ export function userVerdictForProtocol(input: {
   // Redacted content is masked in the export; it is protected, just not structurally analysed.
   if (status === 'redacted') return 'protected-export-no-full-analysis'
 
-  if (layerKind === 'sanitizer' && (status === 'covered' || status === 'truncated')) {
+  // Sanitizer-only `covered` still means structured protection ran — treat as
+  // recognized-and-protected so outcome families stay `anonymized` (not with-loss).
+  if (layerKind === 'sanitizer' && status === 'covered') {
+    return 'recognized-and-protected'
+  }
+  if (layerKind === 'sanitizer' && status === 'truncated') {
     return 'protected-export-no-full-analysis'
   }
 

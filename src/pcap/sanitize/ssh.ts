@@ -113,7 +113,31 @@ export function sanitizeSsh(
           'ssh-host-key',
         )
       }
-      coverage.push({ protocol: 'ssh-kex-reply', offset: pos, length: 4 + pktLen, status: 'redacted' })
+      // Length/pad/type framing preserved; only host-key body masked. Split so T63
+      // statusInvariant does not remask the framing over the host-key patch.
+      coverage.push({
+        protocol: 'ssh-kex-reply',
+        offset: pos,
+        length: Math.min(6, 4 + pktLen),
+        status: 'covered',
+      })
+      if (msgEnd > payloadStart) {
+        coverage.push({
+          protocol: 'ssh-kex-reply',
+          offset: payloadStart,
+          length: msgEnd - payloadStart,
+          status: 'redacted',
+        })
+      }
+      const trailer = payloadEnd - msgEnd
+      if (trailer > 0) {
+        coverage.push({
+          protocol: 'ssh-kex-reply',
+          offset: msgEnd,
+          length: trailer,
+          status: 'covered',
+        })
+      }
       issues.push('crypto-integrity-modified:ssh')
     } else if (msgType === SSH_MSG_NEWKEYS) {
       sawNewkeys = true
@@ -163,7 +187,9 @@ function sanitizeVersionLine(
     const commentOff = softOff + software.length + 1
     maskSpan(collector, intents, packetIndex, commentOff, comment.length, 'ssh-banner-comment')
   }
-  coverage.push({ protocol: 'ssh-banner', offset, length, status: 'redacted' })
+  // Banner framing + software string stay (diagnostic); only comment/HP software are
+  // patched. Whole-span `redacted` would trip T63 statusInvariant into wiping OpenSSH_*.
+  coverage.push({ protocol: 'ssh-banner', offset, length, status: 'covered' })
 }
 
 function maskSpan(

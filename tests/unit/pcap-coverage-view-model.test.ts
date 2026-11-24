@@ -128,7 +128,7 @@ describe('Stage 6 PcapCoverageViewModel', () => {
     expect(spanExportAction('unsupported', { blocking: true })).toBe('blocked')
   })
 
-  it('sanitizer-only protocol gets protected-export-no-full-analysis verdict', () => {
+  it('sanitizer-only covered protocol is recognized-and-protected (structured export)', () => {
     expect(layerKindFromCounts(0, 3)).toBe('sanitizer')
     expect(
       userVerdictForProtocol({
@@ -137,7 +137,7 @@ describe('Stage 6 PcapCoverageViewModel', () => {
         truncateUnsupported: true,
         preset: 'diagnostic',
       }),
-    ).toBe('protected-export-no-full-analysis')
+    ).toBe('recognized-and-protected')
 
     const vm = buildPcapCoverageViewModel({
       unifiedCoverage: modelFromProtocol({
@@ -164,7 +164,7 @@ describe('Stage 6 PcapCoverageViewModel', () => {
       mappingRevision: 1,
       profileHash: 'h',
     })
-    expect(vm.protocols[0]!.userVerdict).toBe('protected-export-no-full-analysis')
+    expect(vm.protocols[0]!.userVerdict).toBe('recognized-and-protected')
     expect(vm.protocols[0]!.recognizedPacketCount).toBe(4)
     expect(vm.summary.exportLooksSafe).toBe(true)
     expect(vm.summary.primaryAction).toBe('export-safe')

@@ -47,7 +47,9 @@ export function sanitizeNbns(
 
   if (srcPort === NBDG_PORT || dstPort === NBDG_PORT) {
     sanitizeDatagram(buffer, offset, length, collector, mapping, intents, packetIndex, issues)
-    coverage.push({ protocol: 'netbios-datagram', offset, length, status: 'redacted' })
+    // Structured RFC 1002 header + names are mapped/masked; framing bytes stay.
+    // Whole-span `redacted` would trip T63 statusInvariant into wiping the mapped IP.
+    coverage.push({ protocol: 'netbios-datagram', offset, length, status: 'covered' })
     return { coverage, issues }
   }
 

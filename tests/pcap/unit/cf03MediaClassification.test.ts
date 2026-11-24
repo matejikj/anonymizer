@@ -256,7 +256,8 @@ describe('CF-03 media classification', () => {
     expect(discovery.packetDiscovery.every((p) => !p.drop)).toBe(true);
     expect(discovery.packetDiscovery[0]?.truncatedLength).toBeUndefined();
     expect(discovery.packetDiscovery[1]?.coverage.some((c) => c.protocol === 'rtp' && c.status === 'redacted')).toBe(true);
-    expect(discovery.packetDiscovery[3]?.coverage.some((c) => c.protocol === 'rtcp' && c.status === 'redacted')).toBe(true);
+    // RTCP strip-payload masks identities but keeps SR/RR framing → covered (T63 refine).
+    expect(discovery.packetDiscovery[3]?.coverage.some((c) => c.protocol === 'rtcp' && c.status === 'covered')).toBe(true);
 
     const snapshot = resolveSnapshotForPackets(packets, DIAGNOSTIC_POLICY, 'cf03', 'cf03.pcap');
     const sanitization = buildSanitizationFromSnapshot(packets, DIAGNOSTIC_POLICY, snapshot);

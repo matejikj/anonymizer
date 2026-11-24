@@ -130,7 +130,7 @@ describe('Stage 6 coverage plan revision consistency', () => {
       }),
     )
     // Surfaces that stamp data-plan-revision must all equal after.planRevision
-    expect(after.protocols[0]!.userVerdict).toBe('protected-export-no-full-analysis')
+    expect(after.protocols[0]!.userVerdict).toBe('recognized-and-protected')
     expect(after.spansForPacket(0)[0]!.exportActionLabel).toBe('mapováno')
     // Step 7/9: diagnostic fingerprint residuals are intentional — export looks safe
     expect(after.summary.exportLooksSafe).toBe(true)

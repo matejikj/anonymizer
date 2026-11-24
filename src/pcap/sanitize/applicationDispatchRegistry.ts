@@ -77,8 +77,70 @@ import { sanitizeRtpOrSrtp } from './rtp.ts'
 import { sanitizeRtcp } from './rtcp.ts'
 import { applyVoipMediaPolicy } from './mediaPolicy.ts'
 import { isPreserveUnsafeMediaPolicy, isStripPayloadMediaPolicy } from './types.ts'
+import type { LayerCoverage } from './types.ts'
 import { createMaskFill } from './maskFill.ts'
 import { tcpTransportSessionKey } from './protocolGraphState.ts'
+import { parseRtpHeader } from '../protocols/application/rtp/classify.ts'
+
+/**
+ * T63 statusInvariant requires every `redacted` byte to be patched. VoIP strip-payload
+ * preserves RTP/RTCP framing (seq/ts/stats) while masking media/identities — so the coarse
+ * full-payload `redacted` row from applyVoipMediaPolicy must be refined before the invariant.
+ */
+function refineVoipStripCoverage(input: {
+  readonly coverage: LayerCoverage[]
+  readonly protocol: string
+  readonly offset: number
+  readonly length: number
+  readonly data: Uint8Array
+  readonly telephoneEvent: boolean
+}): void {
+  const { coverage, protocol, offset, length, data, telephoneEvent } = input
+  const coverageProtocol = telephoneEvent ? 'rtp-telephone-event' : protocol
+  const idx = coverage.findIndex(
+    (c) =>
+      c.protocol === coverageProtocol
+      && c.offset === offset
+      && c.length === length
+      && c.status === 'redacted',
+  )
+  if (idx < 0) return
+
+  if (protocol !== 'rtp' && protocol !== 'srtp' && protocol !== 'rtcp' && !telephoneEvent) {
+    return
+  }
+
+  coverage.splice(idx, 1)
+
+  if (protocol === 'rtcp' && !telephoneEvent) {
+    // Structured RTCP: identities masked, SR/RR stats preserved → covered.
+    coverage.push({ protocol, offset, length, status: 'covered' })
+    return
+  }
+
+  const header = parseRtpHeader(data, offset, length)
+  if (!header) {
+    // Unparseable — sanitizeRtpOrSrtp already masked the whole body.
+    coverage.push({ protocol: coverageProtocol, offset, length, status: 'redacted' })
+    return
+  }
+
+  coverage.push({
+    protocol: coverageProtocol,
+    offset,
+    length: header.headerLength,
+    status: 'covered',
+  })
+  const payloadLen = length - header.headerLength
+  if (payloadLen > 0) {
+    coverage.push({
+      protocol: coverageProtocol,
+      offset: offset + header.headerLength,
+      length: payloadLen,
+      status: 'redacted',
+    })
+  }
+}
 
 const DNS_PORT = 53
 const MDNS_PORT = 5353
@@ -629,11 +691,13 @@ function dispatchStun(ctx: ApplicationDispatchContext): ApplicationDispatchHit |
     intents.recordPortFlowHint(`${transport}/${srcPort}`, 'stun')
     intents.recordPortFlowHint(`${transport}/${dstPort}`, 'stun')
   }
+  // MI bytes are intentionally left intact (crypto MODIFIED). Marking the whole
+  // message `redacted` would trip T63 statusInvariant into wiping the STUN header.
   ctx.coverage.push({
     protocol: 'stun',
     offset,
     length,
-    status: stunResult.hadMessageIntegrity ? 'redacted' : 'covered',
+    status: 'covered',
   })
   return { lastCoveredOffset: offset + length }
 }
@@ -762,6 +826,14 @@ function dispatchVoipMedia(
       ctx.collector.maskRange(offset, fill)
       intents?.recordMaskRange(ctx.packetIndex, offset, length, 'strip-payload', mediaResult.protocol)
     }
+    refineVoipStripCoverage({
+      coverage,
+      protocol: mediaResult.protocol,
+      offset,
+      length,
+      data,
+      telephoneEvent: mediaResult.telephoneEvent === true,
+    })
     return { lastCoveredOffset: offset + length }
   }
   if (mediaResult.status === 'unsupported' || mediaResult.status === 'preserved-unsafe') {
