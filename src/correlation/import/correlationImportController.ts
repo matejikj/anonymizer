@@ -331,4 +331,4 @@ export function singleFileStagingErrorMessage(): string | null {
 
 /** Supported file extensions for universal multi-source picker. */
 export const UNIVERSAL_FILE_ACCEPT =
-  '.log,.txt,.pcap,.pcapng,.cap,.gz,.zip,.tar,.tgz,.tar.gz,text/*,application/gzip,application/zip,application/x-tar,application/octet-stream'
+  '.log,.txt,.pcap,.pcapng,.cap,.gz,.xz,.zst,.zstd,.bz2,.zip,.tar,.tgz,.tar.gz,.tar.xz,.txz,.tar.bz2,.tbz2,.tar.zst,.tzst,text/*,application/gzip,application/x-xz,application/zstd,application/x-bzip2,application/zip,application/x-tar,application/octet-stream'

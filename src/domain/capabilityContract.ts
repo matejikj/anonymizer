@@ -113,8 +113,11 @@ export const MAPPING_CAPABILITY_LIMITS = {
   maxBundleBytes: 32 * BYTES_PER_MIB,
   /** Upper bound on ciphertext read before KDF (anti resource-exhaustion). */
   maxBundleImportBytes: 64 * BYTES_PER_MIB,
-  /** Maximum sources in one correlation session (future stage). */
-  maxSourcesPerSession: 8,
+  /**
+   * Maximum sources in one correlation session.
+   * T72 — raised so support-bundle packages are not truncated at 8; aggregate bytes remain the budget.
+   */
+  maxSourcesPerSession: 256,
   /** Legacy unused KDF constants retained until T46 reference cleanup; not an encryption requirement. */
   pbkdf2MinIterations: 100_000,
   pbkdf2MaxIterations: 600_000,

@@ -21,13 +21,17 @@ export {
 export {
   detectCompressedFormat,
   decompressGzipToFile,
+  decompressToFile,
   stripGzipExtension,
+  stripCompressionExtension,
   DecompressError,
   MAX_INFLATED_BYTES,
+  MAX_COMPRESSION_NEST_DEPTH,
+  isInflateFormat,
 } from './decompressInput.ts'
-export type { CompressedFormat, DecompressErrorCode } from './decompressInput.ts'
+export type { CompressedFormat, DecompressErrorCode, InflateFormat } from './decompressInput.ts'
 
-export { resolveInputFile, formatGzipInflationNote } from './resolveInputFile.ts'
+export { resolveInputFile, formatGzipInflationNote, formatInflationNote } from './resolveInputFile.ts'
 export type { ResolveInputResult } from './resolveInputFile.ts'
 export type { GzipInflationNote } from './types.ts'
 

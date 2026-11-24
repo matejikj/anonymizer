@@ -3,14 +3,14 @@
  */
 
 import type { SourceKind } from '../../domain/sourceArtifact'
-import type { CompressedFormat } from './decompressInput.ts'
+import type { CompressedFormat, InflateFormat } from './decompressInput.ts'
 import type { InputRejection } from './inputRejection.ts'
 
 export type StagingItemStatus = 'ready' | 'error' | 'duplicate-warning'
 
-/** Present when a ready File was inflated from `.gz`. */
+/** Present when a ready File was inflated from a compressed stream (T05/T72). */
 export interface GzipInflationNote {
-  readonly format: 'gzip'
+  readonly format: InflateFormat
   readonly compressedBytes: number
   readonly inflatedBytes: number
 }

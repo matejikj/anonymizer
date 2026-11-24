@@ -13,12 +13,14 @@ import { detectCompressedFormat } from './decompressInput.ts'
 import { formatInputRejection, rejectionForUnsupportedCode } from './inputRejection.ts'
 import {
   expandSupportBundle,
+  looksLikeCompressedTarName,
   type SupportBundleExpandOk,
   type SupportBundleFormat,
   type SupportBundleOmitted,
 } from '../archive/supportBundle.ts'
 import { looksLikeZip } from '../archive/zipReader.ts'
 import { looksLikeUstar } from '../archive/tarReader.ts'
+import { isInflateFormat } from './decompressInput.ts'
 import type { GzipInflationNote, StagingBatchSummary, StagingItem, StagingItemReady } from './types'
 
 export interface LastSupportBundleMeta {
@@ -58,7 +60,9 @@ export function clearStagingItems(): void {
 
 function isArchiveCandidate(file: File, head: Uint8Array): boolean {
   if (looksLikeZip(head) || looksLikeUstar(head)) return true
-  if (detectCompressedFormat(head) === 'gzip' && /\.(tar\.gz|tgz)$/i.test(file.name)) {
+  const compressed = detectCompressedFormat(head)
+  // T72 — compressed tar (.tar.gz / .tar.xz / …); single-file .log.xz goes through resolveInputFile.
+  if (compressed !== null && isInflateFormat(compressed) && looksLikeCompressedTarName(file.name)) {
     return true
   }
   return false
@@ -157,7 +161,22 @@ export async function buildStagingItemsFromFiles(
     }
     if (head && isArchiveCandidate(file, head)) {
       const expanded = await expandSupportBundle(file, { signal: options.signal })
-      if (!expanded.ok) {
+      if (expanded.ok) {
+        const aliasByFingerprint = new Map<string, string>()
+        for (const entry of expanded.accepted) {
+          aliasByFingerprint.set(fileFingerprint(entry.file), entry.safeAlias)
+        }
+        lastBundleMeta = {
+          format: expanded.format,
+          omitted: expanded.omitted,
+          partial: expanded.partial,
+          aliasByFingerprint,
+        }
+        appendExpandedBundle(out, expanded, file, usedIds, fingerprintToReady, index)
+        continue
+      }
+      // Compressed named like tar.* but payload is a single log/PCAP — fall through to resolve.
+      if (expanded.code !== 'nested-compression') {
         const rejection = rejectionForUnsupportedCode(expanded.code)
         out.push({
           id,
@@ -172,18 +191,6 @@ export async function buildStagingItemsFromFiles(
         })
         continue
       }
-      const aliasByFingerprint = new Map<string, string>()
-      for (const entry of expanded.accepted) {
-        aliasByFingerprint.set(fileFingerprint(entry.file), entry.safeAlias)
-      }
-      lastBundleMeta = {
-        format: expanded.format,
-        omitted: expanded.omitted,
-        partial: expanded.partial,
-        aliasByFingerprint,
-      }
-      appendExpandedBundle(out, expanded, file, usedIds, fingerprintToReady, index)
-      continue
     }
 
     const resolved = await resolveInputFile(file, { signal: options.signal })

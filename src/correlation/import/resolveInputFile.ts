@@ -1,5 +1,5 @@
 /**
- * T05 — resolve a dropped File to a ready text/PCAP input (transparent gzip).
+ * T05 / T72 — resolve a dropped File to a ready text/PCAP input (transparent inflate).
  */
 
 import { SourceKind as SK } from '../../domain/sourceArtifact.ts'
@@ -8,8 +8,11 @@ import { cs } from '../../i18n/cs.ts'
 import {
   DecompressError,
   detectCompressedFormat,
-  decompressGzipToFile,
+  decompressToFile,
+  isInflateFormat,
+  MAX_COMPRESSION_NEST_DEPTH,
   type CompressedFormat,
+  type InflateFormat,
 } from './decompressInput.ts'
 import {
   formatInputRejection,
@@ -46,8 +49,7 @@ function failCode(code: string): ResolveInputFail {
 }
 
 /**
- * Probe → optional gzip inflate → re-probe → per-kind preflight.
- * Nested compression after inflate is rejected (no automatic recursion).
+ * Probe → optional multi-layer inflate (depth ≤ 4) → re-probe → per-kind preflight.
  */
 export async function resolveInputFile(
   file: File,
@@ -64,29 +66,38 @@ export async function resolveInputFile(
   }
 
   let working = file
-  let gzipInflation: GzipInflationNote | undefined
-  const firstCompressed = detectCompressedFormat(head)
+  let inflation: GzipInflationNote | undefined
+  let nestDepth = 0
 
-  if (firstCompressed === 'gzip') {
+  for (;;) {
+    const compressed = detectCompressedFormat(head)
+    if (compressed === null) break
+    if (compressed === 'zip') {
+      // ZIP containers are expanded via support-bundle path, not here.
+      return fail(rejectionForCompressedFormat(compressed as CompressedFormat))
+    }
+    if (!isInflateFormat(compressed)) {
+      return fail(rejectionForCompressedFormat(compressed))
+    }
+    if (nestDepth >= MAX_COMPRESSION_NEST_DEPTH) {
+      return failCode('nested-compression')
+    }
     try {
-      const inflated = await decompressGzipToFile(working, {
+      const inflated = await decompressToFile(working, compressed, {
         signal: options.signal,
         onProgress: options.onInflateProgress,
       })
       working = inflated.file
-      gzipInflation = {
-        format: 'gzip',
+      inflation = {
+        format: inflated.format,
         compressedBytes: inflated.compressedBytes,
         inflatedBytes: inflated.inflatedBytes,
       }
+      nestDepth += 1
       try {
         head = await readFileHead(working)
       } catch {
         return failCode('read-failed')
-      }
-      const nested = detectCompressedFormat(head)
-      if (nested !== null) {
-        return failCode('nested-compression')
       }
     } catch (err) {
       if (err instanceof DecompressError) {
@@ -94,13 +105,13 @@ export async function resolveInputFile(
       }
       return failCode('gzip-corrupt')
     }
-  } else if (firstCompressed !== null) {
-    return fail(rejectionForCompressedFormat(firstCompressed as CompressedFormat))
   }
 
   const probe = probeSourceKind(head, working.name)
   if (probe.kind === 'compressed') {
-    // Should only happen for non-gzip after inflate path; treat as nested/unsupported.
+    if (isInflateFormat(probe.format) && nestDepth >= MAX_COMPRESSION_NEST_DEPTH) {
+      return failCode('nested-compression')
+    }
     if (probe.format === 'gzip') return failCode('nested-compression')
     return fail(rejectionForCompressedFormat(probe.format))
   }
@@ -112,7 +123,6 @@ export async function resolveInputFile(
   const preflight = await preflightStagingFile(working, probe.kind)
   if (!preflight.ok) {
     const mapped = rejectionForUnsupportedCode(preflight.code)
-    // Prefer preflight's size-specific message when present, keep structured catalog fields.
     return {
       ok: false,
       rejection: {
@@ -130,13 +140,29 @@ export async function resolveInputFile(
     ok: true,
     file: working,
     kind: probe.kind,
-    gzipInflation,
+    gzipInflation: inflation,
   }
 }
 
 /** Staging / UI line: „Rozbaleno z .gz (12,3 MiB → 98,1 MiB)“. */
 export function formatGzipInflationNote(note: GzipInflationNote): string {
+  const format =
+    note.format === 'gzip'
+      ? '.gz'
+      : note.format === 'xz'
+        ? '.xz'
+        : note.format === 'zstd'
+          ? '.zst'
+          : '.bz2'
   return cs.inputRejection.gzipInflatedNote
+    .replace('{format}', format)
     .replace('{from}', formatMiB(note.compressedBytes))
     .replace('{to}', formatMiB(note.inflatedBytes))
 }
+
+export function formatInflationNote(note: GzipInflationNote): string {
+  return formatGzipInflationNote(note)
+}
+
+/** Exported for callers that need the inflate format label. */
+export type { InflateFormat }

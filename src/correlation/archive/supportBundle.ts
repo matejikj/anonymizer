@@ -1,11 +1,19 @@
 /**
- * T44 — expand ZIP / TAR / TAR.GZ support bundles into correlation staging sources.
+ * T44 / T72 — expand ZIP / TAR / compressed-TAR support bundles into correlation staging sources.
+ * Nested archives/compression recurse to ARCHIVE_LIMITS.maxNestDepth with T44 budgets.
  * Output ZIP builder with REPORT.json (safe aliases only; no mapping/recovery).
  */
 
 import { SourceKind as SK } from '../../domain/sourceArtifact.ts'
 import { CORRELATION_SESSION_LIMITS } from '../../domain/capabilityContract.ts'
-import { decompressGzipToFile, DecompressError, detectCompressedFormat } from '../import/decompressInput.ts'
+import {
+  decompressBytes,
+  decompressToFile,
+  DecompressError,
+  detectCompressedFormat,
+  isInflateFormat,
+  type InflateFormat,
+} from '../import/decompressInput.ts'
 import { probeSourceKind } from '../import/sourcePreflightPort.ts'
 import { ARCHIVE_LIMITS } from './limits.ts'
 import { safeEntryAlias } from './pathSafety.ts'
@@ -14,7 +22,7 @@ import { looksLikeUstar, readTarArchive, TarReadError } from './tarReader.ts'
 import { buildZipStoreArchive } from './zipWriter.ts'
 import { classifyForbiddenBundleContent } from './contentGuard.ts'
 
-export type SupportBundleFormat = 'zip' | 'tar' | 'tar-gz'
+export type SupportBundleFormat = 'zip' | 'tar' | 'tar-gz' | 'tar-xz' | 'tar-zstd' | 'tar-bzip2'
 
 export type OmittedEntryReason =
   | 'unsupported-type'
@@ -55,8 +63,17 @@ export type SupportBundleExpandResult = SupportBundleExpandOk | SupportBundleExp
 export function detectSupportBundleFormat(head: Uint8Array): SupportBundleFormat | null {
   if (looksLikeZip(head)) return 'zip'
   if (looksLikeUstar(head)) return 'tar'
-  if (detectCompressedFormat(head) === 'gzip') return 'tar-gz' // confirmed after inflate
+  const compressed = detectCompressedFormat(head)
+  if (compressed === 'gzip') return 'tar-gz' // confirmed after inflate
+  if (compressed === 'xz') return 'tar-xz'
+  if (compressed === 'zstd') return 'tar-zstd'
+  if (compressed === 'bzip2') return 'tar-bzip2'
   return null
+}
+
+/** Filename heuristic for compressed tar (content still verified after inflate). */
+export function looksLikeCompressedTarName(fileName: string): boolean {
+  return /\.(tar\.(gz|xz|bz2|zst|zstd)|tgz|txz|tbz2?|tzst)$/i.test(fileName)
 }
 
 interface RawMember {
@@ -65,7 +82,12 @@ interface RawMember {
   readonly data: Uint8Array
 }
 
-async function loadMembers(
+interface ExpandBudget {
+  scanned: number
+  inflatedBytes: number
+}
+
+async function loadTopLevelMembers(
   file: File,
   head: Uint8Array,
   signal?: AbortSignal,
@@ -91,20 +113,27 @@ async function loadMembers(
     }
   }
 
-  if (detectCompressedFormat(head) === 'gzip') {
+  const compressed = detectCompressedFormat(head)
+  if (compressed !== null && isInflateFormat(compressed)) {
     try {
-      const inflated = await decompressGzipToFile(file, {
+      const inflated = await decompressToFile(file, compressed, {
         signal,
         maxInflatedBytes: ARCHIVE_LIMITS.maxTotalInflatedBytes,
       })
-      const inflatedHead = new Uint8Array(
-        await inflated.file.slice(0, 512).arrayBuffer(),
-      )
+      const inflatedHead = new Uint8Array(await inflated.file.slice(0, 512).arrayBuffer())
       if (!looksLikeUstar(inflatedHead)) {
         return { code: 'nested-compression' }
       }
       const bytes = new Uint8Array(await inflated.file.arrayBuffer())
-      return { format: 'tar-gz', members: readTarArchive(bytes, { signal }) }
+      const format: SupportBundleFormat =
+        compressed === 'gzip'
+          ? 'tar-gz'
+          : compressed === 'xz'
+            ? 'tar-xz'
+            : compressed === 'zstd'
+              ? 'tar-zstd'
+              : 'tar-bzip2'
+      return { format, members: readTarArchive(bytes, { signal }) }
     } catch (err) {
       if (err instanceof DecompressError) return { code: err.code }
       if (err instanceof TarReadError) return { code: err.code }
@@ -115,9 +144,218 @@ async function loadMembers(
   return { code: 'unknown-format' }
 }
 
+function trackInflated(budget: ExpandBudget, bytes: number): 'ok' | 'archive-bomb' {
+  budget.inflatedBytes += bytes
+  if (budget.inflatedBytes > ARCHIVE_LIMITS.maxTotalInflatedBytes) return 'archive-bomb'
+  if (bytes > ARCHIVE_LIMITS.maxSingleEntryBytes) return 'archive-bomb'
+  return 'ok'
+}
+
+async function acceptOrOmitMember(
+  data: Uint8Array,
+  entryIndex: number,
+  pathDepth: number,
+  nestDepth: number,
+  signal: AbortSignal | undefined,
+  budget: ExpandBudget,
+  accepted: SupportBundleAccepted[],
+  omitted: SupportBundleOmitted[],
+): Promise<'ok' | 'fail'> {
+  if (budget.scanned >= ARCHIVE_LIMITS.maxEntriesScanned) {
+    omitted.push({
+      safeAlias: safeEntryAlias(entryIndex, pathDepth, 'omitted'),
+      reason: 'source-limit',
+    })
+    return 'ok'
+  }
+  budget.scanned += 1
+
+  if (data.byteLength === 0) {
+    omitted.push({
+      safeAlias: safeEntryAlias(entryIndex, pathDepth, 'omitted'),
+      reason: 'unsupported-type',
+    })
+    return 'ok'
+  }
+
+  if (trackInflated(budget, data.byteLength) !== 'ok') {
+    return 'fail'
+  }
+
+  const forbidden = classifyForbiddenBundleContent(data)
+  if (forbidden) {
+    omitted.push({
+      safeAlias: safeEntryAlias(entryIndex, pathDepth, 'omitted'),
+      reason: 'forbidden-content',
+    })
+    return 'ok'
+  }
+
+  const container =
+    looksLikeZip(data)
+    || looksLikeUstar(data)
+    || detectCompressedFormat(data) !== null
+
+  if (container) {
+    if (nestDepth >= ARCHIVE_LIMITS.maxNestDepth) {
+      omitted.push({
+        safeAlias: safeEntryAlias(entryIndex, pathDepth, 'omitted'),
+        reason: 'nested-archive',
+      })
+      return 'ok'
+    }
+    const nested = await expandNestedBytes(data, nestDepth + 1, signal, budget, accepted, omitted, entryIndex)
+    if (nested === 'fail') return 'fail'
+    return 'ok'
+  }
+
+  const probe = probeSourceKind(data.subarray(0, Math.min(8192, data.byteLength)))
+  if (probe.kind === 'unsupported' || probe.kind === 'compressed') {
+    omitted.push({
+      safeAlias: safeEntryAlias(entryIndex, pathDepth, 'omitted'),
+      reason: probe.kind === 'unsupported' && probe.code === 'binary' ? 'binary' : 'unsupported-type',
+    })
+    return 'ok'
+  }
+
+  if (accepted.length >= ARCHIVE_LIMITS.maxAcceptedSources) {
+    omitted.push({
+      safeAlias: safeEntryAlias(entryIndex, pathDepth, probe.kind === SK.Pcap ? 'pcap' : 'text'),
+      reason: 'source-limit',
+    })
+    return 'ok'
+  }
+
+  const kind = probe.kind
+  const alias = safeEntryAlias(entryIndex, pathDepth, kind === SK.Pcap ? 'pcap' : 'text')
+  const outFile = new File([data.slice()], alias.replace(/\//g, '_'), {
+    type: 'application/octet-stream',
+  })
+  accepted.push({ safeAlias: alias, kind, file: outFile, depth: pathDepth })
+  return 'ok'
+}
+
+async function expandNestedBytes(
+  data: Uint8Array,
+  nestDepth: number,
+  signal: AbortSignal | undefined,
+  budget: ExpandBudget,
+  accepted: SupportBundleAccepted[],
+  omitted: SupportBundleOmitted[],
+  parentIndex: number,
+): Promise<'ok' | 'fail'> {
+  // ZIP
+  if (looksLikeZip(data)) {
+    try {
+      const members = await readZipArchive(data, { signal })
+      return walkMembers(members, nestDepth, signal, budget, accepted, omitted, parentIndex)
+    } catch (err) {
+      if (err instanceof ZipReadError) {
+        omitted.push({
+          safeAlias: safeEntryAlias(parentIndex, nestDepth, 'omitted'),
+          reason: 'nested-archive',
+        })
+        return 'ok'
+      }
+      return 'fail'
+    }
+  }
+
+  // TAR
+  if (looksLikeUstar(data)) {
+    try {
+      const members = readTarArchive(data, { signal })
+      return walkMembers(members, nestDepth, signal, budget, accepted, omitted, parentIndex)
+    } catch {
+      omitted.push({
+        safeAlias: safeEntryAlias(parentIndex, nestDepth, 'omitted'),
+        reason: 'nested-archive',
+      })
+      return 'ok'
+    }
+  }
+
+  const compressed = detectCompressedFormat(data)
+  if (compressed !== null && isInflateFormat(compressed)) {
+    try {
+      const inflated = await decompressBytes(data, compressed as InflateFormat, {
+        signal,
+        maxInflatedBytes: ARCHIVE_LIMITS.maxSingleEntryBytes,
+        nameHint: `nested.${compressed}`,
+      })
+      if (trackInflated(budget, inflated.inflatedBytes) !== 'ok') return 'fail'
+      // Recurse into inflated payload (may be tar/zip/source/another compress layer).
+      return acceptOrOmitMember(
+        inflated.data,
+        parentIndex,
+        nestDepth,
+        nestDepth,
+        signal,
+        budget,
+        accepted,
+        omitted,
+      )
+    } catch (err) {
+      if (err instanceof DecompressError) {
+        omitted.push({
+          safeAlias: safeEntryAlias(parentIndex, nestDepth, 'omitted'),
+          reason: 'nested-archive',
+        })
+        return 'ok'
+      }
+      return 'fail'
+    }
+  }
+
+  omitted.push({
+    safeAlias: safeEntryAlias(parentIndex, nestDepth, 'omitted'),
+    reason: 'nested-archive',
+  })
+  return 'ok'
+}
+
+async function walkMembers(
+  members: readonly RawMember[],
+  nestDepth: number,
+  signal: AbortSignal | undefined,
+  budget: ExpandBudget,
+  accepted: SupportBundleAccepted[],
+  omitted: SupportBundleOmitted[],
+  indexBase: number,
+): Promise<'ok' | 'fail'> {
+  let local = 0
+  for (const member of members) {
+    local += 1
+    const entryIndex = indexBase * 1000 + local
+    const pathDepth = member.relativePath ? member.relativePath.split('/').length : 1
+
+    if (member.isDirectory) {
+      omitted.push({
+        safeAlias: safeEntryAlias(entryIndex, pathDepth, 'omitted'),
+        reason: 'directory',
+      })
+      continue
+    }
+
+    const status = await acceptOrOmitMember(
+      member.data,
+      entryIndex,
+      pathDepth,
+      nestDepth,
+      signal,
+      budget,
+      accepted,
+      omitted,
+    )
+    if (status === 'fail') return 'fail'
+  }
+  return 'ok'
+}
+
 /**
- * Expand a support bundle into accepted staging files (≤ correlation source cap)
- * and an omitted list with safe aliases only.
+ * Expand a support bundle into accepted staging files and an omitted list with safe aliases only.
+ * T72: recurse nested archives/compression to maxNestDepth; accept all supported members
+ * within aggregate size (no hard reject at 8 sources).
  */
 export async function expandSupportBundle(
   file: File,
@@ -131,81 +369,38 @@ export async function expandSupportBundle(
   }
 
   const formatHint = detectSupportBundleFormat(head)
-  if (formatHint === null && detectCompressedFormat(head) !== 'gzip') {
+  if (formatHint === null) {
     return { ok: false, code: 'unknown-format' }
   }
 
-  const loaded = await loadMembers(file, head, options.signal)
+  // Compressed top-level that is not actually a tar → caller should use resolveInputFile.
+  if (
+    formatHint === 'tar-gz'
+    || formatHint === 'tar-xz'
+    || formatHint === 'tar-zstd'
+    || formatHint === 'tar-bzip2'
+  ) {
+    // loadTopLevelMembers returns nested-compression when inflate is not ustar
+  }
+
+  const loaded = await loadTopLevelMembers(file, head, options.signal)
   if ('code' in loaded) return { ok: false, code: loaded.code }
 
   const accepted: SupportBundleAccepted[] = []
   const omitted: SupportBundleOmitted[] = []
-  let entryIndex = 0
+  const budget: ExpandBudget = { scanned: 0, inflatedBytes: 0 }
 
-  for (const member of loaded.members) {
-    entryIndex += 1
-    const depth = member.relativePath ? member.relativePath.split('/').length : 1
-
-    if (member.isDirectory) {
-      omitted.push({
-        safeAlias: safeEntryAlias(entryIndex, depth, 'omitted'),
-        reason: 'directory',
-      })
-      continue
-    }
-
-    if (member.data.byteLength === 0) {
-      omitted.push({
-        safeAlias: safeEntryAlias(entryIndex, depth, 'omitted'),
-        reason: 'unsupported-type',
-      })
-      continue
-    }
-
-    const forbidden = classifyForbiddenBundleContent(member.data)
-    if (forbidden) {
-      omitted.push({
-        safeAlias: safeEntryAlias(entryIndex, depth, 'omitted'),
-        reason: 'forbidden-content',
-      })
-      continue
-    }
-
-    // Nested archive inside ZIP/TAR — do not recurse
-    if (looksLikeZip(member.data) || looksLikeUstar(member.data) || detectCompressedFormat(member.data) === 'gzip') {
-      // Allow .gz text/pcap? Spec: nested archive without support → omit. Single-file gzip logs
-      // inside ZIP are common — treat gzip members as nested-archive omission (caller can
-      // re-upload extracted). Safer than silent nested inflate.
-      omitted.push({
-        safeAlias: safeEntryAlias(entryIndex, depth, 'omitted'),
-        reason: 'nested-archive',
-      })
-      continue
-    }
-
-    const probe = probeSourceKind(member.data.subarray(0, Math.min(8192, member.data.byteLength)))
-    if (probe.kind === 'unsupported' || probe.kind === 'compressed') {
-      omitted.push({
-        safeAlias: safeEntryAlias(entryIndex, depth, 'omitted'),
-        reason: probe.kind === 'unsupported' && probe.code === 'binary' ? 'binary' : 'unsupported-type',
-      })
-      continue
-    }
-
-    if (accepted.length >= ARCHIVE_LIMITS.maxAcceptedSources) {
-      omitted.push({
-        safeAlias: safeEntryAlias(entryIndex, depth, probe.kind === SK.Pcap ? 'pcap' : 'text'),
-        reason: 'source-limit',
-      })
-      continue
-    }
-
-    const kind = probe.kind
-    const alias = safeEntryAlias(entryIndex, depth, kind === SK.Pcap ? 'pcap' : 'text')
-    const outFile = new File([member.data.slice()], alias.replace(/\//g, '_'), {
-      type: 'application/octet-stream',
-    })
-    accepted.push({ safeAlias: alias, kind, file: outFile, depth })
+  const walked = await walkMembers(
+    loaded.members,
+    1,
+    options.signal,
+    budget,
+    accepted,
+    omitted,
+    1,
+  )
+  if (walked === 'fail') {
+    return { ok: false, code: 'archive-bomb' }
   }
 
   if (accepted.length === 0) {
@@ -217,7 +412,9 @@ export async function expandSupportBundle(
     format: loaded.format,
     accepted,
     omitted,
-    partial: omitted.some((o) => o.reason === 'source-limit') || accepted.length < loaded.members.filter((m) => !m.isDirectory).length,
+    partial:
+      omitted.some((o) => o.reason === 'source-limit' || o.reason === 'nested-archive')
+      || accepted.length < loaded.members.filter((m) => !m.isDirectory).length,
   }
 }
 
@@ -278,5 +475,5 @@ export function buildSupportBundleOutputZip(options: {
 }
 
 export function isSupportBundleFileName(name: string): boolean {
-  return /\.(zip|tar|tgz|tar\.gz)$/i.test(name)
+  return /\.(zip|tar|tgz|tar\.gz|tar\.xz|txz|tar\.bz2|tbz2?|tar\.zst|tar\.zstd|tzst)$/i.test(name)
 }
