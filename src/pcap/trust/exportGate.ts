@@ -71,8 +71,8 @@ export interface ResolveExportGateInput {
   /** Hard export block (plan/container fatal). */
   readonly exportBlocked?: boolean
   /**
-   * When true with exposed content, export may proceed after user ack
-   * (confirm-exposed). Default false → NOT_AI_READY blocks export.
+   * @deprecated T67/T68 — fixed levels never require unsafe export acknowledgment;
+   * residual “exposed” signals are treated as fail-closed gaps (AI_READY_WITH_GAPS).
    */
   readonly unsafeExportAcknowledged?: boolean
 }
@@ -184,18 +184,10 @@ export function resolveExportGate(input: ResolveExportGateInput): ExportGateOutc
   }
 
   const c = input.checks
-  if (invariantsFail(c, profile) || hasExposed(c)) {
-    const acknowledged = input.unsafeExportAcknowledged === true
-    return {
-      profile,
-      gate: 'NOT_AI_READY',
-      exportAllowed: acknowledged,
-      safeForAi: false,
-      aiReadyWithGaps: false,
-    }
-  }
-
-  if (hasGaps(c)) {
+  // T67 — after T68 fixed levels have no preserve-unsafe. “Exposed” / invariant
+  // residue is reported as gaps (AI already fail-closed masked); never ask for ack.
+  void input.unsafeExportAcknowledged
+  if (invariantsFail(c, profile) || hasExposed(c) || hasGaps(c)) {
     return {
       profile,
       gate: 'AI_READY_WITH_GAPS',
@@ -206,13 +198,13 @@ export function resolveExportGate(input: ResolveExportGateInput): ExportGateOutc
   }
 
   if (c.coverageComplete === false) {
-    // Incomplete without classified gaps/exposed (e.g. plan blocked) → not AI ready.
+    // Incomplete without classified gaps — still exportable as gaps (engine masked).
     return {
       profile,
-      gate: 'NOT_AI_READY',
-      exportAllowed: false,
+      gate: 'AI_READY_WITH_GAPS',
+      exportAllowed: true,
       safeForAi: false,
-      aiReadyWithGaps: false,
+      aiReadyWithGaps: true,
     }
   }
 
@@ -257,8 +249,8 @@ export function isAiReadyWithGaps(gate: GateResult | null | undefined): boolean 
 }
 
 /**
- * Text-session gate: disabled/failed rules → NOT_AI_READY; line isolation incidents → gaps;
- * exposed (user-disabled) entities → NOT_AI_READY; clean → AI_READY.
+ * Text-session gate (T67 / interim until T71 free-text allowlist):
+ * failed rules and disabled categories → AI_READY_WITH_GAPS (fallback mask), never NOT_AI_READY.
  */
 export function resolveTextExportGate(input: {
   readonly failedRuleIds: readonly string[]
@@ -268,16 +260,11 @@ export function resolveTextExportGate(input: {
   readonly profile?: PcapAnonymizationLevel
 }): ExportGateOutcome {
   const profile = input.profile ?? 'diagnostic'
-  if (input.failedRuleIds.length > 0 || (input.exposedEntityCount ?? 0) > 0) {
-    return {
-      profile,
-      gate: 'NOT_AI_READY',
-      exportAllowed: (input.exposedEntityCount ?? 0) > 0 && input.failedRuleIds.length === 0,
-      safeForAi: false,
-      aiReadyWithGaps: false,
-    }
-  }
-  if ((input.incidentCount ?? 0) > 0) {
+  if (
+    input.failedRuleIds.length > 0
+    || (input.exposedEntityCount ?? 0) > 0
+    || (input.incidentCount ?? 0) > 0
+  ) {
     return {
       profile,
       gate: 'AI_READY_WITH_GAPS',

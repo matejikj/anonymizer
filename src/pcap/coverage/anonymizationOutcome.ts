@@ -1,7 +1,7 @@
 /**
- * T10 — anonymization outcome view model (pure TS, no React).
- * Aggregates coverage families (T09), gate (T08), and incidents (T04/T07)
- * into one summary for UI + report / ai-diagnostics.
+ * T10 / T67 ledger-lite — anonymization outcome view model (pure TS, no React).
+ * Family verdicts come from export dispositions (coverage after boundary/patches),
+ * never from a manual-review signal. Full disposition ledger lands in T62.
  */
 
 import type { IncidentLogSnapshot, AnonymizationIncident } from '../../domain/anonymizationIncident'
@@ -26,10 +26,8 @@ import { protocolPrivacyGuidance } from './protocolPrivacyGuidance'
 
 export const OUTCOME_FAMILY_STATES = [
   'anonymized',
-  'masked-without-analysis',
+  'anonymized-with-loss',
   'encrypted-kept',
-  'needs-attention',
-  'processing-failed',
 ] as const
 
 export type OutcomeFamilyState = (typeof OUTCOME_FAMILY_STATES)[number]
@@ -53,8 +51,8 @@ export interface OutcomeProtocolRow {
   readonly label: string
   readonly state: OutcomeFamilyState
   readonly method: string
+  /** Informational “what AI will not see” / level property — never a call to action. */
   readonly check: string
-  readonly needsReview: boolean
 }
 
 export interface OutcomeIncidentRow {
@@ -78,6 +76,8 @@ export interface AnonymizationOutcome {
   readonly summarySentence: string
   readonly gate: GateResult
   readonly gateLabel: string
+  /** Level property description under the verdict — never a call to action. */
+  readonly assuranceNote: string
   readonly families: readonly OutcomeFamilyRow[]
   readonly incidents: readonly OutcomeIncidentRow[]
   readonly incidentTotal: number
@@ -88,6 +88,7 @@ export interface AnonymizationOutcome {
   readonly diagnosticImpact: {
     readonly analyzableFamilyCount: number
     readonly maskedWithoutAnalysisFamilyCount: number
+    /** Always 0 after T67 — retained for report schema stability. */
     readonly needsAttentionFamilyCount: number
     readonly processingFailedPacketCount: number
   }
@@ -96,9 +97,7 @@ export interface AnonymizationOutcome {
 const STATE_RANK: Record<OutcomeFamilyState, number> = {
   anonymized: 0,
   'encrypted-kept': 1,
-  'masked-without-analysis': 2,
-  'processing-failed': 3,
-  'needs-attention': 4,
+  'anonymized-with-loss': 2,
 }
 
 const MAX_INCIDENTS_SHOWN = 50
@@ -107,35 +106,34 @@ function worseState(a: OutcomeFamilyState, b: OutcomeFamilyState): OutcomeFamily
   return STATE_RANK[a] >= STATE_RANK[b] ? a : b
 }
 
+/**
+ * T67 ledger-lite: project export disposition from dominant coverage status
+ * (after T63/T64/T68 boundary + masks). Never emits a manual-review state.
+ */
 function stateFromProtocolRow(row: PcapProtocolCoverageRow): OutcomeFamilyState {
-  if (row.dominantStatus === 'processing-failed') return 'processing-failed'
-  if (
-    row.userVerdict === 'unsupported-preserved'
-    || row.userVerdict === 'recognized-risk-diagnostic'
-    || row.userVerdict === 'blocking'
-    || row.userVerdict === 'malformed'
-    || row.dominantUiStatus === 'exposed'
-    || row.dominantUiStatus === 'blocked'
-  ) {
-    return 'needs-attention'
-  }
   if (row.dominantStatus === 'encrypted' || row.userVerdict === 'encrypted-preserved') {
     return 'encrypted-kept'
   }
   if (
-    // Missing legacy decode detail does not mean the sanitizer masked the whole payload.
-    // A covered protocol was parsed/sanitized; fail-closed dispositions remain explicit below.
-    (row.userVerdict === 'protected-export-no-full-analysis' && row.dominantStatus !== 'covered')
-    || row.userVerdict === 'heuristic'
-    || row.userVerdict === 'requires-reassembly'
-    || row.userVerdict === 'recognized-truncated-safe'
-    || row.dominantStatus === 'heuristic'
+    row.dominantStatus === 'redacted'
     || row.dominantStatus === 'truncated'
     || row.dominantStatus === 'unsupported'
+    || row.dominantStatus === 'heuristic'
     || row.dominantStatus === 'requires-reassembly'
+    || row.dominantStatus === 'malformed'
+    || row.dominantStatus === 'processing-failed'
+    || row.dominantStatus === 'preserved-unsafe'
+    || row.userVerdict === 'protected-export-no-full-analysis'
+    || row.userVerdict === 'recognized-truncated-safe'
+    || row.userVerdict === 'requires-reassembly'
+    || row.userVerdict === 'malformed'
+    || row.userVerdict === 'blocking'
+    || row.userVerdict === 'unsupported-preserved'
+    || row.userVerdict === 'recognized-risk-diagnostic'
+    || row.userVerdict === 'heuristic'
     || row.probableIdentification
   ) {
-    return 'masked-without-analysis'
+    return 'anonymized-with-loss'
   }
   return 'anonymized'
 }
@@ -151,8 +149,8 @@ function explanationFor(state: OutcomeFamilyState, packetCount: number, probable
 
 function recommendationFor(
   state: OutcomeFamilyState,
-  gate: GateResult,
-  preset: 'diagnostic' | 'high-privacy',
+  _gate: GateResult,
+  _preset: 'diagnostic' | 'high-privacy',
   packetCount: number,
 ): string {
   const n = String(packetCount)
@@ -161,20 +159,17 @@ function recommendationFor(
       return cs.pcap.outcome.recommend.anonymized
     case 'encrypted-kept':
       return cs.pcap.outcome.recommend.encryptedKept
-    case 'masked-without-analysis':
-      return (gate === 'AI_READY_WITH_GAPS'
-        ? cs.pcap.outcome.recommend.maskedGaps
-        : cs.pcap.outcome.recommend.masked
-      ).replace('{n}', n)
-    case 'processing-failed':
-      return cs.pcap.outcome.recommend.processingFailed
-    case 'needs-attention':
-      return preset === 'diagnostic'
-        ? cs.pcap.outcome.recommend.needsAttentionDiagnostic
-        : cs.pcap.outcome.recommend.needsAttentionHighPrivacy
+    case 'anonymized-with-loss':
+      return cs.pcap.outcome.recommend.withLoss.replace('{n}', n)
     default:
-      return cs.pcap.outcome.recommend.masked.replace('{n}', n)
+      return cs.pcap.outcome.recommend.withLoss.replace('{n}', n)
   }
+}
+
+function assuranceNoteFor(preset: 'diagnostic' | 'high-privacy'): string {
+  return preset === 'high-privacy'
+    ? cs.pcap.outcome.assuranceNoteHighPrivacy
+    : cs.pcap.outcome.assuranceNoteDiagnostic
 }
 
 function reasonLabel(reason: AnonymizationIncident['reason']): string {
@@ -238,8 +233,8 @@ function gateLabel(gate: GateResult): string {
 
 function buildSummarySentence(input: {
   gate: GateResult
+  preset: 'diagnostic' | 'high-privacy'
   familyLabels: readonly string[]
-  needsAttention: readonly string[]
   masked: readonly string[]
 }): string {
   const listed = input.familyLabels.slice(0, 6)
@@ -247,43 +242,50 @@ function buildSummarySentence(input: {
     listed.length === 0
       ? cs.pcap.outcome.summaryNoProtocols
       : listed.join(', ')
+  const levelVerdict = input.preset === 'high-privacy'
+    ? cs.pcap.outcome.summaryLevelHighPrivacy
+    : cs.pcap.outcome.summaryLevelDiagnostic
   if (input.gate === 'AI_READY') {
-    return cs.pcap.outcome.summaryAiReady.replace('{protocols}', protocols)
+    return `${levelVerdict} ${cs.pcap.outcome.summaryAiReady.replace('{protocols}', protocols)}`
   }
   if (input.gate === 'AI_READY_WITH_GAPS') {
     const gaps = input.masked.slice(0, 4).join(', ') || cs.pcap.outcome.summaryGenericGaps
-    return cs.pcap.outcome.summaryWithGaps
+    return `${levelVerdict} ${cs.pcap.outcome.summaryWithGaps
       .replace('{protocols}', protocols)
-      .replace('{gaps}', gaps)
+      .replace('{gaps}', gaps)}`
   }
-  const attention = input.needsAttention.slice(0, 4).join(', ') || cs.pcap.outcome.summaryGenericAttention
-  return cs.pcap.outcome.summaryNotReady
-    .replace('{protocols}', protocols)
-    .replace('{attention}', attention)
+  // NOT_AI_READY is an internal fail path — still describe level, never ask for review.
+  return `${levelVerdict} ${cs.pcap.outcome.summaryInternalFallback.replace('{protocols}', protocols)}`
 }
 
 /** One entry per detected protocol, merging its internal fields without hiding the worst result. */
 function protocolDetails(rows: readonly PcapProtocolCoverageRow[], failed: readonly string[]): OutcomeProtocolRow[] {
   const details = new Map<string, OutcomeProtocolRow>()
-  const heuristicIds = new Set<string>()
   for (const row of rows) {
     const guide = protocolPrivacyGuidance(row.protocol)
     let state = stateFromProtocolRow(row)
-    const heuristic = heuristicIds.has(guide.id) || row.dominantStatus === 'heuristic' || row.userVerdict === 'heuristic'
-    if (heuristic) heuristicIds.add(guide.id)
+    // Unknown / proprietary without a full handler: informative loss until T74 light path.
     if (!guide.known && state === 'anonymized') {
-      state = row.dominantStatus === 'redacted' ? 'masked-without-analysis' : 'needs-attention'
+      state = 'anonymized-with-loss'
     }
     const previous = details.get(guide.id)
     state = previous ? worseState(previous.state, state) : state
-    const method = state === 'needs-attention' ? cs.pcap.outcome.protocolUnverified
-      : state === 'processing-failed' ? cs.pcap.outcome.protocolFailed
-      : state === 'masked-without-analysis' ? (heuristic ? cs.pcap.outcome.protocolHeuristic : cs.pcap.outcome.protocolLimited)
+    const method = state === 'anonymized-with-loss'
+      ? (guide.known ? cs.pcap.outcome.protocolLimited : cs.pcap.outcome.protocolUnknownLight)
+      : state === 'encrypted-kept'
+        ? cs.pcap.outcome.protocolEncrypted
         : guide.method
+    const check = state === 'anonymized-with-loss'
+      ? cs.pcap.outcome.checkWithLoss
+      : state === 'encrypted-kept'
+        ? cs.pcap.outcome.checkEncrypted
+        : cs.pcap.outcome.checkAnonymized
     details.set(guide.id, {
-      id: guide.id, label: guide.label, state, method,
-      check: heuristic ? cs.pcap.outcome.checkHeuristic : guide.check,
-      needsReview: previous?.needsReview === true || heuristic || state === 'needs-attention',
+      id: guide.id,
+      label: guide.label,
+      state,
+      method,
+      check,
     })
   }
   const failedIds = new Set<string>()
@@ -293,11 +295,11 @@ function protocolDetails(rows: readonly PcapProtocolCoverageRow[], failed: reado
     failedIds.add(guide.id)
     const previous = details.get(guide.id)
     details.set(guide.id, {
-      id: guide.id, label: guide.label,
-      state: previous ? worseState(previous.state, 'processing-failed') : 'processing-failed',
+      id: guide.id,
+      label: guide.label,
+      state: previous ? worseState(previous.state, 'anonymized-with-loss') : 'anonymized-with-loss',
       method: cs.pcap.outcome.protocolFailed,
-      check: `${previous?.check ?? guide.check} ${cs.pcap.outcome.recommend.processingFailed}`,
-      needsReview: previous?.needsReview ?? false,
+      check: cs.pcap.outcome.checkWithLoss,
     })
   }
   return [...details.values()].sort((a, b) => STATE_RANK[b.state] - STATE_RANK[a.state] || a.label.localeCompare(b.label, 'cs'))
@@ -364,19 +366,19 @@ export function buildAnonymizationOutcome(input: {
     if (!prev.filterProtocol) prev.filterProtocol = row.filterProtocol
   }
 
-  // Fold processing-failed incidents into family rows when protocol known
+  // Fold processing incidents into with-loss (fail-closed mask already applied).
   for (const inc of incidentsSnap?.incidents ?? []) {
     if (!inc.protocol) continue
     const family = familyForProtocol(inc.protocol)
     const prev = byFamily.get(family.familyId)
     if (prev) {
-      prev.state = worseState(prev.state, 'processing-failed')
+      prev.state = worseState(prev.state, 'anonymized-with-loss')
       prev.failedProtocols.push(inc.protocol)
     } else {
       byFamily.set(family.familyId, {
         familyId: family.familyId,
         familyLabel: protocolFamilyLabel(family),
-        state: 'processing-failed',
+        state: 'anonymized-with-loss',
         packetCount: 1,
         hasFamilyPacketCount: false,
         filterProtocol: inc.protocol,
@@ -391,12 +393,15 @@ export function buildAnonymizationOutcome(input: {
     const protocols = protocolDetails(acc.protocols, acc.failedProtocols)
     return { ...acc, protocols, state: protocols.reduce((state, p) => worseState(state, p.state), acc.state) }
   })
-  // A presentation must never be greener than its actual rows, even with stale/coarse gate input.
-  const gate = input.source === 'verified-export' ? input.gate
-    : familyDetails.some(f => f.state === 'needs-attention' || f.protocols.some(p => p.needsReview))
-    ? 'NOT_AI_READY'
-    : input.gate === 'AI_READY' && (familyDetails.some(f => f.state === 'masked-without-analysis' || f.state === 'processing-failed') || (incidentsSnap?.totalFailures ?? 0) > 0)
-      ? 'AI_READY_WITH_GAPS' : input.gate
+  // Presentation must never be greener than export disposition; never escalate to NOT_AI_READY for review.
+  const gate = input.source === 'verified-export'
+    ? input.gate
+    : input.gate === 'NOT_AI_READY'
+      ? 'NOT_AI_READY'
+      : (familyDetails.some((f) => f.state === 'anonymized-with-loss')
+          || (incidentsSnap?.totalFailures ?? 0) > 0)
+        ? (input.gate === 'AI_READY' ? 'AI_READY_WITH_GAPS' : input.gate)
+        : input.gate
   const families: OutcomeFamilyRow[] = familyDetails
     .map((acc) => ({
       familyId: acc.familyId,
@@ -425,21 +430,25 @@ export function buildAnonymizationOutcome(input: {
   const incidentTotal = incidentsSnap?.totalFailures ?? incidentRows.length
   const incidentMoreCount = Math.max(0, incidentTotal - incidentRows.length)
 
+  const withLossLabels = families
+    .filter((f) => f.state === 'anonymized-with-loss')
+    .map((f) => f.familyLabel)
+
   const summarySentence = buildSummarySentence({
     gate,
+    preset: input.preset,
     familyLabels: families.map((f) => f.familyLabel),
-    needsAttention: families.filter((f) => f.state === 'needs-attention' || f.protocols.some(p => p.needsReview)).map((f) => f.familyLabel),
-    masked: families
-      .filter((f) => f.state === 'masked-without-analysis' || f.state === 'processing-failed')
-      .map((f) => f.familyLabel),
+    masked: withLossLabels,
   })
 
   const supportRequests = buildUnsupportedSupportRequests(input.protocols)
+  const withLossCount = families.filter((f) => f.state === 'anonymized-with-loss').length
 
   return {
     summarySentence,
     gate,
     gateLabel: gateLabel(gate),
+    assuranceNote: assuranceNoteFor(input.preset),
     families,
     incidents: incidentRows,
     incidentTotal,
@@ -449,12 +458,9 @@ export function buildAnonymizationOutcome(input: {
     diagnosticImpact: {
       analyzableFamilyCount: families.filter((f) => f.state === 'anonymized' || f.state === 'encrypted-kept')
         .length,
-      maskedWithoutAnalysisFamilyCount: families.filter((f) => f.state === 'masked-without-analysis')
-        .length,
-      needsAttentionFamilyCount: families.filter((f) => f.state === 'needs-attention').length,
-      processingFailedPacketCount: families
-        .filter((f) => f.state === 'processing-failed')
-        .reduce((n, f) => n + f.packetCount, 0),
+      maskedWithoutAnalysisFamilyCount: withLossCount,
+      needsAttentionFamilyCount: 0,
+      processingFailedPacketCount: 0,
     },
   }
 }

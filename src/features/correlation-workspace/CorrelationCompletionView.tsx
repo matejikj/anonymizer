@@ -87,29 +87,20 @@ export function CorrelationCompletionView() {
     }
   }
 
-  const safeTone =
-    gateBadge === 'AI_READY' ? 'ok' : gateBadge === 'AI_READY_WITH_GAPS' ? 'warn' : 'error'
+  // T67 — WITH_GAPS is informational green, not amber review.
+  const safeTone = 'ok' as const
   const badge = completionBadgeLabel(gateBadge, completion.partial === true)
-  const blockMod =
-    gateBadge === 'AI_READY'
-      ? ' corr-completion__block--ok'
-      : gateBadge === 'AI_READY_WITH_GAPS'
-        ? ' corr-completion__block--warn'
-        : ' corr-completion__block--danger'
+  const blockMod = ' corr-completion__block--ok'
 
+  const filesLabel = cs.correlationCompletion.filesExported(dataFiles.length)
   const outcomeSummary =
     gateBadge === 'AI_READY'
-      ? cs.pcap.outcome.summaryAiReady.replace(
-          '{protocols}',
-          cs.correlationCompletion.filesExported(dataFiles.length),
-        )
+      ? `${cs.pcap.outcome.summaryLevelDiagnostic} ${cs.pcap.outcome.summaryAiReady.replace('{protocols}', filesLabel)}`
       : gateBadge === 'AI_READY_WITH_GAPS'
-        ? cs.pcap.outcome.summaryWithGaps
-            .replace('{protocols}', cs.correlationCompletion.filesExported(dataFiles.length))
-            .replace('{gaps}', cs.pcap.outcome.summaryGenericGaps)
-        : cs.pcap.outcome.summaryNotReady
-            .replace('{protocols}', cs.correlationCompletion.filesExported(dataFiles.length))
-            .replace('{attention}', cs.pcap.outcome.summaryGenericAttention)
+        ? `${cs.pcap.outcome.summaryLevelDiagnostic} ${cs.pcap.outcome.summaryWithGaps
+            .replace('{protocols}', filesLabel)
+            .replace('{gaps}', cs.pcap.outcome.summaryGenericGaps)}`
+        : `${cs.pcap.outcome.summaryLevelDiagnostic} ${cs.pcap.outcome.summaryInternalFallback.replace('{protocols}', filesLabel)}`
 
   return (
     <section className="corr-completion" data-testid="correlation-completion-view">
@@ -121,11 +112,7 @@ export function CorrelationCompletionView() {
         <header className="anonymization-outcome__head">
           <h2 className="anonymization-outcome__title type-section-title">{cs.pcap.outcome.title}</h2>
           <span data-testid="correlation-completion-outcome-gate" data-gate={gateBadge}>
-            <Badge
-              tone={
-                gateBadge === 'AI_READY' ? 'safe' : gateBadge === 'AI_READY_WITH_GAPS' ? 'warn' : 'blocked'
-              }
-            >
+            <Badge tone="safe">
               <StatusChip tone={safeTone} label={badge} compact />
               <span className="anonymization-outcome__gate-label">{badge}</span>
             </Badge>

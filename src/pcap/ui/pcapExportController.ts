@@ -59,7 +59,7 @@ function sessionLeakOriginals(): readonly import('../trust').LeakScanOriginal[] 
   }))
 }
 
-function checkExportEligibility(): { ok: true; unsafeExportAcknowledged: boolean } | { ok: false } {
+function checkExportEligibility(): { ok: true } | { ok: false } {
   const session = getPcapSession()
   const plan = buildSessionPlanSnapshot()
   if (!session || !plan) return { ok: false }
@@ -78,16 +78,14 @@ function checkExportEligibility(): { ok: true; unsafeExportAcknowledged: boolean
   const vm = getPcapCoverageViewModel()
   const anonymization = vm?.summary.anonymization ?? session.statuses.anonymization
   const compatibility = vm?.summary.compatibility ?? session.statuses.compatibility
-  const mediaUnsafe = session.profile.mediaPolicy === 'preserve-unsafe'
-  const exportLooksSafe =
-    vm?.summary.exportLooksSafe ?? (anonymization === 'covered' && !mediaUnsafe)
 
+  // T67/T68 — fixed levels never block on preserve-unsafe; only hard plan blocks.
   if (compatibility === 'blocked' || anonymization === 'blocked') {
     store.setExportHint(cs.pcap.export.blockedHint)
     return { ok: false }
   }
 
-  return { ok: true, unsafeExportAcknowledged: !exportLooksSafe }
+  return { ok: true }
 }
 
 /** Starts export immediately — no confirmation dialog. */
@@ -96,7 +94,7 @@ export async function startPcapExport(options?: { preferFileSystemAccess?: boole
   if (!eligibility.ok) return
   await runPcapExportInternal({
     ...options,
-    unsafeExportAcknowledged: eligibility.unsafeExportAcknowledged,
+    unsafeExportAcknowledged: true,
   })
 }
 
@@ -107,7 +105,7 @@ export async function startPcapExportWithRecovery(options?: {
   const eligibility = checkExportEligibility()
   if (!eligibility.ok) return
   await runPcapExportWithRecoveryInternal({
-    unsafeExportAcknowledged: eligibility.unsafeExportAcknowledged,
+    unsafeExportAcknowledged: true,
     preferFileSystemAccess: options?.preferFileSystemAccess,
   })
 }

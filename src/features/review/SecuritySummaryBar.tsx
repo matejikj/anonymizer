@@ -24,24 +24,17 @@ export function SecuritySummaryBar({ compact = false }: { readonly compact?: boo
       })
   const noFindings = session.entities.length === 0
 
+  // T67 — failed rules / gaps are informational (WITH_GAPS), never amber review / NOT_AI_READY.
   const chipLevel = planBusy
     ? 'blocked'
-    : gate?.gate === 'NOT_AI_READY'
-      ? session.meta.failedRuleIds.length > 0
-        ? 'blocked'
-        : 'exposed'
-      : gate?.gate === 'AI_READY_WITH_GAPS'
-        ? 'warn'
-        : noFindings
-          ? 'ok'
-          : 'ok'
+    : gate?.gate === 'NOT_AI_READY' && session.meta.failedRuleIds.length > 0
+      ? 'blocked'
+      : 'ok'
 
   const label = planBusy
     ? cs.security.recomputing
-    : gate?.gate === 'NOT_AI_READY'
-      ? session.meta.failedRuleIds.length > 0
-        ? cs.security.blocked
-        : cs.security.someOriginal
+    : gate?.gate === 'NOT_AI_READY' && session.meta.failedRuleIds.length > 0
+      ? cs.security.blocked
       : noFindings
         ? cs.security.noFindings
         : gate?.gate === 'AI_READY_WITH_GAPS'
@@ -69,7 +62,7 @@ export function SecuritySummaryBar({ compact = false }: { readonly compact?: boo
           ? cs.security.noFindingsHint
           : cs.security.statusDisclaimer}
       </span>
-      {gate?.gate === 'NOT_AI_READY' && exposed.entityCount > 0 && !planBusy ? (
+      {gate?.gate === 'AI_READY_WITH_GAPS' && exposed.entityCount > 0 && !planBusy ? (
         <details className="security-chip__details">
           <summary>
             {cs.security.exposedSummary

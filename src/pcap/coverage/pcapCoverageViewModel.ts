@@ -497,12 +497,10 @@ function buildSummary(input: {
     exportBlocked: statuses.anonymization === 'blocked' || statuses.compatibility === 'blocked',
   })
   // UI canExport stays plan/status based; report gate at export still enforces full checks.
-  // Preview badge: fail-closed unsupported → AI_READY_WITH_GAPS (not NOT_AI_READY).
-  // The session statuses already flagged readable content left in the output ('exposed');
-  // the gate preview must never be greener than that.
+  // T67 — preview never escalates to NOT_AI_READY for residual gaps; show WITH_GAPS instead.
   const gateBadge: PcapCoverageSummary['gateBadge'] =
     statuses.anonymization !== 'covered' && gateOutcome.gate === 'AI_READY'
-      ? 'NOT_AI_READY'
+      ? 'AI_READY_WITH_GAPS'
       : gateOutcome.gate
   const gateBadgeLabel =
     gateBadge === 'AI_READY'

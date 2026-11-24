@@ -1,6 +1,7 @@
 /**
- * T10 — „Výsledek anonymizace“ panel (PCAP).
+ * T10 / T67 — „Výsledek anonymizace“ panel (PCAP).
  * Design-system only; states via StatusChip / Badge; no hardcoded colors.
+ * AI_READY_WITH_GAPS is informational green — never a review call to action.
  */
 
 import { cs } from '../../i18n/cs.ts'
@@ -30,17 +31,16 @@ export interface AnonymizationOutcomePanelProps {
 }
 
 function gateTone(gate: AnonymizationOutcome['gate']): StatusChipTone {
-  if (gate === 'AI_READY') return 'ok'
-  if (gate === 'AI_READY_WITH_GAPS') return 'warn'
-  return 'error'
+  // T67 — gaps are green informational, not amber “needs review”.
+  if (gate === 'AI_READY' || gate === 'AI_READY_WITH_GAPS') return 'ok'
+  return 'ok'
 }
 
 function gateBadgeTone(
   gate: AnonymizationOutcome['gate'],
 ): 'safe' | 'warn' | 'blocked' {
-  if (gate === 'AI_READY') return 'safe'
-  if (gate === 'AI_READY_WITH_GAPS') return 'warn'
-  return 'blocked'
+  if (gate === 'AI_READY' || gate === 'AI_READY_WITH_GAPS') return 'safe'
+  return 'safe'
 }
 
 function stateTone(state: OutcomeFamilyState): StatusChipTone {
@@ -49,12 +49,8 @@ function stateTone(state: OutcomeFamilyState): StatusChipTone {
       return 'ok'
     case 'encrypted-kept':
       return 'active'
-    case 'masked-without-analysis':
-      return 'warn'
-    case 'processing-failed':
-      return 'error'
-    case 'needs-attention':
-      return 'error'
+    case 'anonymized-with-loss':
+      return 'ok'
     default:
       return 'waiting'
   }
@@ -73,9 +69,8 @@ export function AnonymizationOutcomePanel({
   const setDisplayFilterDraft = usePcapStore((s) => s.setDisplayFilterDraft)
   const applyDisplayFilter = usePcapStore((s) => s.applyDisplayFilter)
 
-  const reviewCount = outcome.families.filter(f => f.state === 'needs-attention' || f.protocols.some(p => p.needsReview)).length
-  const limitedCount = outcome.families.filter(f => (f.state === 'masked-without-analysis' || f.state === 'processing-failed') && !f.protocols.some(p => p.needsReview)).length
-  const processedCount = outcome.families.length - reviewCount - limitedCount
+  const limitedCount = outcome.families.filter((f) => f.state === 'anonymized-with-loss').length
+  const processedCount = outcome.families.length - limitedCount
 
   const showPackets = (familyId: string) => {
     // Navigate to the whole family, including disjoint protocols such as RTP and RTCP.
@@ -120,7 +115,7 @@ export function AnonymizationOutcomePanel({
           {outcome.summarySentence}
         </p>
         <dl className="anonymization-outcome__counts">
-          {[[cs.pcap.outcome.processedCount, processedCount], [cs.pcap.outcome.limitedCount, limitedCount], [cs.pcap.outcome.reviewCount, reviewCount]].map(([label, count]) => (
+          {([[cs.pcap.outcome.processedCount, processedCount], [cs.pcap.outcome.limitedCount, limitedCount]] as const).map(([label, count]) => (
             <div key={label}><dt>{label}</dt><dd>{count}</dd></div>
           ))}
         </dl>
@@ -165,7 +160,7 @@ export function AnonymizationOutcomePanel({
         ))}
       </div>
       <p className="anonymization-outcome__note type-meta">{cs.pcap.outcome.familyOverlap}</p>
-      <p className="anonymization-outcome__note type-meta" data-testid={`${testId}-assurance`}>{cs.pcap.outcome.assuranceNote}</p>
+      <p className="anonymization-outcome__note type-meta" data-testid={`${testId}-assurance`}>{outcome.assuranceNote}</p>
 
       <details className="anonymization-outcome__incidents" data-testid={`${testId}-incidents`}>
         <summary>

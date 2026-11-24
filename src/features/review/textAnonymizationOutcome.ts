@@ -112,19 +112,13 @@ export function buildTextAnonymizationOutcome(input: {
   if (noFindings && gate === 'AI_READY') {
     summarySentence = cs.pcap.outcome.textNoFindings
   } else if (gate === 'AI_READY') {
-    summarySentence = cs.pcap.outcome.summaryAiReady.replace('{protocols}', protocols)
+    summarySentence = `${cs.pcap.outcome.summaryLevelDiagnostic} ${cs.pcap.outcome.summaryAiReady.replace('{protocols}', protocols)}`
   } else if (gate === 'AI_READY_WITH_GAPS') {
-    summarySentence = cs.pcap.outcome.summaryWithGaps
+    summarySentence = `${cs.pcap.outcome.summaryLevelDiagnostic} ${cs.pcap.outcome.summaryWithGaps
       .replace('{protocols}', protocols)
-      .replace('{gaps}', cs.pcap.outcome.summaryGenericGaps)
+      .replace('{gaps}', cs.pcap.outcome.summaryGenericGaps)}`
   } else {
-    const attention =
-      input.failedRuleIds.length > 0
-        ? input.failedRuleIds.slice(0, 4).join(', ')
-        : cs.pcap.outcome.summaryGenericAttention
-    summarySentence = cs.pcap.outcome.summaryNotReady
-      .replace('{protocols}', protocols)
-      .replace('{attention}', attention)
+    summarySentence = `${cs.pcap.outcome.summaryLevelDiagnostic} ${cs.pcap.outcome.summaryInternalFallback.replace('{protocols}', protocols)}`
   }
 
   return {
