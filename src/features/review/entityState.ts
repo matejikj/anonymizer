@@ -121,8 +121,30 @@ export interface ExposedSummary {
   }>
 }
 
-/** Values that will appear in clear text in export/preview (not effectively anonymized). */
+/**
+ * T71 / D4 — category/entity “off” no longer leaves originals in export; free-token
+ * covers them. This summary is always empty for gate/export purposes (no clear text).
+ * Prefer {@link computeAliasSuppressedSummary} for informational UI.
+ */
 export function computeExposedSummary(
+  _entities: Entity[],
+  _masters: CategoryMasterMap,
+): ExposedSummary {
+  void _entities
+  void _masters
+  return {
+    categoryCount: 0,
+    entityCount: 0,
+    occurrenceCount: 0,
+    categories: [],
+  }
+}
+
+/**
+ * Entities whose category alias is suppressed (master/individual off) but still
+ * receive a free-token pseudonym — informational gaps, not exposed originals.
+ */
+export function computeAliasSuppressedSummary(
   entities: Entity[],
   masters: CategoryMasterMap,
 ): ExposedSummary {
@@ -172,12 +194,17 @@ export function computeExposedSummary(
 
 export type SecurityLevel = 'ok' | 'exposed' | 'blocked'
 
+/**
+ * T71 — failed custom rules are informational gaps (WITH_GAPS), never blocked.
+ * Exposed originals are impossible after free-token fallback (D4).
+ */
 export function computeSecurityLevel(input: {
   analysisDone: boolean
   failedRuleIds: string[]
   exposed: ExposedSummary
 }): SecurityLevel {
-  if (!input.analysisDone || input.failedRuleIds.length > 0) return 'blocked'
-  if (input.exposed.entityCount > 0) return 'exposed'
+  if (!input.analysisDone) return 'blocked'
+  void input.failedRuleIds
+  void input.exposed
   return 'ok'
 }

@@ -1,11 +1,11 @@
 import { cs } from '../../i18n/cs.ts'
 import { useAppStore } from '../../app/store.ts'
 import { getSessionModel } from '../workspace/sessionModel.ts'
-import { computeExposedSummary } from './entityState.ts'
+import { computeAliasSuppressedSummary } from './entityState.ts'
 import { CATEGORY_LABELS } from './categoryLabels.ts'
 import { resolveTextExportGate } from '../../pcap/trust/exportGate.ts'
 
-/** Compact security status for the workspace command strip (T08 export gate). */
+/** Compact security status for the workspace command strip (T08 / T71 export gate). */
 export function SecuritySummaryBar({ compact = false }: { readonly compact?: boolean }) {
   const sessionEpoch = useAppStore((s) => s.sessionEpoch)
   const phase = useAppStore((s) => s.phase)
@@ -14,32 +14,25 @@ export function SecuritySummaryBar({ compact = false }: { readonly compact?: boo
 
   if ((phase !== 'workspace' && phase !== 'correlation-review') || !session) return null
 
-  const exposed = computeExposedSummary(session.entities, session.categoryMasters)
+  const suppressed = computeAliasSuppressedSummary(session.entities, session.categoryMasters)
   const gate = planBusy
     ? null
     : resolveTextExportGate({
         failedRuleIds: session.meta.failedRuleIds,
         incidentCount: session.incidents?.totalFailures ?? 0,
-        exposedEntityCount: exposed.entityCount,
       })
   const noFindings = session.entities.length === 0
 
-  // T67 — failed rules / gaps are informational (WITH_GAPS), never amber review / NOT_AI_READY.
-  const chipLevel = planBusy
-    ? 'blocked'
-    : gate?.gate === 'NOT_AI_READY' && session.meta.failedRuleIds.length > 0
-      ? 'blocked'
-      : 'ok'
+  // T71 — never blocked for failed rules / suppressed aliases; WITH_GAPS is informational.
+  const chipLevel = planBusy ? 'blocked' : 'ok'
 
   const label = planBusy
     ? cs.security.recomputing
-    : gate?.gate === 'NOT_AI_READY' && session.meta.failedRuleIds.length > 0
-      ? cs.security.blocked
-      : noFindings
-        ? cs.security.noFindings
-        : gate?.gate === 'AI_READY_WITH_GAPS'
-          ? cs.security.aiReadyWithGaps
-          : cs.security.allReplaced
+    : noFindings
+      ? cs.security.noFindings
+      : gate?.gate === 'AI_READY_WITH_GAPS'
+        ? cs.security.aiReadyWithGaps
+        : cs.security.allReplaced
 
   return (
     <div
@@ -50,7 +43,7 @@ export function SecuritySummaryBar({ compact = false }: { readonly compact?: boo
       data-gate={gate?.gate ?? (planBusy ? 'busy' : undefined)}
       data-no-findings={noFindings || undefined}
       title={
-        noFindings && !planBusy && chipLevel !== 'blocked'
+        noFindings && !planBusy
           ? cs.security.noFindingsHint
           : cs.security.statusDisclaimer
       }
@@ -58,20 +51,25 @@ export function SecuritySummaryBar({ compact = false }: { readonly compact?: boo
       <span className="security-chip__dot" aria-hidden />
       <span className="security-chip__label">{label}</span>
       <span className="visually-hidden" data-testid="security-disclaimer">
-        {noFindings && !planBusy && chipLevel !== 'blocked'
+        {noFindings && !planBusy
           ? cs.security.noFindingsHint
           : cs.security.statusDisclaimer}
       </span>
-      {gate?.gate === 'AI_READY_WITH_GAPS' && exposed.entityCount > 0 && !planBusy ? (
+      {gate?.gate === 'AI_READY_WITH_GAPS' && session.meta.failedRuleIds.length > 0 && !planBusy ? (
+        <span className="security-chip__hint">
+          {cs.security.failedRules}: {session.meta.failedRuleIds.join(', ')}
+        </span>
+      ) : null}
+      {suppressed.entityCount > 0 && !planBusy ? (
         <details className="security-chip__details">
           <summary>
             {cs.security.exposedSummary
-              .replace('{cats}', String(exposed.categoryCount))
-              .replace('{ents}', String(exposed.entityCount))
-              .replace('{occs}', String(exposed.occurrenceCount))}
+              .replace('{cats}', String(suppressed.categoryCount))
+              .replace('{ents}', String(suppressed.entityCount))
+              .replace('{occs}', String(suppressed.occurrenceCount))}
           </summary>
           <ul>
-            {exposed.categories.map((c) => (
+            {suppressed.categories.map((c) => (
               <li key={c.category}>
                 {CATEGORY_LABELS[c.category]}: {c.entityCount} {cs.review.values},{' '}
                 {c.occurrenceCount} {cs.review.occurrences}
@@ -79,11 +77,6 @@ export function SecuritySummaryBar({ compact = false }: { readonly compact?: boo
             ))}
           </ul>
         </details>
-      ) : null}
-      {chipLevel === 'blocked' && !planBusy && session.meta.failedRuleIds.length > 0 ? (
-        <span className="security-chip__hint">
-          {cs.security.failedRules}: {session.meta.failedRuleIds.join(', ')}
-        </span>
       ) : null}
     </div>
   )

@@ -8,6 +8,8 @@ import type { ReplacementSnapshot } from '../../workers/protocol.ts'
 import { getSessionModel, type SessionModel } from '../workspace/sessionModel.ts'
 import { getSharedMappingClient } from '../../mapping/sharedMappingClient.ts'
 import { applyIdentityPropagationToExportPlan } from './identityPropagation.ts'
+import { applyFreeTextToExportSnapshot } from './freeTextExportPass.ts'
+import type { TextDispositionLedgerAggregate } from '../../engine/freeText/textDispositionLedger.ts'
 
 export type ExportPlanSnapshot = {
   plan: ReplacementPlan
@@ -19,6 +21,8 @@ export type ExportPlanSnapshot = {
   fileName: string | null
   mode: 'common' | 'large'
   byteLength: number
+  /** T71 — optional token ledger for gate (no originals). */
+  textDispositionLedger?: TextDispositionLedgerAggregate
 }
 
 /** Immutable view of the current session plan used by UI + export. */
@@ -26,7 +30,7 @@ export function getExportPlanSnapshot(
   session: SessionModel | null = getSessionModel(),
 ): ExportPlanSnapshot | null {
   if (!session) return null
-  const base: ExportPlanSnapshot = {
+  let base: ExportPlanSnapshot = {
     plan: session.plan,
     packed: session.packed,
     entities: session.entities,
@@ -37,6 +41,10 @@ export function getExportPlanSnapshot(
     mode: session.meta.mode,
     byteLength: session.meta.byteLength,
   }
+  // T71 — free-text allowlist on unmatched spans (covers failed-rule gaps).
+  base = applyFreeTextToExportSnapshot(base, {
+    failedRuleIds: session.meta.failedRuleIds,
+  })
   // T66 — rewrite known identities outside detector hits (shared MappingAuthority).
   const published = getSharedMappingClient().getPublishedSnapshot()
   if (!published) return base

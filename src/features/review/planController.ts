@@ -77,13 +77,13 @@ export function applyWorkerPlanBuffers(buffers: ReplacementPlanBuffers): boolean
       : fenwickBuild(lengthDeltas)
 
   const replacements: Array<string | null> = new Array(n)
+  // Flags track “use category alias”; buildReplacementPlan supplies free-token when off (T71/D4).
   for (let i = 0; i < n; i++) {
-    const on = enabledFlags[i] === 1
-    session.packed.flags[i] = on ? FLAG_ENABLED : 0
-    const ent = session.entities[session.packed.entityIndexes[i]!]
-    replacements[i] = on && ent ? ent.replacement : null
+    session.packed.flags[i] = enabledFlags[i] === 1 ? FLAG_ENABLED : 0
   }
-  session.plan = { replacements, lengthDeltas, fenwick }
+  void lengthDeltas
+  void fenwick
+  session.plan = buildReplacementPlan(session.packed, session.entities)
   session.planRevision += 1
   return true
 }

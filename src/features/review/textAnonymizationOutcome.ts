@@ -1,5 +1,6 @@
 /**
- * T10 — text-mode anonymization outcome view model (pure TS).
+ * T10 / T71 — text-mode anonymization outcome view model (pure TS).
+ * Gate comes from the text disposition ledger; disabled categories are not exposed.
  */
 
 import { cs } from '../../i18n/cs.ts'
@@ -8,10 +9,17 @@ import type { Category, Entity } from '../../domain/types.ts'
 import { resolveTextExportGate, type GateResult } from '../../pcap/trust/exportGate.ts'
 import { CATEGORY_LABELS } from './categoryLabels.ts'
 import {
-  computeExposedSummary,
+  computeAliasSuppressedSummary,
   summarizeCategories,
   type CategoryMasterMap,
 } from './entityState.ts'
+import {
+  emptyTextDispositionAggregate,
+  gateFromTextDispositionLedger,
+  withAliasSuppressions,
+  withFailedRules,
+  type TextDispositionLedgerAggregate,
+} from '../../engine/freeText/textDispositionLedger.ts'
 
 export interface TextOutcomeCategoryRow {
   readonly category: Category
@@ -38,6 +46,7 @@ export interface TextAnonymizationOutcome {
   readonly incidentMoreCount: number
   readonly oversizedLines: readonly number[]
   readonly noFindings: boolean
+  readonly textDispositionLedger: TextDispositionLedgerAggregate
 }
 
 const MAX_INCIDENTS = 50
@@ -71,13 +80,21 @@ export function buildTextAnonymizationOutcome(input: {
   readonly failedRuleIds: readonly string[]
   readonly incidents?: IncidentLogSnapshot | null
   readonly oversizedLines?: readonly number[]
+  readonly textDispositionLedger?: TextDispositionLedgerAggregate | null
 }): TextAnonymizationOutcome {
   const entities = [...input.entities]
-  const exposed = computeExposedSummary(entities, input.categoryMasters)
+  const suppressed = computeAliasSuppressedSummary(entities, input.categoryMasters)
+  let ledger =
+    input.textDispositionLedger ?? emptyTextDispositionAggregate()
+  ledger = withAliasSuppressions(ledger, suppressed.entityCount)
+  ledger = withFailedRules(ledger, input.failedRuleIds.length)
+  const ledgerGate = gateFromTextDispositionLedger(ledger)
+
   const gateResult = resolveTextExportGate({
     failedRuleIds: input.failedRuleIds,
     incidentCount: input.incidents?.totalFailures ?? 0,
-    exposedEntityCount: exposed.entityCount,
+    ledgerGate,
+    maskTokenCount: ledger.byDisposition.mask,
   })
   const gate = gateResult.gate
   const noFindings = entities.length === 0
@@ -132,5 +149,6 @@ export function buildTextAnonymizationOutcome(input: {
     incidentMoreCount,
     oversizedLines,
     noFindings,
+    textDispositionLedger: ledger,
   }
 }

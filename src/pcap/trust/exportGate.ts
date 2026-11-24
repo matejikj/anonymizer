@@ -249,22 +249,29 @@ export function isAiReadyWithGaps(gate: GateResult | null | undefined): boolean 
 }
 
 /**
- * Text-session gate (T67 / interim until T71 free-text allowlist):
- * failed rules and disabled categories → AI_READY_WITH_GAPS (fallback mask), never NOT_AI_READY.
+ * Text-session gate (T71): derived from the text disposition ledger.
+ * Failed custom rules / masks → AI_READY_WITH_GAPS. Disabled categories use
+ * free-token (D4) and do NOT force gaps. Never NOT_AI_READY in production text.
  */
 export function resolveTextExportGate(input: {
   readonly failedRuleIds: readonly string[]
   readonly incidentCount?: number
+  /** @deprecated T71 — originals are never left; ignored for gate. */
   readonly exposedEntityCount?: number
+  /** Optional precomputed ledger gate (preferred). */
+  readonly ledgerGate?: 'AI_READY' | 'AI_READY_WITH_GAPS'
+  readonly maskTokenCount?: number
   /** Profile label for outcome; text uses diagnostic-equivalent semantics. */
   readonly profile?: PcapAnonymizationLevel
 }): ExportGateOutcome {
   const profile = input.profile ?? 'diagnostic'
-  if (
-    input.failedRuleIds.length > 0
-    || (input.exposedEntityCount ?? 0) > 0
+  void input.exposedEntityCount
+  const withGaps =
+    input.ledgerGate === 'AI_READY_WITH_GAPS'
+    || input.failedRuleIds.length > 0
     || (input.incidentCount ?? 0) > 0
-  ) {
+    || (input.maskTokenCount ?? 0) > 0
+  if (withGaps) {
     return {
       profile,
       gate: 'AI_READY_WITH_GAPS',

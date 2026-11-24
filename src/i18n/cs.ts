@@ -357,7 +357,7 @@ export const cs = {
     exposed: 'Některé hodnoty zůstávají původní',
     blocked: 'Export zablokován',
     exposedSummary:
-      'Původní v exportu: {cats} kategorií, {ents} hodnot, {occs} výskytů',
+      'Bez aliasu kategorie (pseudonym T69): {cats} kategorií, {ents} hodnot, {occs} výskytů',
     failedRules: 'Selhaná pravidla',
     statusDisclaimer:
       'Stav popisuje konfiguraci profilu a výsledky detekce — ne certifikaci, že soubor neobsahuje citlivá data.',

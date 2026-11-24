@@ -50,3 +50,13 @@ export {
 } from './applyToString.ts'
 
 export { applyFreeTextAnalyzePass } from './analyzePass.ts'
+
+export {
+  emptyTextDispositionAggregate,
+  aggregateFreeTextOps,
+  withFailedRules,
+  withAliasSuppressions,
+  gateFromTextDispositionLedger,
+  type TextDisposition,
+  type TextDispositionLedgerAggregate,
+} from './textDispositionLedger.ts'
