@@ -276,9 +276,6 @@ export function userVerdictForProtocol(input: {
   if (status === 'malformed') return 'malformed'
   if (status === 'requires-reassembly') return 'requires-reassembly'
   if (status === 'encrypted') return 'encrypted-preserved'
-  // Not policy-derived like 'unsupported': on TCP reassembly overlays (e.g. HTTP bodies) the
-  // export keeps detector-only text, so heuristic always needs a manual review.
-  if (status === 'heuristic') return 'heuristic'
   if (status === 'preserved-unsafe') return 'recognized-risk-diagnostic'
   if (status === 'preserved-for-diagnostics') return 'recognized-and-protected'
   // Redacted content is masked in the export; it is protected, just not structurally analysed.
@@ -288,13 +285,16 @@ export function userVerdictForProtocol(input: {
     return 'protected-export-no-full-analysis'
   }
 
-  if (status === 'unsupported') {
+  // T64 — heuristic uses the same export-boundary policy matrix as unsupported (including
+  // reassembly overlay paths); it is never left as a manual-review verdict.
+  if (status === 'unsupported' || status === 'heuristic') {
     // high-privacy fail-closed: truncate/drop unsupported
     if (truncateUnsupported || preset === 'high-privacy') return 'recognized-truncated-safe'
     // The export boundary applies unsupportedPayloadPolicy (resolveBlockingExportDisposition);
     // diagnostic masks in place (length-preserving) — protected, not exposed.
     const unsupportedPolicy = input.unsupportedPayloadPolicy ?? policyFromLevel(preset).unsupportedPayloadPolicy
     if (unsupportedPolicy === 'mask-in-place') return 'protected-export-no-full-analysis'
+    if (status === 'heuristic') return 'protected-export-no-full-analysis'
     if (preset === 'diagnostic') return 'recognized-risk-diagnostic'
     return 'unsupported-preserved'
   }
@@ -326,7 +326,8 @@ function exportActionLabel(action: SpanExportAction): string {
 }
 
 function protectedSpan(status: CoverageStatus): boolean {
-  return status === 'covered' || status === 'redacted' || status === 'truncated' || status === 'heuristic'
+  // T64 — heuristic is boundary-masked; do not count the producer status as protected content.
+  return status === 'covered' || status === 'redacted' || status === 'truncated'
 }
 
 export function buildPlanRevision(input: {

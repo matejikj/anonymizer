@@ -6,7 +6,9 @@
  * safe statuses (`covered`, `redacted`, `encrypted`, `truncated`) and through
  * `preserved-unsafe` (CF-11 fingerprint / media preserve — exported with risk).
  * Blocking spans (`unsupported`, `malformed`, `requires-reassembly`, `heuristic`)
- * terminate the safe prefix.
+ * terminate the safe prefix. T64: the same boundary runs for reassembly-overlay packets
+ * (structural coverage ∪ projected overlay coverage), so heuristic is always masked or
+ * truncated — never left as passthrough on TCP-reassembled HTTP/SIP segments.
  */
 
 import { resolveBlockingExportDisposition } from './coverageDisposition.ts';

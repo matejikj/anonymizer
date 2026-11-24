@@ -219,57 +219,63 @@ export function sanitizePacket(
     drop = result.drop ?? false;
 
     // CF-09 / step 4: truncate (safe) or mask-in-place (diagnostic) from safeExportEnd.
-    // When reassembly overlay owns the application layer, it supplies mask/truncate patches.
-    const overlayOwnsApp = options.reassemblyContext?.overlayFor(packet.index)?.skipAppLayer === true
-    const boundary = resolveExportBoundary(coverage, policy, packet.capturedLength);
+    // T64 — reassembly overlay owns app-layer decode, but the same export boundary applies:
+    // compute safeExportEnd over structural coverage ∪ projected overlay coverage, then
+    // mask/truncate past that point. Overlay map patches that later collide with the
+    // residual mask are dropped (fail-closed) in applyReassemblyPatchesToResults.
+    const overlay = options.reassemblyContext?.overlayFor(packet.index)
+    const overlayOwnsApp = overlay?.skipAppLayer === true
+    const boundaryCoverage =
+      overlayOwnsApp && overlay && overlay.coverage.length > 0
+        ? [...coverage, ...overlay.coverage]
+        : coverage
+    const boundary = resolveExportBoundary(boundaryCoverage, policy, packet.capturedLength);
     let truncatedLength: number | undefined;
 
-    if (!overlayOwnsApp) {
-      if (
-        (boundary.disposition === 'mask-in-place' || boundary.disposition === 'mask-application-in-place')
-        && packet.capturedLength > 0
-        && boundary.safeExportEnd === 0
-        && !drop
-      ) {
-        throw new PlanInvariantError({
-          code: 'unsafe-export-boundary',
-          message:
-            `No safe export boundary for packetIndex=${packet.index}; `
-            + 'refusing to mask or export without L2/L3/L4 structure',
-          packetIndex: packet.index,
-        });
-      }
-      if (boundary.disposition === 'drop') {
-        // Fail-closed: a computed `drop` must never fall back to keeping whatever patches
-        // were already collected for the safe prefix — the whole record is excluded from
-        // export (see export/engine.ts's `if (planPkt.drop) continue`), so nothing here
-        // needs a truncation/mask patch. The reason is discoverable — the blocking coverage
-        // status/protocol are already in `coverage` for the report.
-        drop = true;
-      } else if (boundary.disposition === 'truncate' && boundary.safeExportEnd < packet.capturedLength) {
-        truncatedLength = boundary.safeExportEnd;
-        coverage.push({
-          protocol: 'payload',
-          offset: boundary.safeExportEnd,
-          length: packet.capturedLength - boundary.safeExportEnd,
-          status: 'truncated',
-        });
-      } else if (
-        (boundary.disposition === 'mask-in-place' || boundary.disposition === 'mask-application-in-place')
-        && boundary.safeExportEnd > 0
-        && boundary.safeExportEnd < packet.capturedLength
-      ) {
-        applyInPlaceMask({
-          collector,
-          intents: options.intents,
-          coverage,
-          issues,
-          packetIndex: packet.index,
-          safeExportEnd: boundary.safeExportEnd,
-          capturedLength: packet.capturedLength,
-          disposition: boundary.disposition,
-        });
-      }
+    if (
+      (boundary.disposition === 'mask-in-place' || boundary.disposition === 'mask-application-in-place')
+      && packet.capturedLength > 0
+      && boundary.safeExportEnd === 0
+      && !drop
+    ) {
+      throw new PlanInvariantError({
+        code: 'unsafe-export-boundary',
+        message:
+          `No safe export boundary for packetIndex=${packet.index}; `
+          + 'refusing to mask or export without L2/L3/L4 structure',
+        packetIndex: packet.index,
+      });
+    }
+    if (boundary.disposition === 'drop') {
+      // Fail-closed: a computed `drop` must never fall back to keeping whatever patches
+      // were already collected for the safe prefix — the whole record is excluded from
+      // export (see export/engine.ts's `if (planPkt.drop) continue`), so nothing here
+      // needs a truncation/mask patch. The reason is discoverable — the blocking coverage
+      // status/protocol are already in `coverage` for the report.
+      drop = true;
+    } else if (boundary.disposition === 'truncate' && boundary.safeExportEnd < packet.capturedLength) {
+      truncatedLength = boundary.safeExportEnd;
+      coverage.push({
+        protocol: 'payload',
+        offset: boundary.safeExportEnd,
+        length: packet.capturedLength - boundary.safeExportEnd,
+        status: 'truncated',
+      });
+    } else if (
+      (boundary.disposition === 'mask-in-place' || boundary.disposition === 'mask-application-in-place')
+      && boundary.safeExportEnd > 0
+      && boundary.safeExportEnd < packet.capturedLength
+    ) {
+      applyInPlaceMask({
+        collector,
+        intents: options.intents,
+        coverage,
+        issues,
+        packetIndex: packet.index,
+        safeExportEnd: boundary.safeExportEnd,
+        capturedLength: packet.capturedLength,
+        disposition: boundary.disposition,
+      });
     }
 
     if (options.deferPatchResolution) {
