@@ -38,6 +38,10 @@ import {
   finalizePacketDisposition,
   type DispositionLedgerAggregate,
 } from './dispositionLedger'
+import {
+  FREE_TEXT_VOCABULARY_HASH,
+  FREE_TEXT_VOCABULARY_VERSION,
+} from '../../engine/freeText/vocabulary.ts'
 
 export type { PlanChangeCounts, PlanDispositionReason } from '../plan/planDisposition'
 export { emptyPlanAuditFields, emptyPlanChangeCounts } from '../plan/planDisposition'
@@ -160,12 +164,23 @@ export interface BuiltExportPacket {
 /** Bumped for T62 — disposition ledger + residual sweep on unclaimed export bytes. */
 /** Bumped for T65 — leak auto-remediation patches on the immutable plan. */
 /** Bumped for T66 — cross-protocol identity propagation on plan bytes. */
-export const PCAP_ENGINE_VERSION = '2.41.0'
+export const PCAP_ENGINE_VERSION = '2.42.0'
 
 export { EMPTY_INCIDENT_LOG_SNAPSHOT }
 
 export function hashPcapLevel(level: PcapAnonymizationLevel): string {
-  return hashPcapLevelPolicy(level, PCAP_ENGINE_VERSION)
+  return hashPcapLevelPolicy(level, PCAP_ENGINE_VERSION, FREE_TEXT_VOCABULARY_HASH)
+}
+
+/** T70 — vocabulary identity embedded in plans/reports (no word list). */
+export function freeTextVocabularyReportMeta(): {
+  readonly vocabularyVersion: string
+  readonly vocabularyHash: string
+} {
+  return {
+    vocabularyVersion: FREE_TEXT_VOCABULARY_VERSION,
+    vocabularyHash: FREE_TEXT_VOCABULARY_HASH,
+  }
 }
 
 /** @deprecated Use hashPcapLevel. */

@@ -14,6 +14,7 @@
     "check:audit": "node scripts/check-audit.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:offline-release": "node scripts/check-offline-release.mjs",
+    "vocab:build": "node scripts/build-log-vocabulary.mjs",
     "sbom": "node scripts/generate-sbom.mjs",
     "release:manifest": "node scripts/generate-release-manifest.mjs",
     "enterprise-offline": "npm run check:network && npm run check:offline-release && vitest run tests/pcap/unit/enterpriseStep14OfflineHardening.test.ts",

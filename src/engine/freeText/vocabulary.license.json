@@ -1,0 +1,11 @@
+{
+  "name": "squelch-free-text-vocabulary",
+  "version": "t70-1",
+  "hash": "0c7a1fab2ad5",
+  "bin": "vocabulary.0c7a1fab2ad5.bin",
+  "wordCount": 597,
+  "builtAt": "2026-11-24T20:35:52.774Z",
+  "license": "LicenseRef-Internal-Technical-Scaffolding",
+  "comment": "In-repo technical EN/CZ scaffolding authored for Squelch; optional extracts from local KONOS/RGW/flexcd format strings are words only (no values). Not a third-party wordlist corpus.",
+  "maxAgeDays": 180
+}

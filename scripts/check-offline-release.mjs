@@ -6,6 +6,7 @@
  * When dist/ exists, also verifies production HTML CSP and scans assets for remote URLs.
  * When release/sbom.cdx.json exists, validates CycloneDX shape.
  */
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -125,6 +126,67 @@ if (existsSync(path.join(root, 'docs/RELEASE_CHECKLIST.md'))) {
   ok('docs/RELEASE_CHECKLIST.md present')
 } else {
   fail('docs/RELEASE_CHECKLIST.md present', 'missing')
+}
+
+// 8. T70 free-text vocabulary artifact (offline allowlist)
+{
+  const freeTextDir = path.join(root, 'src/engine/freeText')
+  const generatedPath = path.join(freeTextDir, 'vocabulary.generated.ts')
+  const licensePath = path.join(freeTextDir, 'vocabulary.license.json')
+  if (!existsSync(generatedPath)) {
+    fail('T70 vocabulary.generated.ts', 'missing — run npm run vocab:build')
+  } else if (!existsSync(licensePath)) {
+    fail('T70 vocabulary.license.json', 'missing — run npm run vocab:build')
+  } else {
+    const gen = readFileSync(generatedPath, 'utf8')
+    const hashMatch = /FREE_TEXT_VOCABULARY_HASH = "([0-9a-f]+)"/.exec(gen)
+    const binMatch = /FREE_TEXT_VOCABULARY_BIN_NAME = "([^"]+)"/.exec(gen)
+    const builtMatch = /FREE_TEXT_VOCABULARY_BUILT_AT = "([^"]+)"/.exec(gen)
+    const maxAgeMatch = /FREE_TEXT_VOCABULARY_MAX_AGE_DAYS = (\d+)/.exec(gen)
+    const hash = hashMatch?.[1]
+    const binName = binMatch?.[1]
+    const builtAt = builtMatch?.[1]
+    const maxAgeDays = Number(maxAgeMatch?.[1] ?? 180)
+    if (!hash || !binName) {
+      fail('T70 vocabulary.generated.ts parse', 'hash/bin name missing')
+    } else {
+      const binPath = path.join(freeTextDir, binName)
+      if (!existsSync(binPath)) {
+        fail('T70 vocabulary.<hash>.bin', `missing ${binName} — run npm run vocab:build`)
+      } else {
+        const bytes = readFileSync(binPath)
+        const actual = createHash('sha256').update(bytes).digest('hex').slice(0, 12)
+        if (actual !== hash) {
+          fail('T70 vocabulary hash match', `bin sha ${actual} != generated ${hash}`)
+        } else if (bytes.length < 16 || String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) !== 'FTV1') {
+          fail('T70 vocabulary.bin magic', 'expected FTV1 header')
+        } else {
+          ok('T70 vocabulary.bin present + hash match', `${binName} (${bytes.length} B)`)
+        }
+      }
+      if (builtAt) {
+        const ageMs = Date.now() - Date.parse(builtAt)
+        const ageDays = ageMs / (24 * 60 * 60 * 1000)
+        if (!Number.isFinite(ageDays) || ageDays < 0) {
+          fail('T70 vocabulary age', `invalid builtAt ${builtAt}`)
+        } else if (ageDays > maxAgeDays) {
+          fail(
+            'T70 vocabulary age',
+            `${ageDays.toFixed(0)}d old > ${maxAgeDays}d — regenerate (npm run vocab:build)`,
+          )
+        } else {
+          ok('T70 vocabulary age', `${ageDays.toFixed(1)}d / max ${maxAgeDays}d`)
+        }
+      }
+      try {
+        const lic = JSON.parse(readFileSync(licensePath, 'utf8'))
+        if (lic.license && lic.hash === hash) ok('T70 vocabulary.license.json', lic.license)
+        else fail('T70 vocabulary.license.json', 'hash/license mismatch')
+      } catch (e) {
+        fail('T70 vocabulary.license.json', String(e))
+      }
+    }
+  }
 }
 
 const failed = checks.filter((c) => !c.ok)

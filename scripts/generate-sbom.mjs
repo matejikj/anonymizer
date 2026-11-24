@@ -4,7 +4,7 @@
  * Output: release/sbom.cdx.json
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -49,6 +49,29 @@ try {
 
 if (!parsed.bomFormat && !parsed.$schema && !parsed.components) {
   die('SBOM missing CycloneDX markers (bomFormat / components)')
+}
+
+// T70 — attach free-text vocabulary license metadata (offline allowlist artifact).
+const vocabLicensePath = path.join(root, 'src/engine/freeText/vocabulary.license.json')
+if (existsSync(vocabLicensePath)) {
+  try {
+    const lic = JSON.parse(readFileSync(vocabLicensePath, 'utf8'))
+    if (!Array.isArray(parsed.components)) parsed.components = []
+    parsed.components.push({
+      type: 'file',
+      name: lic.name || 'squelch-free-text-vocabulary',
+      version: lic.version || 'unknown',
+      description: lic.comment || 'Offline free-text vocabulary (words only)',
+      licenses: [{ license: { id: lic.license || 'LicenseRef-Internal-Technical-Scaffolding' } }],
+      properties: [
+        { name: 'squelch:vocabulary-bin', value: lic.bin || '' },
+        { name: 'squelch:vocabulary-hash12', value: String(lic.hash || '') },
+        { name: 'squelch:vocabulary-word-count', value: String(lic.wordCount ?? '') },
+      ],
+    })
+  } catch (err) {
+    console.warn(`generate-sbom: vocabulary.license.json skipped: ${err}`)
+  }
 }
 
 writeFileSync(outFile, `${JSON.stringify(parsed, null, 2)}\n`, 'utf8')

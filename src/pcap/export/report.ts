@@ -7,7 +7,7 @@ import type { PcapPlanSnapshot } from './planSnapshot'
 import type { PcapAnonymizationLevel } from '../profile/pcapAnonymizationLevel'
 import { CaptureFormat } from '../domain/types'
 import type { ChecksumReport } from '../checksums/types'
-import { PCAP_ENGINE_VERSION } from './planSnapshot'
+import { freeTextVocabularyReportMeta, PCAP_ENGINE_VERSION } from './planSnapshot'
 import {
   emptyDispositionAggregate,
   type DispositionLedgerAggregate,
@@ -83,6 +83,10 @@ export interface PcapExportReport {
   readonly profileId: string
   readonly profileHash: string
   readonly policyHash?: string
+  /** T70 — free-text vocabulary version (words only; no originals). */
+  readonly vocabularyVersion?: string
+  /** T70 — content hash of the bundled vocabulary artifact. */
+  readonly vocabularyHash?: string
   readonly captureFormat: 'pcap' | 'pcapng'
   /**
    * Safe export label only (never the original capture basename).
@@ -359,6 +363,7 @@ export function buildExportReport(input: {
     profileId: input.plan.profileId,
     profileHash: input.plan.profileHash,
     policyHash: input.plan.policyHash || input.plan.profileHash,
+    ...freeTextVocabularyReportMeta(),
     captureFormat,
     exportedFileName: safeExportedLabel(captureFormat),
     inputPacketCount,

@@ -49,9 +49,15 @@ export {
   applyFreeTextOpsToString,
   applyFreeTextAnalyzePass,
   defaultFreeTextVocabulary,
+  bundledVocabulary,
+  isVocabularyWord,
   learnTemplateSafeTokens,
   tokenizeFreeText,
   INTERIM_VOCABULARY_VERSION,
+  FREE_TEXT_VOCABULARY_VERSION,
+  FREE_TEXT_VOCABULARY_HASH,
+  FREE_TEXT_VOCABULARY_BIN_NAME,
+  FREE_TEXT_VOCABULARY_WORD_COUNT,
 } from './freeText/index.ts'
 export type {
   FreeTextLevel,

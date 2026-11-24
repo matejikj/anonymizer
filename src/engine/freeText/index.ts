@@ -18,8 +18,16 @@ export {
 
 export {
   defaultFreeTextVocabulary,
+  bundledVocabulary,
   interimVocabulary,
   INTERIM_VOCABULARY_VERSION,
+  isVocabularyWord,
+  FREE_TEXT_VOCABULARY_VERSION,
+  FREE_TEXT_VOCABULARY_HASH,
+  FREE_TEXT_VOCABULARY_BIN_NAME,
+  FREE_TEXT_VOCABULARY_BUILT_AT,
+  FREE_TEXT_VOCABULARY_WORD_COUNT,
+  FREE_TEXT_VOCABULARY_MAX_AGE_DAYS,
 } from './vocabulary.ts'
 
 export { tokenizeFreeText } from './tokenize.ts'

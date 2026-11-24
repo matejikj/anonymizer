@@ -30,6 +30,10 @@ npm run sbom
 npm run release:manifest
 ```
 
+T70 vocabulary (offline allowlist): regenerate after KONOS/RGW log-template changes
+via `VOCAB_SOURCE_ROOTS=… npm run vocab:build`. `check:offline-release` verifies
+`vocabulary.<hash>.bin` hash, age, and `vocabulary.license.json`.
+
 Optional (tri-browser, needs Playwright binaries):
 
 ```sh

@@ -297,7 +297,12 @@ export function levelDisplayName(level: PcapAnonymizationLevel): string {
 }
 
 /** Integrity hash of engine version + canonical built-in policy (no user profile id). */
-export function hashPcapLevelPolicy(level: PcapAnonymizationLevel, engineVersion: string): string {
+export function hashPcapLevelPolicy(
+  level: PcapAnonymizationLevel,
+  engineVersion: string,
+  /** T70 — free-text vocabulary content hash (feeds profileHash / report). */
+  vocabularyHash = '',
+): string {
   const def = LEVEL_DEFINITIONS[level]
   const material = JSON.stringify({
     engineVersion,
@@ -305,6 +310,7 @@ export function hashPcapLevelPolicy(level: PcapAnonymizationLevel, engineVersion
     mapping: def.mapping,
     protocols: def.protocols,
     policy: def.policy,
+    vocabularyHash: vocabularyHash || undefined,
   })
   let h = 2166136261
   for (let i = 0; i < material.length; i++) {
