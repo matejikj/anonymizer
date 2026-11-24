@@ -58,6 +58,8 @@ export function canonicalizePcapIdentity(category: EntityCategory, raw: string):
       return normalizeOpaqueId(raw)
     case 'free-token':
       return normalizeFreeToken(raw)
+    case 'opaque-bin-id':
+      return normalizeOpaqueBinId(raw)
     case 'timestamp':
       return raw
     case 'sip-call-id':
@@ -119,6 +121,9 @@ export function defaultWireConstraint(
       return { kind: 'text-ascii', byteLength: canonical.length }
     case 'free-token':
       return { kind: 'text-ascii', byteLength: canonical.length }
+    case 'opaque-bin-id':
+      // Wire width from original span; canonical is lowercase hex of octets.
+      return null
     case 'timestamp':
       return { kind: 'timestamp-wire' }
     default:
@@ -273,6 +278,13 @@ function normalizeFreeToken(raw: string): string | null {
   const trimmed = raw.trim().toLowerCase()
   if (trimmed.length === 0 || trimmed.length > 256) return null
   return trimmed
+}
+
+/** T74 — binary opaque id as lowercase hex (1–64 octets ⇒ 2–128 hex chars). */
+function normalizeOpaqueBinId(raw: string): string | null {
+  const hex = raw.trim().toLowerCase().replace(/[^0-9a-f]/g, '')
+  if (hex.length < 2 || hex.length > 128 || hex.length % 2 !== 0) return null
+  return hex
 }
 
 function normalizeSipCallId(raw: string): string | null {

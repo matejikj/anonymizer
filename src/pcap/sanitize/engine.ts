@@ -71,6 +71,7 @@ import {
 } from './geneveL2tp';
 import { sanitizeEapol, ETHERTYPE_EAPOL } from './eapol';
 import { sanitizeGenericPayload } from './heuristic';
+import { sanitizeProprietaryLight } from './proprietaryLight/index.ts';
 import {
   identifyUnsupportedApplicationPayload,
   unsupportedCoverageProtocolId,
@@ -178,6 +179,8 @@ export interface SanitizeOptions {
   readonly coapBlock2?: import('./industrial/coapBlock2Session.ts').CoapBlock2Session;
   /** T30 — OPC UA SecureChannel SecurityMode (capture-scoped). */
   readonly opcuaChannel?: import('./industrial/opcuaChannelSession.ts').OpcuaChannelSession;
+  /** T74 — proprietary / unknown payload light-inference session (diagnostic). */
+  readonly proprietaryLight?: import('./proprietaryLight/session.ts').ProprietaryLightSession;
 }
 
 /**
@@ -1921,6 +1924,7 @@ function handleApplicationPayload(
     kernelSymbolicOps: options.kernelSymbolicOps,
     coapBlock2: options.coapBlock2,
     opcuaChannel: options.opcuaChannel,
+    proprietaryLight: options.proprietaryLight,
     onInnerTransport,
   });
   if (registryHit) {
@@ -1962,6 +1966,35 @@ function handleApplicationPayload(
       policy.preset === 'high-privacy',
     );
     if (genericResult.coverage.length === 0) {
+      // T74 — diagnostic light anonymization for binary proprietary / unknown payloads.
+      if (
+        policy.preset === 'diagnostic'
+        && options.proprietaryLight
+        && flowEndpoint
+      ) {
+        const flowKey = options.proprietaryLight.flowKey({
+          transport,
+          srcIp: flowEndpoint.srcIp,
+          dstIp: flowEndpoint.dstIp,
+          srcPort,
+          dstPort,
+        });
+        const light = sanitizeProprietaryLight({
+          buffer: data,
+          offset,
+          length,
+          collector,
+          mapping,
+          intents,
+          packetIndex,
+          session: options.proprietaryLight,
+          flowKey,
+          senderKey: `${flowEndpoint.srcIp}:${srcPort}`,
+          protocolId: fallbackProtocol ? `proprietary-light:${fallbackProtocol}` : 'proprietary-light',
+        });
+        coverage.push(...light.coverage);
+        return { lastCoveredOffset: lastCovered };
+      }
       coverage.push({
         protocol: fallbackProtocol ?? 'payload',
         offset,
@@ -1982,7 +2015,7 @@ function handleApplicationPayload(
     return { lastCoveredOffset: lastCovered };
   }
 
-  // Unknown/unsupported payload
+  // Unknown/unsupported payload (high-privacy: truncate path via unsupported).
   coverage.push({
     protocol: fallbackProtocol ?? 'payload',
     offset,

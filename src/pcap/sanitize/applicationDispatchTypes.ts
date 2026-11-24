@@ -48,6 +48,8 @@ export interface ApplicationDispatchContext {
   readonly coapBlock2?: import('./industrial/coapBlock2Session.ts').CoapBlock2Session
   /** T30 — OPC UA SecureChannel SecurityMode from OPN (capture-scoped). */
   readonly opcuaChannel?: import('./industrial/opcuaChannelSession.ts').OpcuaChannelSession
+  /** T74 — proprietary / unknown payload light-inference session (diagnostic). */
+  readonly proprietaryLight?: import('./proprietaryLight/session.ts').ProprietaryLightSession
 }
 
 export interface ApplicationDispatchHit {

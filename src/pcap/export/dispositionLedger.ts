@@ -31,6 +31,8 @@ export const FINAL_DISPOSITIONS = [
   'time',
   'encrypted-proven',
   'preserve-safe',
+  /** T74 — diagnostic light inference left bytes unclassified but intentionally kept. */
+  'preserve-inferred',
   'derived',
 ] as const
 
@@ -151,6 +153,7 @@ function emptyDispositionCounts(): Record<FinalDisposition, number> {
     time: 0,
     'encrypted-proven': 0,
     'preserve-safe': 0,
+    'preserve-inferred': 0,
     derived: 0,
   }
 }
@@ -413,13 +416,17 @@ export function buildPacketDispositionLedger(input: BuildPacketLedgerInput): Pac
     }
 
     if (span.status === 'preserved-safe' || span.status === 'preserved-for-diagnostics') {
+      const disposition =
+        span.protocol === 'proprietary-light' || span.protocol.startsWith('proprietary-light')
+          ? 'preserve-inferred'
+          : 'preserve-safe'
       claimBytes(
         claimed,
         protocols,
         reasons,
         span.offset,
         spanEnd,
-        'preserve-safe',
+        disposition,
         span.protocol,
         span.status,
       )

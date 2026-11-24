@@ -524,6 +524,8 @@ export class MappingAuthority {
     if (id.category === 'opaque-id') return false
     // T69 — free-token is PCAP SessionMapping (length-stable), not TextAliasEngine.
     if (id.category === 'free-token') return false
+    // T74 — opaque-bin-id is PCAP SessionMapping (length-stable hex), not TextAliasEngine.
+    if (id.category === 'opaque-bin-id') return false
     // T40 — SSID is PCAP SessionMapping (binary length-stable), not TextAliasEngine.
     if (id.category === 'ssid') return false
     const original = id.originalSpelling ?? id.canonical

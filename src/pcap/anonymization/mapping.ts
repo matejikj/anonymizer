@@ -17,6 +17,7 @@ import {
   createTextReplacementCounters,
   generateOpaqueIdAlias,
   generateFreeTokenAlias,
+  generateOpaqueBinIdAlias,
   generateSsidAlias,
   generateSipWireAlias,
   generateTextAlias,
@@ -406,6 +407,7 @@ export class SessionMapping implements MappingLike {
               : '9'.repeat(Math.max(1, digits.length))
           })()
         : category === 'opaque-id' || category === 'ssid' || category === 'free-token'
+          || category === 'opaque-bin-id'
           ? 'x'.repeat(Math.max(1, canon.length))
         : category === 'snmp-engine-id'
           ? 'f'.repeat(Math.max(1, canon.length))
@@ -438,6 +440,9 @@ export class SessionMapping implements MappingLike {
         break;
       case 'free-token':
         mapped = generateFreeTokenAlias(canon, this._textCounters);
+        break;
+      case 'opaque-bin-id':
+        mapped = generateOpaqueBinIdAlias(canon, this._textCounters);
         break;
       case 'ssid':
         mapped = generateSsidAlias(canon, this._textCounters);

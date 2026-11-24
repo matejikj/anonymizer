@@ -35,6 +35,7 @@ import type { SourceDiscovery, TransformationIntent } from '../discovery/types'
 import { discoverPacket, withoutMergedHints } from '../discovery/discoverPacket'
 import { CoapBlock2Session } from '../sanitize/industrial/coapBlock2Session.ts'
 import { OpcuaChannelSession } from '../sanitize/industrial/opcuaChannelSession.ts'
+import { ProprietaryLightSession } from '../sanitize/proprietaryLight/index.ts'
 import { MediaFlowIndex } from '../discovery/mediaFlowIndex'
 import { analyzePackets, type AnalysisResult } from '../protocols/analysis'
 import { buildDeterministicPlan } from '../plan/deterministicPlanBuilder'
@@ -178,6 +179,7 @@ async function processCaptureScoped(
   const sharedMediaFlowIndex = new MediaFlowIndex()
   const coapBlock2 = new CoapBlock2Session()
   const opcuaChannel = new OpcuaChannelSession()
+  const proprietaryLight = new ProprietaryLightSession()
   let carryIndices = new Set<number>()
   let packetsDone = 0
 
@@ -218,7 +220,14 @@ async function processCaptureScoped(
           input.policy,
           sharedMediaFlowIndex,
           reassemblyContext,
-          { generationId: input.generationId, sourceId: input.sourceId, journal, coapBlock2, opcuaChannel },
+          {
+            generationId: input.generationId,
+            sourceId: input.sourceId,
+            journal,
+            coapBlock2,
+            opcuaChannel,
+            proprietaryLight,
+          },
         )
         allIntents.push(...pd.intents)
         if (pd.portFlowHints) {

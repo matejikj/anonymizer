@@ -22,6 +22,8 @@ export interface TextReplacementCounters {
   opaqueId: number
   /** T69 — free-text token outside vocabulary. */
   freeToken: number
+  /** T74 — sender-bound binary id (hex of wire octets). */
+  opaqueBinId: number
   /** T40 — 802.11 / RADIUS SSID (length-stable wire bytes). */
   ssid: number
   email: number
@@ -42,6 +44,7 @@ export function createTextReplacementCounters(): TextReplacementCounters {
     sipUser: 0,
     opaqueId: 0,
     freeToken: 0,
+    opaqueBinId: 0,
     ssid: 0,
     email: 0,
     person: 0,
@@ -286,6 +289,15 @@ export function generateFreeTokenAlias(
 ): string {
   const n = ++counters.freeToken
   return maskAlphanumeric(original, expandToken(`Tk${n}`))
+}
+
+/** T74 — length-stable hex alias for binary opaque ids. */
+export function generateOpaqueBinIdAlias(
+  originalHex: string,
+  counters: TextReplacementCounters,
+): string {
+  const n = ++counters.opaqueBinId
+  return maskAlphanumeric(originalHex, expandToken(`ob${n}`))
 }
 
 /** T40 — length-stable SSID alias (binary wire derived from alias string). */

@@ -33,6 +33,8 @@ export type EntityCategory =
   | 'ssid'
   /** T69 — free-text token outside vocabulary (length-stable pseudonym). */
   | 'free-token'
+  /** T74 — sender-bound binary identifier (length-stable wire octets). */
+  | 'opaque-bin-id'
 
 /** Complete PCAP entity category list — keep in sync with {@link EntityCategory}. */
 export const ENTITY_CATEGORIES: readonly EntityCategory[] = [
@@ -57,6 +59,7 @@ export const ENTITY_CATEGORIES: readonly EntityCategory[] = [
   'point-code',
   'ssid',
   'free-token',
+  'opaque-bin-id',
 ] as const
 
 export interface EntityRecord {

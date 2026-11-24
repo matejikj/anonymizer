@@ -10,6 +10,7 @@ import { discoverPacket, withoutMergedHints } from './discoverPacket'
 import { openIdentityInternScope, type IdentityInternScope } from '../kernel/identityIntern'
 import { CoapBlock2Session } from '../sanitize/industrial/coapBlock2Session.ts'
 import { OpcuaChannelSession } from '../sanitize/industrial/opcuaChannelSession.ts'
+import { ProprietaryLightSession } from '../sanitize/proprietaryLight/index.ts'
 import { MediaFlowIndex } from './mediaFlowIndex'
 import type { CanonicalIdentity } from '../../mapping/types'
 import { canonicalizePcapIdentity, defaultWireConstraint } from '../../mapping/pcapCanonical'
@@ -64,6 +65,7 @@ function runDiscoveryPipelineScoped(
   const mediaFlowIndex = options.reassemblyContext?.mediaFlowIndex ?? new MediaFlowIndex()
   const coapBlock2 = new CoapBlock2Session()
   const opcuaChannel = new OpcuaChannelSession()
+  const proprietaryLight = new ProprietaryLightSession()
 
   for (let start = 0; start < packets.length; start += batchSize) {
     if (options.isCancelled?.()) {
@@ -86,7 +88,7 @@ function runDiscoveryPipelineScoped(
         policy,
         mediaFlowIndex,
         options.reassemblyContext,
-        { generationId, sourceId, coapBlock2, opcuaChannel },
+        { generationId, sourceId, coapBlock2, opcuaChannel, proprietaryLight },
       )
       allIntents.push(...pd.intents)
       if (pd.portFlowHints) {

@@ -31,6 +31,7 @@ export function discoverPacket(
     readonly journal?: import('../kernel/journal').SemanticJournalBuilder
     readonly coapBlock2?: import('../sanitize/industrial/coapBlock2Session.ts').CoapBlock2Session
     readonly opcuaChannel?: import('../sanitize/industrial/opcuaChannelSession.ts').OpcuaChannelSession
+    readonly proprietaryLight?: import('../sanitize/proprietaryLight/session.ts').ProprietaryLightSession
   },
 ): PacketDiscoveryResult {
   const intents = new IntentCollector()
@@ -53,6 +54,7 @@ export function discoverPacket(
       kernelSymbolicOps,
       coapBlock2: session?.coapBlock2,
       opcuaChannel: session?.opcuaChannel,
+      proprietaryLight: session?.proprietaryLight,
     })
   } catch {
     result = buildIsolatedPacketResult({

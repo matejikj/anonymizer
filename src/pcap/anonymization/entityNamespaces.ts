@@ -89,6 +89,7 @@ export function entityNamespaceFor(
       return 'SSID'
     case 'opaque-id':
     case 'free-token':
+    case 'opaque-bin-id':
       return 'OPAQUE_ID'
     case 'radioId':
       return 'RADIO_ID'

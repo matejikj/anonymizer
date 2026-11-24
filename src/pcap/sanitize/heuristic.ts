@@ -3,8 +3,8 @@
  * chain, after every structural decoder (DNS/DHCP/SIP/TLS/HTTP) has declined.
  *
  * T69 — printable text payloads go through free-text allowlist sanitization.
- * Empty/binary payloads still return empty coverage so the caller can mark
- * `unsupported` (CF-03).
+ * Empty/binary payloads return empty coverage so the caller can apply T74
+ * proprietary-light (diagnostic) or mark `unsupported` (CF-03 / high-privacy).
  */
 
 import type { PatchCollector } from './PatchCollector';

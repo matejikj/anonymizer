@@ -20,6 +20,7 @@ const PCAP_CATEGORIES = new Set<PcapIdentityCategory>([
   'point-code',
   'ssid',
   'free-token',
+  'opaque-bin-id',
 ])
 
 const TEXT_CATEGORIES = new Set<TextIdentityCategory>([

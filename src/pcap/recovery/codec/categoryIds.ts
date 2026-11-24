@@ -99,6 +99,8 @@ export function toRecoveryLookupCategory(raw: string): RecoveryLookupCategory {
     case 'free-token':
       // T69 — recover under opaque-id bucket (length-stable text token).
       return 'opaque-id'
+    case 'opaque-bin-id':
+      return 'opaque-id'
     case 'user-id':
       // T45 — text user-id seeds the cross-format user recovery ID.
       return 'user'

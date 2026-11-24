@@ -83,6 +83,15 @@ export const PCAP_KERNEL_BUDGETS = {
   maxProbesPerUnit: 8,
   maxProbeBytes: 2_048,
   maxProbeNesting: 4,
+  /**
+   * T74 — proprietary / unknown payload light-inference budgets (diagnostic).
+   * Exceeding a limit fails closed to full payload mask for that flow.
+   */
+  proprietaryLightMaxFlows: 4_096,
+  proprietaryLightMaxClustersPerFlow: 64,
+  proprietaryLightMaxOffsetsPerCluster: 512,
+  proprietaryLightMinClusterMessages: 8,
+  proprietaryLightMaxPayloadBytes: 512,
 } as const
 
 export type PcapKernelBudgets = typeof PCAP_KERNEL_BUDGETS
