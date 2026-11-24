@@ -20,6 +20,8 @@ export interface TextReplacementCounters {
   sipUser: number
   /** T14 — opaque-id PCAP category. */
   opaqueId: number
+  /** T69 — free-text token outside vocabulary. */
+  freeToken: number
   /** T40 — 802.11 / RADIUS SSID (length-stable wire bytes). */
   ssid: number
   email: number
@@ -39,6 +41,7 @@ export function createTextReplacementCounters(): TextReplacementCounters {
     sipToken: 0,
     sipUser: 0,
     opaqueId: 0,
+    freeToken: 0,
     ssid: 0,
     email: 0,
     person: 0,
@@ -274,6 +277,15 @@ export function generateOpaqueIdAlias(
 ): string {
   const n = ++counters.opaqueId
   return maskAlphanumeric(original, expandToken(`oid${n}`))
+}
+
+/** T69 — length-stable free-text token alias (e.g. Tk7q…). */
+export function generateFreeTokenAlias(
+  original: string,
+  counters: TextReplacementCounters,
+): string {
+  const n = ++counters.freeToken
+  return maskAlphanumeric(original, expandToken(`Tk${n}`))
 }
 
 /** T40 — length-stable SSID alias (binary wire derived from alias string). */

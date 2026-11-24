@@ -2,17 +2,16 @@
  * Generic best-effort payload scanner — the last fallback in the app-layer dispatch
  * chain, after every structural decoder (DNS/DHCP/SIP/TLS/HTTP) has declined.
  *
- * T63 interim (until T69 free-text allowlist / T74 light proprietary anonymization):
- * when the payload looks like text, mask the entire scanned span and report `redacted`.
- * Empty/binary payloads still return empty coverage so the caller can mark `unsupported`
- * (CF-03) — an empty scan must not claim the whole range was safely examined.
+ * T69 — printable text payloads go through free-text allowlist sanitization.
+ * Empty/binary payloads still return empty coverage so the caller can mark
+ * `unsupported` (CF-03).
  */
 
 import type { PatchCollector } from './PatchCollector';
 import type { MappingLike } from '../anonymization/mapping';
 import type { AppLayerResult } from './types';
-import { createProtocolNeutralMaskFill } from './maskFill';
 import type { IntentCollector } from '../discovery/intentCollector';
+import { sanitizeTextPayload } from '../protocols/application/textproto/index.ts';
 
 const GENERIC_SCAN_LIMIT = 65536;
 
@@ -37,9 +36,10 @@ export function sanitizeGenericPayload(
   offset: number,
   length: number,
   collector: PatchCollector,
-  _mapping: MappingLike,
+  mapping: MappingLike,
   intents?: IntentCollector,
   packetIndex = 0,
+  highPrivacy = false,
 ): AppLayerResult {
   const scanLen = Math.min(length, GENERIC_SCAN_LIMIT);
 
@@ -48,24 +48,17 @@ export function sanitizeGenericPayload(
     return { coverage: [] };
   }
 
-  // T63 — full mask until T69; status matches the mask.
-  void buffer
-  const fill = createProtocolNeutralMaskFill({
-    length: scanLen,
+  const r = sanitizeTextPayload({
+    buffer,
+    absoluteOffset: offset,
+    byteLength: scanLen,
+    collector,
+    mapping,
+    intents,
     packetIndex,
-    offset,
-    domain: 'heuristic-interim',
+    highPrivacy,
+    protocolId: 'heuristic',
   });
-  try {
-    collector.maskRange(offset, fill);
-  } catch {
-    try {
-      collector.add(offset, fill);
-    } catch {
-      /* overlap with a prior structural patch — leave that patch */
-    }
-  }
-  intents?.recordMaskRange(packetIndex, offset, scanLen, 'heuristic-interim', 'heuristic');
 
-  return { coverage: [{ protocol: 'heuristic', offset, length: scanLen, status: 'redacted' }] };
+  return { coverage: [{ protocol: 'heuristic', offset, length: scanLen, status: r.coverageStatus }] };
 }

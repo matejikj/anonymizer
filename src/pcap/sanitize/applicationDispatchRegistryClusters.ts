@@ -483,7 +483,16 @@ function dispatchSsdp(ctx: ApplicationDispatchContext): ApplicationDispatchHit |
   }
   return hitFullPayload(
     ctx,
-    sanitizeSsdp(data, offset, length, ctx.collector, ctx.mapping, ctx.intents, ctx.packetIndex),
+    sanitizeSsdp(
+      data,
+      offset,
+      length,
+      ctx.collector,
+      ctx.mapping,
+      ctx.intents,
+      ctx.packetIndex,
+      ctx.policy.preset === 'high-privacy',
+    ),
   )
 }
 
@@ -499,7 +508,16 @@ function dispatchWsDiscovery(ctx: ApplicationDispatchContext): ApplicationDispat
   }
   return hitFullPayload(
     ctx,
-    sanitizeWsDiscovery(data, offset, length, ctx.collector, ctx.mapping, ctx.intents, ctx.packetIndex),
+    sanitizeWsDiscovery(
+      data,
+      offset,
+      length,
+      ctx.collector,
+      ctx.mapping,
+      ctx.intents,
+      ctx.packetIndex,
+      ctx.policy.preset === 'high-privacy',
+    ),
   )
 }
 

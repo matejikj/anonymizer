@@ -522,6 +522,8 @@ export class MappingAuthority {
     if (id.category === 'point-code') return false
     // T14 — opaque-id is PCAP SessionMapping (length-stable), not TextAliasEngine.
     if (id.category === 'opaque-id') return false
+    // T69 — free-token is PCAP SessionMapping (length-stable), not TextAliasEngine.
+    if (id.category === 'free-token') return false
     // T40 — SSID is PCAP SessionMapping (binary length-stable), not TextAliasEngine.
     if (id.category === 'ssid') return false
     const original = id.originalSpelling ?? id.canonical
@@ -607,6 +609,7 @@ export class MappingAuthority {
     if (
       cat === 'sdp-session-id'
       || cat === 'opaque-id'
+      || cat === 'free-token'
       || cat === 'imsi'
       || cat === 'imei'
       || cat === 'snmp-engine-id'

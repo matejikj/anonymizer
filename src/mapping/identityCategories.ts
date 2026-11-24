@@ -19,6 +19,7 @@ const PCAP_CATEGORIES = new Set<PcapIdentityCategory>([
   'teid',
   'point-code',
   'ssid',
+  'free-token',
 ])
 
 const TEXT_CATEGORIES = new Set<TextIdentityCategory>([

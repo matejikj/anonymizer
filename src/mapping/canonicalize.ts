@@ -60,6 +60,7 @@ export function defaultIdentityWireConstraint(
       || category === 'imei'
       || category === 'snmp-engine-id'
       || category === 'opaque-id'
+      || category === 'free-token'
     ) {
       const sample = originalSpelling ?? canonical
       // SDP session-id / SIP tokens are Latin-1 wire spans — byteLength === string length.

@@ -211,6 +211,7 @@ export function formatTextAliasFromWire(
         : wireAlias.slice(0, byteLength).padEnd(byteLength, 'f');
       break;
     case 'opaque-id':
+    case 'free-token':
       textAlias = wireAlias.length === byteLength
         ? wireAlias
         : maskAlphanumeric(originalSpelling, wireAlias);

@@ -56,6 +56,8 @@ export function canonicalizePcapIdentity(category: EntityCategory, raw: string):
       return normalizeSsid(raw)
     case 'opaque-id':
       return normalizeOpaqueId(raw)
+    case 'free-token':
+      return normalizeFreeToken(raw)
     case 'timestamp':
       return raw
     case 'sip-call-id':
@@ -114,6 +116,8 @@ export function defaultWireConstraint(
     case 'snmp-engine-id':
       return { kind: 'text-ascii', byteLength: canonical.length }
     case 'opaque-id':
+      return { kind: 'text-ascii', byteLength: canonical.length }
+    case 'free-token':
       return { kind: 'text-ascii', byteLength: canonical.length }
     case 'timestamp':
       return { kind: 'timestamp-wire' }
@@ -261,6 +265,13 @@ function normalizeOpaqueId(raw: string): string | null {
   const trimmed = raw.trim()
   if (trimmed.length === 0 || trimmed.length > 256) return null
   if (!/^[\x20-\x7E]+$/.test(trimmed)) return null
+  return trimmed
+}
+
+/** T69 — free-text token canonical (case-folded, length 1–256). */
+function normalizeFreeToken(raw: string): string | null {
+  const trimmed = raw.trim().toLowerCase()
+  if (trimmed.length === 0 || trimmed.length > 256) return null
   return trimmed
 }
 

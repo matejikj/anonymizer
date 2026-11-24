@@ -1959,6 +1959,7 @@ function handleApplicationPayload(
       mapping,
       intents,
       packetIndex,
+      policy.preset === 'high-privacy',
     );
     if (genericResult.coverage.length === 0) {
       coverage.push({

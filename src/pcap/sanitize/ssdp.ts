@@ -11,6 +11,7 @@ import {
   dispositionForTextProtoHeader,
   applyPayloadMapHits,
   maskPayloadSpan,
+  sanitizeTextPayload,
   type TextProtoHeaderPolicyTable,
 } from '../protocols/application/textproto'
 import { computeFixedLengthAsciiBytes } from './textPatch'
@@ -27,8 +28,8 @@ export const SSDP_HEADER_POLICY: TextProtoHeaderPolicyTable = {
     { name: 'host', action: { kind: 'detectors' } },
     { name: 'location', action: { kind: 'detectors' } },
     { name: 'callback', action: { kind: 'detectors' } },
-    { name: 'server', action: { kind: 'mask' } },
-    { name: 'user-agent', action: { kind: 'mask' } },
+    { name: 'server', action: { kind: 'detectors' } }, // T69 free-text
+    { name: 'user-agent', action: { kind: 'detectors' } },
     { name: 'usn', action: { kind: 'detectors' } }, // UUID refined in sanitizeUuidBearingHeader
     { name: 'nts', action: { kind: 'preserve' } },
     { name: 'nt', action: { kind: 'preserve' } },
@@ -61,6 +62,7 @@ export function sanitizeSsdp(
   mapping: MappingLike,
   intents: IntentCollector | undefined,
   packetIndex: number,
+  highPrivacy = false,
 ): AppLayerResult | null {
   if (!looksLikeSsdp(buffer, offset, length)) return null
 
@@ -107,8 +109,18 @@ export function sanitizeSsdp(
         break
       }
       case 'detectors':
-        // T63 — until free-text allowlist (T69), mask free header values entirely.
-        maskPayloadSpan(collector, abs, len, intents, packetIndex, `ssdp-${h.name}`)
+        // T69 — free header values via allowlist.
+        sanitizeTextPayload({
+          buffer,
+          absoluteOffset: abs,
+          byteLength: len,
+          collector,
+          mapping,
+          intents,
+          packetIndex,
+          highPrivacy,
+          protocolId: `ssdp-${h.name}`,
+        })
         break
       default:
         maskPayloadSpan(collector, abs, len, intents, packetIndex, `ssdp-${h.name}`)
@@ -119,7 +131,7 @@ export function sanitizeSsdp(
     maskPayloadSpan(collector, msg.body.offset, msg.body.length, intents, packetIndex, 'ssdp-body')
   }
 
-  // T63 — free detector values are fully masked; UUID mapped; structural preserved.
+  // T69 — free header values via allowlist; UUID mapped; structural preserved.
   return {
     coverage: [{ protocol: 'ssdp', offset, length, status: 'covered' }],
     issues: [],

@@ -59,6 +59,7 @@ const MAX_PACKET_NUMBERS = 32
 /** Map entity / protocol categories onto leak-report buckets. */
 export function mapEntityCategoryToLeak(category: string): LeakCategory {
   const c = category.toLowerCase()
+  if (c === 'free-token') return 'OTHER'
   if (c.includes('phone') || c === 'tel' || c === 'msisdn') return 'PHONE'
   if (c === 'ipv4' || c === 'ip' || c === 'ip-address') return 'IPV4'
   if (c === 'ipv6') return 'IPV6'

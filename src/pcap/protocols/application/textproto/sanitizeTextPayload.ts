@@ -1,18 +1,24 @@
 /**
- * T15 — sanitize a free-text / text/* payload span with detectors + auth-token mask.
+ * T15 / T69 — sanitize a free-text / text/* payload span.
+ *
+ * Allowlist-first (T69): structure + vocabulary preserved; typed values and
+ * free-token mapped; high-privacy unknown words masked. Auth tokens and SIP
+ * display-name spans stay fail-closed masks.
  */
 
 import type { PatchCollector } from '../../../sanitize/PatchCollector'
 import type { IntentCollector } from '../../../discovery/intentCollector'
 import type { MappingLike } from '../../../anonymization/mapping'
 import type { CoverageStatus } from '../../../sanitize/types'
-import { detectIdentitiesInPayload } from './payloadDetectors'
-import { findEncodedAuthTokenSpans, maskEncodedAuthTokens } from './encodedTokens'
+import type { IdentityRegistry } from '../../../../mapping/identityRegistry'
 import {
-  applyPayloadMapHits,
-  hitsFromDetectors,
-  maskPayloadSpan,
-} from './applyPayloadMaps'
+  defaultFreeTextVocabulary,
+  sanitizeFreeText,
+  type FreeTextLevel,
+} from '../../../../engine/freeText/index.ts'
+import { findEncodedAuthTokenSpans, maskEncodedAuthTokens } from './encodedTokens'
+import { maskPayloadSpan } from './applyPayloadMaps'
+import { applyFreeTextOpsToCollector } from './applyFreeTextOps'
 
 export interface SanitizeTextPayloadResult {
   readonly hitCount: number
@@ -52,8 +58,9 @@ function sipDisplaySpans(text: string): Array<{ offset: number; length: number }
 }
 
 /**
- * Diagnostic: map detector hits + mask auth tokens; unmatched text stays (heuristic).
- * High-privacy: after maps/tokens, mask the entire span (fail-closed free text).
+ * Free-text / text/* payload sanitization (T69 allowlist).
+ * Returns `covered` when the span was processed; `redacted` only for non-latin1
+ * full-span mask (undecodable).
  */
 export function sanitizeTextPayload(input: {
   readonly buffer: Uint8Array
@@ -65,6 +72,7 @@ export function sanitizeTextPayload(input: {
   readonly packetIndex: number
   readonly highPrivacy?: boolean
   readonly protocolId?: string
+  readonly registry?: IdentityRegistry | null
 }): SanitizeTextPayloadResult {
   const {
     buffer,
@@ -76,6 +84,7 @@ export function sanitizeTextPayload(input: {
     packetIndex,
     highPrivacy = false,
     protocolId = 'textproto',
+    registry = null,
   } = input
 
   if (byteLength <= 0) {
@@ -89,31 +98,50 @@ export function sanitizeTextPayload(input: {
     return { hitCount: 0, coverageStatus: 'redacted' }
   }
 
-  // High-privacy: free text without schema → full mask (T15 / T14 §2).
-  if (highPrivacy) {
-    maskPayloadSpan(collector, absoluteOffset, byteLength, intents, packetIndex, `${protocolId}-high-privacy`)
-    return { hitCount: 0, coverageStatus: 'redacted' }
-  }
-
-  // SIP name-addr display text is a separate identity from the URI user. Logs can
-  // repeat a phone number here even after the URI itself has been mapped.
-  const displaySpans = sipDisplaySpans(text).map(span => ({ ...span, offset: absoluteOffset + span.offset }))
+  const displaySpans = sipDisplaySpans(text)
   for (const span of displaySpans) {
-    maskPayloadSpan(collector, span.offset, span.length, intents, packetIndex, `${protocolId}-sip-display`)
+    maskPayloadSpan(
+      collector,
+      absoluteOffset + span.offset,
+      span.length,
+      intents,
+      packetIndex,
+      `${protocolId}-sip-display`,
+    )
   }
 
   const authSpans = findEncodedAuthTokenSpans(text, absoluteOffset)
   maskEncodedAuthTokens(collector, authSpans)
 
-  const hits = detectIdentitiesInPayload(buffer, absoluteOffset, byteLength).filter(hit =>
-    !displaySpans.some(span => hit.absoluteOffset < span.offset + span.length && hit.absoluteOffset + hit.byteLength > span.offset))
-  applyPayloadMapHits(hitsFromDetectors(hits), collector, mapping, intents, packetIndex, protocolId)
+  const skipRanges = [
+    ...displaySpans.map((s) => ({ start: s.offset, end: s.offset + s.length })),
+    ...authSpans.map((s) => ({
+      start: s.absoluteOffset - absoluteOffset,
+      end: s.absoluteOffset - absoluteOffset + s.byteLength,
+    })),
+  ]
 
-  if (hits.length === 0 && authSpans.length === 0) {
-    return { hitCount: 0, coverageStatus: 'heuristic' }
-  }
+  const level: FreeTextLevel = highPrivacy ? 'high-privacy' : 'diagnostic'
+  const ops = sanitizeFreeText({
+    text,
+    level,
+    vocabulary: defaultFreeTextVocabulary(),
+    registry,
+    skipRanges,
+  })
+
+  const applied = applyFreeTextOpsToCollector({
+    ops,
+    absoluteOffset,
+    collector,
+    mapping,
+    intents,
+    packetIndex,
+    protocolId,
+  })
+
   return {
-    hitCount: hits.length + authSpans.length,
-    coverageStatus: 'heuristic',
+    hitCount: applied.mapCount + applied.maskCount + displaySpans.length + authSpans.length,
+    coverageStatus: 'covered',
   }
 }

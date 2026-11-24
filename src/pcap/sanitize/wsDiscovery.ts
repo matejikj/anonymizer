@@ -1,12 +1,12 @@
 /**
- * T18 — WS-Discovery (UDP 3702): SOAP XML — map urn:uuid / URL / scopes via detectors.
+ * T18 / T69 — WS-Discovery (UDP 3702): SOAP XML scopes / free text via allowlist.
  */
 
 import type { MappingLike } from '../anonymization/mapping'
 import type { IntentCollector } from '../discovery/intentCollector'
 import type { PatchCollector } from './PatchCollector'
 import type { AppLayerResult, LayerCoverage } from './types'
-import { maskPayloadSpan } from '../protocols/application/textproto'
+import { maskPayloadSpan, sanitizeTextPayload } from '../protocols/application/textproto'
 
 const WSD_PORTS = new Set([3702])
 
@@ -33,6 +33,7 @@ export function sanitizeWsDiscovery(
   mapping: MappingLike,
   intents: IntentCollector | undefined,
   packetIndex: number,
+  highPrivacy = false,
 ): AppLayerResult | null {
   if (!looksLikeWsDiscovery(buffer, offset, length)) return null
 
@@ -45,17 +46,24 @@ export function sanitizeWsDiscovery(
     }
   }
 
-  // T63 — until free-text allowlist (T69), fail-closed mask of entire SOAP
-  // (Scopes / free text). UUID + detector mapping returns with T69.
-  void text
-  void mapping
-  maskPayloadSpan(collector, offset, length, intents, packetIndex, 'wsd-interim-mask')
+  // T69 — SOAP body as free text (UUID / scopes mapped; scaffolding preserved).
+  const r = sanitizeTextPayload({
+    buffer,
+    absoluteOffset: offset,
+    byteLength: length,
+    collector,
+    mapping,
+    intents,
+    packetIndex,
+    highPrivacy,
+    protocolId: 'ws-discovery',
+  })
 
   const coverage: LayerCoverage[] = [{
     protocol: 'ws-discovery',
     offset,
     length,
-    status: 'redacted',
+    status: r.coverageStatus,
   }]
   return { coverage, issues: [] }
 }

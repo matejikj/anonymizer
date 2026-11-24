@@ -120,10 +120,19 @@ export function sanitizePayloadBody(
       status: result.coverageStatus,
     }]
   }
-  // T63 — until free-text allowlist (T69), mask entire text body in both levels.
-  void highPrivacy
-  maskBytes(collector, intents, packetIndex, offset, length, `${protocol}-body`, protocol)
-  return [{ protocol: `${protocol}-body`, offset, length, status: 'redacted' }]
+  // T69 — allowlist free-text (readable scaffolding; unknown words mapped/masked).
+  const r = sanitizeTextPayload({
+    buffer,
+    absoluteOffset: offset,
+    byteLength: length,
+    collector,
+    mapping,
+    intents,
+    packetIndex,
+    highPrivacy,
+    protocolId: `${protocol}-body`,
+  })
+  return [{ protocol: `${protocol}-body`, offset, length, status: r.coverageStatus }]
 }
 
 /**

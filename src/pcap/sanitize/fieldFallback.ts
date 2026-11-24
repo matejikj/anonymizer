@@ -35,6 +35,7 @@ export function defaultFallbackKindForCategory(category: string | undefined): Fi
     case 'point-code':
       return 'digits'
     case 'opaque-id':
+    case 'free-token':
     case 'snmp-engine-id':
       return 'text-x'
     case 'ssid':

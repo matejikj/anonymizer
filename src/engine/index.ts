@@ -44,6 +44,22 @@ export type { AnalysisResult } from './analyze.ts'
 export { runAllDetectors, BUILTIN_DETECTORS } from './detectors/index.ts'
 export * from './detectors/index.ts'
 export { detectOnPhysicalLine } from './detectLine.ts'
+export {
+  sanitizeFreeText,
+  applyFreeTextOpsToString,
+  applyFreeTextAnalyzePass,
+  defaultFreeTextVocabulary,
+  learnTemplateSafeTokens,
+  tokenizeFreeText,
+  INTERIM_VOCABULARY_VERSION,
+} from './freeText/index.ts'
+export type {
+  FreeTextLevel,
+  FreeTextOp,
+  FreeTextVocabulary,
+  SanitizeFreeTextInput,
+  FreeTextMapResolver,
+} from './freeText/index.ts'
 export { lineMatchWindow, matchesForOriginalRange } from './lineMap.ts'
 export { buildLineColumnMap, mapPhysicalLine } from './columnMap.ts'
 export type { LineColumnMap } from './columnMap.ts'

@@ -29,6 +29,7 @@ import { createOffsetMap } from './offsetMap.ts'
 import type { OffsetMap } from '../domain/types.ts'
 import { MappingAuthority } from '../mapping/mappingAuthority.ts'
 import { collectTextIdentities } from '../mapping/textIdentity.ts'
+import { applyFreeTextAnalyzePass } from './freeText/analyzePass.ts'
 
 export interface AnalysisResult {
   original: string
@@ -78,8 +79,16 @@ export function analyze(
   const plan = buildReplacementPlan(packed, entities)
   const offsetMap = createOffsetMap(packed, plan)
 
-  const anonymized = transform(original, matches, byKey)
-  const viaPlan = transformWithPlan(original, packed, plan)
+  // T69 — free-text allowlist on unmatched spans (length-stable), then detector overlay.
+  const withFreeText = applyFreeTextAnalyzePass({
+    original,
+    matches,
+    authority,
+    level: 'diagnostic',
+    sourceId: 'sync-analyze-freetext',
+  })
+  const anonymized = transform(withFreeText, matches, byKey)
+  const viaPlan = transformWithPlan(withFreeText, packed, plan)
   if (anonymized !== viaPlan) {
     throw new Error('Reference transform and replacement plan disagree')
   }

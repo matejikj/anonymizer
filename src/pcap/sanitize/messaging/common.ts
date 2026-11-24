@@ -11,6 +11,7 @@ import { computeFixedLengthAsciiBytes } from '../textPatch.ts'
 import { sanitizeHttpBody } from '../httpBody.ts'
 import type { LayerCoverage } from '../types.ts'
 import { looksLikeUspRecord, sanitizeUspRecord } from '../usp.ts'
+import { sanitizeTextPayload } from '../../protocols/application/textproto/index.ts'
 
 export function maskBytes(
   collector: PatchCollector,
@@ -141,10 +142,19 @@ export function sanitizeMessageBody(
     })
     return coverage
   }
-  // T63 — until free-text allowlist (T69), mask entire text body in both levels.
-  void highPrivacy
-  maskBytes(collector, intents, packetIndex, offset, length, `${protocol}-body`, protocol)
-  coverage.push({ protocol: `${protocol}-body`, offset, length, status: 'redacted' })
+  // T69 — allowlist free-text (readable scaffolding; unknown words mapped/masked).
+  const r = sanitizeTextPayload({
+    buffer,
+    absoluteOffset: offset,
+    byteLength: length,
+    collector,
+    mapping,
+    intents,
+    packetIndex,
+    highPrivacy,
+    protocolId: `${protocol}-body`,
+  })
+  coverage.push({ protocol: `${protocol}-body`, offset, length, status: r.coverageStatus })
   return coverage
 }
 

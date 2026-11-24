@@ -160,7 +160,7 @@ export interface BuiltExportPacket {
 /** Bumped for T62 — disposition ledger + residual sweep on unclaimed export bytes. */
 /** Bumped for T65 — leak auto-remediation patches on the immutable plan. */
 /** Bumped for T66 — cross-protocol identity propagation on plan bytes. */
-export const PCAP_ENGINE_VERSION = '2.40.0'
+export const PCAP_ENGINE_VERSION = '2.41.0'
 
 export { EMPTY_INCIDENT_LOG_SNAPSHOT }
 

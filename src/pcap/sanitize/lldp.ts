@@ -9,7 +9,7 @@ import type { AppLayerResult, LayerCoverage, SanitizationPolicy } from './types'
 import { createProtocolNeutralMaskFill } from './maskFill'
 import { computeFixedLengthAsciiBytes } from './textPatch'
 import { canonicalizeIdentity } from '../../mapping/canonicalize'
-import { maskPayloadSpan } from '../protocols/application/textproto'
+import { maskPayloadSpan, sanitizeTextPayload } from '../protocols/application/textproto'
 
 export const ETHERTYPE_LLDP = 0x88cc
 
@@ -106,16 +106,26 @@ export function sanitizeLldp(
         coverage.push({ protocol: 'lldp', offset: pos, length: 2 + tlvLen, status: 'covered' })
         break
       case TLV_PORT_DESC:
-      case TLV_SYS_DESC:
-        // T63 — until free-text allowlist (T69), mask descriptions in both levels.
-        sanitizeDescription(buffer, valueOff, tlvLen, collector, mapping, intents, packetIndex, policy)
+      case TLV_SYS_DESC: {
+        // T69 — descriptions via free-text allowlist.
+        const desc = sanitizeDescription(
+          buffer,
+          valueOff,
+          tlvLen,
+          collector,
+          mapping,
+          intents,
+          packetIndex,
+          policy,
+        )
         coverage.push({
           protocol: 'lldp',
           offset: pos,
           length: 2 + tlvLen,
-          status: 'redacted',
+          status: desc,
         })
         break
+      }
       case TLV_MGMT_ADDR:
         sanitizeMgmtAddr(buffer, valueOff, tlvLen, collector, mapping, intents, packetIndex)
         coverage.push({ protocol: 'lldp', offset: pos, length: 2 + tlvLen, status: 'covered' })
@@ -354,13 +364,20 @@ function sanitizeDescription(
   intents: IntentCollector | undefined,
   packetIndex: number,
   policy: SanitizationPolicy,
-): void {
-  if (len <= 0) return
-  // T63 — both levels mask until T69; keep signature for call-site compatibility.
-  void buffer
-  void mapping
-  void policy
-  maskSpan(collector, intents, packetIndex, abs, len, 'lldp-desc')
+): LayerCoverage['status'] {
+  if (len <= 0) return 'covered'
+  const r = sanitizeTextPayload({
+    buffer,
+    absoluteOffset: abs,
+    byteLength: len,
+    collector,
+    mapping,
+    intents,
+    packetIndex,
+    highPrivacy: policy.preset === 'high-privacy',
+    protocolId: 'lldp-desc',
+  })
+  return r.coverageStatus
 }
 
 function mapAsciiHostname(

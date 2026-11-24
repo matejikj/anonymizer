@@ -31,6 +31,8 @@ export type EntityCategory =
   | 'point-code'
   /** T40 — 802.11 / RADIUS Called-Station SSID octets (canonical `ssid/<hex>`). */
   | 'ssid'
+  /** T69 — free-text token outside vocabulary (length-stable pseudonym). */
+  | 'free-token'
 
 /** Complete PCAP entity category list — keep in sync with {@link EntityCategory}. */
 export const ENTITY_CATEGORIES: readonly EntityCategory[] = [
@@ -54,6 +56,7 @@ export const ENTITY_CATEGORIES: readonly EntityCategory[] = [
   'teid',
   'point-code',
   'ssid',
+  'free-token',
 ] as const
 
 export interface EntityRecord {

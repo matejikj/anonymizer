@@ -73,7 +73,7 @@ export function sanitizeSyslog(
       mapping,
       intents,
       packetIndex,
-      highPrivacy: true,
+      highPrivacy,
       protocolId: 'syslog',
     })
     coverage.push({ protocol: 'syslog', offset, length, status: r.coverageStatus })
@@ -90,7 +90,19 @@ export function sanitizeSyslog(
   }
 
   if (is5424) {
-    cursor = sanitize5424(body, cursor, bodyAbs, collector, mapping, intents, packetIndex, highPrivacy, payloadTime, issues)
+    cursor = sanitize5424(
+      buffer,
+      body,
+      cursor,
+      bodyAbs,
+      collector,
+      mapping,
+      intents,
+      packetIndex,
+      highPrivacy,
+      payloadTime,
+      issues,
+    )
   } else {
     cursor = sanitize3164(body, cursor, bodyAbs, collector, mapping, intents, packetIndex, highPrivacy, payloadTime, issues)
   }
@@ -98,10 +110,7 @@ export function sanitizeSyslog(
   if (cursor < body.length) {
     const msgAbs = bodyAbs + cursor
     const msgLen = body.length - cursor
-    // Free MSG text is masked in both levels: text detectors cannot recognise custom identifiers
-    // (user names known from SIP, device names, …), so detector-only treatment would leak them.
-    // Masking here (not via the export boundary) keeps the 'redacted' status true on every path,
-    // including TCP reassembly overlays. Readable logs belong to the text mode.
+    // T69 — MSG free text via allowlist (readable scaffolding; unknown → map/mask).
     const r = sanitizeTextPayload({
       buffer,
       absoluteOffset: msgAbs,
@@ -110,7 +119,7 @@ export function sanitizeSyslog(
       mapping,
       intents,
       packetIndex,
-      highPrivacy: true,
+      highPrivacy,
       protocolId: 'syslog',
     })
     if (msgAbs > offset) coverage.push({ protocol: 'syslog', offset, length: msgAbs - offset, status: 'covered' })
@@ -154,6 +163,7 @@ function sanitize3164(
 }
 
 function sanitize5424(
+  buffer: Uint8Array,
   body: string,
   start: number,
   bodyAbs: number,
@@ -207,7 +217,18 @@ function sanitize5424(
   } else if (body[cursor] === '[') {
     const sdEnd = findStructuredDataEnd(body, cursor)
     if (sdEnd > cursor) {
-      sanitizeStructuredData(body, cursor, sdEnd, bodyAbs, collector, mapping, intents, packetIndex, highPrivacy)
+      sanitizeStructuredData(
+        buffer,
+        body,
+        cursor,
+        sdEnd,
+        bodyAbs,
+        collector,
+        mapping,
+        intents,
+        packetIndex,
+        highPrivacy,
+      )
       cursor = sdEnd
       if (body[cursor] === ' ') cursor++
     }
@@ -238,6 +259,7 @@ function findStructuredDataEnd(body: string, start: number): number {
 const SD_GRAMMAR = /^(?:\[[^\s=\]"]+(?: [^\s=\]"]+="(?:[^"\\]|\\.)*")*\])+$/
 
 function sanitizeStructuredData(
+  buffer: Uint8Array,
   body: string,
   start: number,
   end: number,
@@ -248,10 +270,9 @@ function sanitizeStructuredData(
   packetIndex: number,
   highPrivacy: boolean,
 ): void {
-  void highPrivacy
   const span = body.slice(start, end)
-  // RFC 5424 SD-PARAM: name="value" (quoted, with \" \\ \] escapes). ip/host/hostname values are
-  // mapped; every other value is masked in both levels — SD-IDs and param names stay for diagnostics.
+  // RFC 5424 SD-PARAM: name="value". ip/host/hostname map; other values via T69 free-text.
+  // SD-IDs and param names stay for diagnostics.
   const re = /([^\s=\]"[]+)="((?:[^"\\]|\\.)*)"/g
   let m: RegExpExecArray | null
   while ((m = re.exec(span)) !== null) {
@@ -262,6 +283,18 @@ function sanitizeStructuredData(
     if ((name === 'ip' || name === 'host' || name === 'hostname') && !val.includes('\\')) {
       const category = /^\d+\.\d+\.\d+\.\d+$/.test(val) ? 'ipv4' : 'hostname'
       mapAsciiToken(body, rel, rel + val.length, bodyAbs, collector, mapping, intents, packetIndex, category)
+    } else if (!val.includes('\\')) {
+      sanitizeTextPayload({
+        buffer,
+        absoluteOffset: bodyAbs + rel,
+        byteLength: val.length,
+        collector,
+        mapping,
+        intents,
+        packetIndex,
+        highPrivacy,
+        protocolId: 'syslog-sd',
+      })
     } else {
       maskAbs(collector, intents, packetIndex, bodyAbs + rel, val.length, 'syslog-sd-value')
     }

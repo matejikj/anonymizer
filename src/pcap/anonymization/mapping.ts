@@ -16,6 +16,7 @@ import type { WireRepresentationConstraint } from '../../mapping/types';
 import {
   createTextReplacementCounters,
   generateOpaqueIdAlias,
+  generateFreeTokenAlias,
   generateSsidAlias,
   generateSipWireAlias,
   generateTextAlias,
@@ -404,7 +405,7 @@ export class SessionMapping implements MappingLike {
               ? (digits.length === 1 ? '1' : `0${'9'.repeat(digits.length - 1)}`)
               : '9'.repeat(Math.max(1, digits.length))
           })()
-        : category === 'opaque-id' || category === 'ssid'
+        : category === 'opaque-id' || category === 'ssid' || category === 'free-token'
           ? 'x'.repeat(Math.max(1, canon.length))
         : category === 'snmp-engine-id'
           ? 'f'.repeat(Math.max(1, canon.length))
@@ -434,6 +435,9 @@ export class SessionMapping implements MappingLike {
       case 'snmp-engine-id': mapped = this._mapHexString(canon, this._usedSnmpEngineId); break;
       case 'opaque-id':
         mapped = generateOpaqueIdAlias(canon, this._textCounters);
+        break;
+      case 'free-token':
+        mapped = generateFreeTokenAlias(canon, this._textCounters);
         break;
       case 'ssid':
         mapped = generateSsidAlias(canon, this._textCounters);
