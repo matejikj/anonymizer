@@ -79,13 +79,17 @@ export type {
   LeakScanOriginal,
   LeakScanFinding,
   LeakScanResult,
+  LeakHitPosition,
 } from './leakScanner'
 export {
   LEAK_CATEGORIES,
   mapEntityCategoryToLeak,
   scanArtifactForOriginalLeaks,
+  scanBytesForLeaks,
   emptyLeakScanResult,
 } from './leakScanner'
+export { buildLeakNeedles, type LeakNeedle, type LeakNeedleKind } from './leakVariants'
+export { buildAhoCorasick, type AhoCorasickAutomaton, type AhoPattern } from './ahoCorasick'
 
 export type { DiagnosticResidualRisk } from './diagnosticResidualRisk'
 export { buildDiagnosticResidualRisk } from './diagnosticResidualRisk'

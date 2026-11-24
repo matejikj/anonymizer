@@ -116,6 +116,18 @@ export type WirePlanSnapshot = {
   incidents?: import('../../domain/anonymizationIncident').IncidentLogSnapshot
   /** T62 — disposition ledger aggregates only (optional for older workers). */
   dispositionLedger?: import('./dispositionLedger').DispositionLedgerAggregate
+  /** T65 — leak remediation summary (optional for older workers). */
+  leakRemediation?: {
+    readonly passes: number
+    readonly autoRemediated: {
+      readonly occurrences: number
+      readonly packets: number
+      readonly byCategory: Readonly<Partial<Record<string, number>>>
+      readonly passes: number
+      readonly escalatedPackets: number
+    }
+    readonly residualLeakHits: number
+  }
 }
 
 export type WirePacketEnvelope = {

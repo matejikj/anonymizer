@@ -25,6 +25,9 @@ import {
   derivePlanEntropySeed,
   type PcapPlanSnapshot,
 } from '../export/planSnapshot'
+import { remediatePlanLeaks } from '../export/leakRemediation'
+import type { LeakScanOriginal } from '../trust/leakScanner'
+import { MAX_ENTITY_CARDINALITY } from '../../domain/capabilityContract'
 import { mergePatchesStrict } from './mergePatchesStrict'
 import { FingerprintSession } from '../anonymization/fingerprintSession'
 import {
@@ -288,6 +291,12 @@ export function buildDeterministicPlan(input: {
   sourceId?: string
   unresolvedClosureFailures?: readonly ClosureIncidentFailure[]
   incidentLog?: IncidentLog
+  /**
+   * T65 — discovery originals for plan-time leak remediation when packet
+   * payloads are retained (test / sync path). Export coordinator remediates
+   * via hydration when payloads were released.
+   */
+  leakOriginals?: readonly LeakScanOriginal[]
 }): PcapPlanSnapshot {
   const entropySeed = derivePlanEntropySeed(input.generationId)
   const incidentLog = input.incidentLog ?? new IncidentLog()
@@ -318,7 +327,7 @@ export function buildDeterministicPlan(input: {
     payloadTime,
     input.generationId,
   )
-  return buildPlanSnapshot({
+  const plan = buildPlanSnapshot({
     generationId: input.generationId,
     profile: input.profile,
     format: input.format,
@@ -332,6 +341,16 @@ export function buildDeterministicPlan(input: {
     incidentLog,
     sourceId,
   })
+
+  const originals = input.leakOriginals?.slice(0, MAX_ENTITY_CARDINALITY) ?? []
+  const hasPayloads = input.packets.some((p) => p.data.length > 0)
+  if (originals.length === 0 || !hasPayloads) return plan
+
+  return remediatePlanLeaks({
+    plan,
+    packets: input.packets,
+    originals,
+  }).plan
 }
 
 /** Stable wire signature for parity tests — patches sorted by packet/index/offset. */

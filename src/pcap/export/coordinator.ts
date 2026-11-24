@@ -30,6 +30,7 @@ import { disposePcapExportWorker } from './pcapExportWorkerClient'
 import type { PcapProfile } from '../profile/schema'
 import type { LayerCoverage, SanitizationPolicy } from '../sanitize/types'
 import type { BuildPrivacyReportInput } from '../privacy/privacyReport'
+import { hydrateAndRemediatePlan } from './leakRemediation'
 
 export type PcapExportPhase =
   | 'idle'
@@ -224,13 +225,27 @@ export async function runPcapExport(input: {
       progress('picking', 0, total, 'Připravuji export…')
     }
 
+    // T65 — scan + auto-remediate surviving originals before first write.
+    let plan = input.plan
+    if (input.leakOriginals && input.leakOriginals.length > 0) {
+      progress('rewriting', 0, total, 'Odstraňuji zjištěné úniky…')
+      const remediated = await hydrateAndRemediatePlan({
+        plan,
+        descriptors: input.descriptors,
+        sourceBlob: input.sourceBlob,
+        originals: input.leakOriginals,
+      })
+      plan = remediated.plan
+      token.throwIfCancelled()
+    }
+
     const exportInput: IncrementalExportInput = {
-      plan: input.plan,
+      plan,
       descriptors: input.descriptors,
       sourceBlob: input.sourceBlob,
       baselineIssues: input.baselineIssues ?? [],
       expectedGenerationId: generationId,
-      expectedProfileHash: input.plan.profileHash,
+      expectedProfileHash: plan.profileHash,
       isCancelled: () => token.cancelled || !bridge.isActive(generationId),
       onProgress: (p: IncrementalExportProgress) => {
         if (p.phase === 'rewriting') progress('rewriting', p.packetsDone, p.packetsTotal, 'Přepisuji pakety…')
@@ -298,7 +313,7 @@ export async function runPcapExport(input: {
     const privacyInput: BuildPrivacyReportInput | undefined =
       input.profile && input.policy
         ? {
-            plan: input.plan,
+            plan,
             profile: input.profile,
             policy: input.policy,
             coverage: input.coverage,
@@ -307,7 +322,7 @@ export async function runPcapExport(input: {
         : undefined
 
     const report = buildSafeReport(
-      input.plan,
+      plan,
       {
         fileName: built.fileName,
         changedPackets: built.changedPackets,

@@ -43,6 +43,7 @@ import type { MappingSnapshot } from '../../mapping/types'
 import type { PcapProfile } from '../profile/schema'
 import { profileToSanitizationPolicy } from '../profile/presets'
 import { snapshotFromWire, type WireMappingSnapshot } from '../../mapping/protocol'
+import { MAX_ENTITY_CARDINALITY } from '../../domain/capabilityContract'
 import { snapshotToWire as mappingSnapshotToWire } from '../../mapping/protocol'
 import type { WireSourceDiscoveryPayload } from './workerProtocol'
 import { containerToWire } from './containerWireAdapter'
@@ -809,6 +810,13 @@ export function buildPlanFromSession(
   const discoveryPolicyMatches = JSON.stringify(policy) === JSON.stringify(session.policy)
   const metaPackets = session.packets ?? envelopesFromDescriptors(session.descriptors)
   const packetDiscovery = packetDiscoveryForPlanBuild(session, discoveryPolicyMatches)
+  const entities = session.discovery.analysis?.entities ?? []
+  const leakOriginals = entities.slice(0, MAX_ENTITY_CARDINALITY).map((e) => ({
+    category: e.category,
+    value: e.value,
+    packetNumber: e.firstPacket,
+  }))
+
   return buildDeterministicPlan({
     generationId: session.generationId,
     profile,
@@ -826,6 +834,7 @@ export function buildPlanFromSession(
     onProgress,
     sourceId: options?.sourceId ?? session.sourceId,
     unresolvedClosureFailures: options?.unresolvedClosureFailures,
+    leakOriginals,
   })
 }
 

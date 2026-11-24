@@ -218,6 +218,7 @@ export function planFromWire(wire: WirePlanSnapshot, profileId: string): PcapPla
     dropsByProtocol: wire.dropsByProtocol ?? {},
     incidents: wire.incidents ?? EMPTY_INCIDENT_LOG_SNAPSHOT,
     dispositionLedger: wire.dispositionLedger,
+    leakRemediation: wire.leakRemediation as import('../export/planSnapshot').PcapPlanSnapshot['leakRemediation'],
   }
   // Non-enumerable wire handle for drop-bit scans without materializing patches (R10).
   Object.defineProperty(plan, '__wire', { value: wire, enumerable: false })
@@ -284,6 +285,7 @@ export function planToWireExport(plan: PcapPlanSnapshot): { wire: WirePlanSnapsh
       dropsByProtocol: plan.dropsByProtocol,
       incidents: plan.incidents ?? EMPTY_INCIDENT_LOG_SNAPSHOT,
       dispositionLedger: plan.dispositionLedger,
+      leakRemediation: plan.leakRemediation,
       classicHeader: plan.classicHeader
         ? {
             format: plan.classicHeader.format,

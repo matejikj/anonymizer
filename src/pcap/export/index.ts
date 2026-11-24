@@ -25,6 +25,13 @@ export {
   type DispositionLedgerAggregate,
   type PacketDispositionLedger,
 } from './dispositionLedger'
+export {
+  remediatePlanLeaks,
+  hydrateAndRemediatePlan,
+  LEAK_REMEDIATION_MAX_PASSES,
+  type AutoRemediationSummary,
+  type LeakRemediationResult,
+} from './leakRemediation'
 export { disposePcapExportWorker, createPcapExportWorker, getPcapExportWorker } from './pcapExportWorkerClient'
 export {
   runPcapExport,

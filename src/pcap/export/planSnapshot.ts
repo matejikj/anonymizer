@@ -113,6 +113,15 @@ export interface PcapPlanSnapshot {
    * Full per-packet ranges stay private to plan build and are not stored here.
    */
   readonly dispositionLedger?: DispositionLedgerAggregate
+  /**
+   * T65 — leak auto-remediation summary (no original values). Present after
+   * remediatePlanLeaks; preview and export share the remediated patches.
+   */
+  readonly leakRemediation?: {
+    readonly passes: number
+    readonly autoRemediated: import('./leakRemediation').AutoRemediationSummary
+    readonly residualLeakHits: number
+  }
 }
 
 export interface BuiltExportPacket {
@@ -144,7 +153,8 @@ export interface BuiltExportPacket {
 /** Bumped — journal port encoding (mapped ports were written as 0) + SIP/SDP text port wire alias. */
 /** Bumped — fail-closed DHCPv4/v6 options, H.225.0 two-octet User-user IE, heuristic syslog MSG. */
 /** Bumped for T62 — disposition ledger + residual sweep on unclaimed export bytes. */
-export const PCAP_ENGINE_VERSION = '2.38.0'
+/** Bumped for T65 — leak auto-remediation patches on the immutable plan. */
+export const PCAP_ENGINE_VERSION = '2.39.0'
 
 export { EMPTY_INCIDENT_LOG_SNAPSHOT }
 

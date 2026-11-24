@@ -12,6 +12,7 @@ import {
   emptyDispositionAggregate,
   type DispositionLedgerAggregate,
 } from './dispositionLedger'
+import type { AutoRemediationSummary } from './leakRemediation'
 import type { UnifiedProtocolSummary } from '../coverage/types'
 import {
   buildAnonymizationOutcomeForExport,
@@ -153,6 +154,10 @@ export interface PcapExportReport {
    * Shape: `{ category, hits, packetNumbers }`.
    */
   readonly leakFindings: readonly LeakScanFinding[]
+  /**
+   * T65 — informative auto-remediation counts (no originals). Omitted when unused.
+   */
+  readonly autoRemediated?: AutoRemediationSummary
   /** Step 5 — intentional residual risk axes (always shown for diagnostic). */
   readonly diagnosticResidualRisk: DiagnosticResidualRisk
 }
@@ -306,14 +311,21 @@ export function buildExportReport(input: {
     input.privacy?.requiresUnsafeConfirmation === true
     && input.privacy.unsafeExportAcknowledged !== true
 
+  // T65 — after auto-remediation, gate uses residual hits (must be 0); leftover is I7.
+  const remediated = input.plan.leakRemediation
+  const effectiveLeakHits = remediated ? remediated.residualLeakHits : leakScan.leakHits
+  const residualLeakFatal =
+    remediated !== undefined && remediated.residualLeakHits > 0 ? 1 : 0
+
   const verificationFatalErrors =
     (!input.validation.validationValid ? 1 : 0)
     + newBlockingIssueCount
     + (privacyUnsafe ? 1 : 0)
+    + residualLeakFatal
 
   const gateChecks = buildGateChecksFromCoverage({
     coverage: sanitization,
-    leakHits: leakScan.leakHits,
+    leakHits: effectiveLeakHits,
     verificationFatalErrors,
     profile: input.plan.pcapLevel,
     diagnosticInvariantOk: diagnosticInvariant ? diagnosticInvariant.ok : undefined,
@@ -395,6 +407,9 @@ export function buildExportReport(input: {
     sanitization,
     gateChecks,
     leakFindings: leakScan.findings,
+    ...(input.plan.leakRemediation
+      ? { autoRemediated: input.plan.leakRemediation.autoRemediated }
+      : {}),
     diagnosticResidualRisk,
     anonymizationOutcome,
   }
