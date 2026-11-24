@@ -27,6 +27,8 @@ export const INCIDENT_REASONS = [
   'patch-length-mismatch',
   /** T63 — producer coverage status did not match applied patches. */
   'status-mismatch',
+  /** T62 — export byte had no disposition; residual sweep masked/truncated. */
+  'ledger-unclaimed',
   'unknown',
 ] as const
 export type IncidentReason = (typeof INCIDENT_REASONS)[number]
@@ -119,6 +121,7 @@ export function assertIncidentReason(reason: IncidentReason): IncidentReason {
     case 'detector-exception':
     case 'patch-length-mismatch':
     case 'status-mismatch':
+    case 'ledger-unclaimed':
     case 'unknown':
       return reason
     default:

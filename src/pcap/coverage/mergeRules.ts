@@ -9,6 +9,7 @@ const STATUS_PRIORITY: readonly UnifiedCoverageStatus[] = [
   'covered',
   'redacted',
   'truncated',
+  'preserved-safe',
   'preserved-for-diagnostics',
   'heuristic',
   'preserved-unsafe',

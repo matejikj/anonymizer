@@ -114,6 +114,8 @@ export type WirePlanSnapshot = {
   dropsByProtocol?: Record<string, number>
   /** T04 — value-free incident log snapshot (optional for older workers). */
   incidents?: import('../../domain/anonymizationIncident').IncidentLogSnapshot
+  /** T62 — disposition ledger aggregates only (optional for older workers). */
+  dispositionLedger?: import('./dispositionLedger').DispositionLedgerAggregate
 }
 
 export type WirePacketEnvelope = {

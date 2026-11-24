@@ -100,6 +100,7 @@ function planToWire(plan: PcapPlanSnapshot): { wire: WirePlanSnapshot; transfers
         truncated: false,
         totalFailures: 0,
       },
+      dispositionLedger: plan.dispositionLedger,
       classicHeader: plan.classicHeader
         ? {
             format: plan.classicHeader.format,

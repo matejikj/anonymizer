@@ -191,6 +191,8 @@ export type CoverageStatus =
   | 'heuristic'
   | 'preserved-unsafe'
   | 'preserved-for-diagnostics'
+  /** T62 — field-policy-proven non-identity bytes (headers: type/length/flags). */
+  | 'preserved-safe'
   /** T07 — sanitizer/processor threw; packet/payload fail-closed. Never treat as covered. */
   | 'processing-failed'
 
@@ -204,6 +206,11 @@ export interface LayerCoverage {
    * same protocol × status, `length` = their total bytes. Counting consumers weight by it.
    */
   readonly aggregateCount?: number;
+  /**
+   * T62 — optional sub-ranges within this span that field policy marks preserve-safe
+   * (relative to packet buffer, absolute offsets).
+   */
+  readonly preserve?: readonly (readonly [offset: number, length: number])[];
 }
 
 export interface PacketSanitizationResult {

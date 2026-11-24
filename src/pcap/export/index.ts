@@ -13,6 +13,18 @@ export {
   mapPacketTimestamp,
 } from './packetBuilder'
 export { buildCaptureFromPlan, buildSafeReport, chunkBuffer, type ExportBuildResult } from './engine'
+export {
+  FINAL_DISPOSITIONS,
+  emptyDispositionAggregate,
+  buildPacketDispositionLedger,
+  applyResidualSweep,
+  finalizePacketDisposition,
+  isStructuredPreserveSafeProtocol,
+  type FinalDisposition,
+  type LedgerRange,
+  type DispositionLedgerAggregate,
+  type PacketDispositionLedger,
+} from './dispositionLedger'
 export { disposePcapExportWorker, createPcapExportWorker, getPcapExportWorker } from './pcapExportWorkerClient'
 export {
   runPcapExport,

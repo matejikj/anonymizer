@@ -8,6 +8,10 @@ import type { PcapAnonymizationLevel } from '../profile/pcapAnonymizationLevel'
 import { CaptureFormat } from '../domain/types'
 import type { ChecksumReport } from '../checksums/types'
 import { PCAP_ENGINE_VERSION } from './planSnapshot'
+import {
+  emptyDispositionAggregate,
+  type DispositionLedgerAggregate,
+} from './dispositionLedger'
 import type { UnifiedProtocolSummary } from '../coverage/types'
 import {
   buildAnonymizationOutcomeForExport,
@@ -97,6 +101,8 @@ export interface PcapExportReport {
   readonly lengthChanges: PcapExportLengthChangeSummary
   readonly changeCategoryTotals: PlanChangeCounts
   readonly maskedByteCount: number
+  /** T62 — disposition ledger aggregates (no per-byte ranges / no originals). */
+  readonly dispositionLedger: DispositionLedgerAggregate
   readonly unsupportedLayers: number
   readonly protocolCoverage: readonly UnifiedProtocolSummary[]
   readonly checksum: ChecksumReport['counts']
@@ -355,6 +361,7 @@ export function buildExportReport(input: {
     lengthChanges: lengthChangesFromPlan(input.plan),
     changeCategoryTotals,
     maskedByteCount,
+    dispositionLedger: input.plan.dispositionLedger ?? emptyDispositionAggregate(),
     unsupportedLayers: input.unsupportedLayers,
     protocolCoverage: input.protocolCoverage,
     checksum: input.checksum.counts,

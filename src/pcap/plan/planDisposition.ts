@@ -133,6 +133,7 @@ function classifySpan(span: LayerCoverage, counts: { [K in PlanChangeCategory]: 
     case 'encrypted':
       counts['preserved-encrypted'] += 1
       break
+    case 'preserved-safe':
     case 'preserved-for-diagnostics':
       counts['preserved-for-diagnostics'] += 1
       break

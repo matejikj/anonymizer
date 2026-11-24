@@ -187,6 +187,7 @@ export function coverageStatusToUiStatus(status: CoverageStatus): DominantUiStat
   switch (status) {
     case 'covered':
     case 'redacted':
+    case 'preserved-safe':
     case 'preserved-for-diagnostics':
       return 'covered'
     case 'truncated':
@@ -236,6 +237,7 @@ export function spanExportAction(
       return 'truncated'
     case 'heuristic':
       return 'heuristic'
+    case 'preserved-safe':
     case 'preserved-for-diagnostics':
       return 'preserved-for-diagnostics'
     case 'preserved-unsafe':
@@ -327,7 +329,12 @@ function exportActionLabel(action: SpanExportAction): string {
 
 function protectedSpan(status: CoverageStatus): boolean {
   // T64 — heuristic is boundary-masked; do not count the producer status as protected content.
-  return status === 'covered' || status === 'redacted' || status === 'truncated'
+  return (
+    status === 'covered'
+    || status === 'redacted'
+    || status === 'truncated'
+    || status === 'preserved-safe'
+  )
 }
 
 export function buildPlanRevision(input: {

@@ -12,6 +12,7 @@ import type {
 } from '../domain/types'
 import {
   EMPTY_INCIDENT_LOG_SNAPSHOT,
+  IncidentLog,
   type IncidentLogSnapshot,
 } from '../../domain/anonymizationIncident'
 import type { BytePatch } from '../sanitize/types'
@@ -31,6 +32,12 @@ import {
   type PlanChangeCounts,
   type PlanDispositionReason,
 } from '../plan/planDisposition'
+import {
+  aggregateDispositionRanges,
+  emptyDispositionAggregate,
+  finalizePacketDisposition,
+  type DispositionLedgerAggregate,
+} from './dispositionLedger'
 
 export type { PlanChangeCounts, PlanDispositionReason } from '../plan/planDisposition'
 export { emptyPlanAuditFields, emptyPlanChangeCounts } from '../plan/planDisposition'
@@ -101,6 +108,11 @@ export interface PcapPlanSnapshot {
    * production builders always set it (default empty snapshot).
    */
   readonly incidents?: IncidentLogSnapshot
+  /**
+   * T62 — disposition ledger aggregates only (byte counts by disposition / protocol / reason).
+   * Full per-packet ranges stay private to plan build and are not stored here.
+   */
+  readonly dispositionLedger?: DispositionLedgerAggregate
 }
 
 export interface BuiltExportPacket {
@@ -131,7 +143,8 @@ export interface BuiltExportPacket {
 /** Bumped for T25 M2PA (SCTP PPID 5) + T26 GTPv2 piggyback baseline. */
 /** Bumped — journal port encoding (mapped ports were written as 0) + SIP/SDP text port wire alias. */
 /** Bumped — fail-closed DHCPv4/v6 options, H.225.0 two-octet User-user IE, heuristic syslog MSG. */
-export const PCAP_ENGINE_VERSION = '2.37.0'
+/** Bumped for T62 — disposition ledger + residual sweep on unclaimed export bytes. */
+export const PCAP_ENGINE_VERSION = '2.38.0'
 
 export { EMPTY_INCIDENT_LOG_SNAPSHOT }
 
@@ -183,14 +196,18 @@ export function buildPlanPacket(
   index: number,
   original: PacketEnvelope,
   sanitization: PacketSanitizationResult,
+  overrides?: {
+    readonly patches?: readonly BytePatch[]
+    readonly truncatedLength?: number
+  },
 ): PcapPlanPacket {
   const accounting = derivePlanPacketAccounting(sanitization)
   return {
     index,
     packetNumber: original.packetNumber,
     drop: sanitization.drop,
-    patches: sanitization.patches,
-    truncatedLength: sanitization.truncatedLength,
+    patches: overrides?.patches ? [...overrides.patches] : sanitization.patches,
+    truncatedLength: overrides?.truncatedLength ?? sanitization.truncatedLength,
     originalCapturedLength: original.capturedLength,
     originalLength: original.originalLength,
     linkType: original.linkType,
@@ -218,6 +235,9 @@ export function buildPlanSnapshot(input: {
   timestampAnchorSeed?: string
   /** T04 — incidents collected during plan build (default empty). */
   incidents?: IncidentLogSnapshot
+  /** T62 — optional live log for residual-sweep incidents (merged into snapshot). */
+  incidentLog?: IncidentLog
+  sourceId?: string
 }): PcapPlanSnapshot {
   const planPackets: PcapPlanPacket[] = []
   const dropped: number[] = []
@@ -231,14 +251,50 @@ export function buildPlanSnapshot(input: {
   }
   const dropsByProtocol: Record<string, number> = {}
   const level = input.profile.preset
+  const residualLog = input.incidentLog ?? new IncidentLog()
+  const sourceId = input.sourceId ?? (input.fileName || 'pcap')
+
+  const ledgerAcc = {
+    byDisposition: { ...emptyDispositionAggregate().byDisposition },
+    byProtocol: {} as Record<string, number>,
+    byReason: {} as Record<string, number>,
+  }
+  let unclaimedBytesBeforeSweep = 0
+  let residualMaskedBytes = 0
+  let residualTruncatedBytes = 0
+  let ledgerPacketCount = 0
 
   for (let i = 0; i < input.packets.length; i++) {
     const pkt = input.packets[i]!
     const san = input.sanitization[i]!
-    const planPkt = buildPlanPacket(i, pkt, san)
+
+    // T62 — disposition ledger + residual sweep before freezing plan patches.
+    const finalized = finalizePacketDisposition({
+      packetIndex: i,
+      length: pkt.data.length,
+      drop: san.drop,
+      truncatedLength: san.truncatedLength,
+      patches: san.patches,
+      coverage: san.coverage,
+      symbolicOps: san.symbolicMapOps,
+      level,
+      incidentLog: residualLog,
+      sourceId,
+      packetNumber: pkt.packetNumber,
+    })
+    unclaimedBytesBeforeSweep += finalized.unclaimedBytesBeforeSweep
+    residualMaskedBytes += finalized.residualMaskedBytes
+    residualTruncatedBytes += finalized.residualTruncatedBytes
+    aggregateDispositionRanges(finalized.ranges, ledgerAcc)
+    ledgerPacketCount += 1
+
+    const planPkt = buildPlanPacket(i, pkt, san, {
+      patches: finalized.patches,
+      truncatedLength: finalized.truncatedLength,
+    })
     planPackets.push(planPkt)
     changeCategoryTotals = addPlanChangeCounts(changeCategoryTotals, planPkt.changeCounts)
-    maskedByteCount += planPkt.maskedByteCount
+    maskedByteCount += planPkt.maskedByteCount + finalized.residualMaskedBytes
     if (planPkt.patches.length > 0 || planPkt.truncatedLength !== undefined) {
       packetsWithChanges += 1
     }
@@ -250,6 +306,37 @@ export function buildPlanSnapshot(input: {
       dropsByProtocol[proto] = (dropsByProtocol[proto] ?? 0) + 1
     }
   }
+
+  const priorIncidents = input.incidents ?? EMPTY_INCIDENT_LOG_SNAPSHOT
+  // When caller passed a live incidentLog, prefer its snapshot (includes residual).
+  // Otherwise merge residual-only records onto the prior snapshot.
+  let incidents: IncidentLogSnapshot
+  if (input.incidentLog) {
+    incidents = residualLog.snapshot()
+  } else if (residualLog.snapshot().totalFailures > 0) {
+    const merged = new IncidentLog()
+    for (const inc of priorIncidents.incidents) merged.record(inc)
+    for (const inc of residualLog.snapshot().incidents) merged.record(inc)
+    const snap = merged.snapshot()
+    incidents = {
+      ...snap,
+      totalFailures: priorIncidents.totalFailures + residualLog.snapshot().totalFailures,
+      truncated: priorIncidents.truncated || snap.truncated,
+    }
+  } else {
+    incidents = priorIncidents
+  }
+
+  const dispositionLedger: DispositionLedgerAggregate = {
+    byDisposition: ledgerAcc.byDisposition,
+    byProtocol: ledgerAcc.byProtocol,
+    byReason: ledgerAcc.byReason,
+    unclaimedBytesBeforeSweep,
+    residualMaskedBytes,
+    residualTruncatedBytes,
+    packetCount: ledgerPacketCount,
+  }
+
   return {
     generationId: input.generationId,
     pcapLevel: level,
@@ -272,6 +359,7 @@ export function buildPlanSnapshot(input: {
     maskedByteCount,
     dropsByReason,
     dropsByProtocol,
-    incidents: input.incidents ?? EMPTY_INCIDENT_LOG_SNAPSHOT,
+    incidents,
+    dispositionLedger,
   }
 }

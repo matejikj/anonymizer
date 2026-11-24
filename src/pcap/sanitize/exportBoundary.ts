@@ -36,6 +36,7 @@ const SAFE_STATUSES = new Set<CoverageStatus>([
   'encrypted',
   'truncated',
   'preserved-for-diagnostics',
+  'preserved-safe',
 ]);
 
 /** Exportable with residual privacy risk — does not truncate (CF-11). */

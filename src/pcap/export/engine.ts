@@ -20,6 +20,12 @@ import {
   buildPrivacyReport,
   type BuildPrivacyReportInput,
 } from '../privacy/privacyReport'
+import {
+  aggregateDispositionRanges,
+  buildExportPacketLedger,
+  emptyDispositionAggregate,
+  type DispositionLedgerAggregate,
+} from './dispositionLedger'
 
 export interface ExportBuildResult {
   readonly buffer: ArrayBuffer
@@ -30,6 +36,8 @@ export interface ExportBuildResult {
   readonly truncatedPayloads: number
   readonly validationValid: boolean
   readonly validationIssueCount: number
+  /** T62 — disposition aggregates recomputed after patches (I2). */
+  readonly dispositionLedger: DispositionLedgerAggregate
 }
 
 export function buildCaptureFromPlan(
@@ -47,11 +55,30 @@ export function buildCaptureFromPlan(
   let changedPackets = 0
   let truncatedPayloads = 0
 
+  // T62 — ledger after plan patches (residual already applied at plan build).
+  const ledgerAcc = {
+    byDisposition: { ...emptyDispositionAggregate().byDisposition },
+    byProtocol: {} as Record<string, number>,
+    byReason: {} as Record<string, number>,
+  }
+  let exportLedgerPackets = 0
+
   for (const planPkt of plan.packets) {
     if (planPkt.drop) continue
     const original = originals[planPkt.index]!
     if (planPkt.patches.length > 0 || planPkt.truncatedLength !== undefined) changedPackets++
     if (planPkt.truncatedLength !== undefined) truncatedPayloads++
+
+    const exportLen = planPkt.truncatedLength ?? planPkt.originalCapturedLength
+    const packetLedger = buildExportPacketLedger({
+      packetIndex: planPkt.index,
+      length: exportLen,
+      drop: false,
+      truncatedLength: planPkt.truncatedLength,
+      patches: planPkt.patches,
+    })
+    aggregateDispositionRanges(packetLedger.ranges, ledgerAcc)
+    exportLedgerPackets += 1
 
     const { envelope, checksumReport } = buildExportEnvelope(
       original,
@@ -83,6 +110,16 @@ export function buildCaptureFromPlan(
       ? validateClassicPcap(buffer)
       : validatePcapng(buffer)
 
+  const dispositionLedger: DispositionLedgerAggregate = plan.dispositionLedger ?? {
+    byDisposition: ledgerAcc.byDisposition,
+    byProtocol: ledgerAcc.byProtocol,
+    byReason: ledgerAcc.byReason,
+    unclaimedBytesBeforeSweep: 0,
+    residualMaskedBytes: 0,
+    residualTruncatedBytes: 0,
+    packetCount: exportLedgerPackets,
+  }
+
   return {
     buffer,
     packets: built,
@@ -92,6 +129,7 @@ export function buildCaptureFromPlan(
     truncatedPayloads,
     validationValid: validation.valid,
     validationIssueCount: validation.issues.filter((i) => i.severity > 0).length,
+    dispositionLedger,
   }
 }
 

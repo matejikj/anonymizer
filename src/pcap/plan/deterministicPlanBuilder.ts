@@ -329,7 +329,8 @@ export function buildDeterministicPlan(input: {
     pcapngSections: input.pcapngSections,
     pcapngInterfaces: input.pcapngInterfaces,
     timestampAnchorSeed: entropySeed,
-    incidents: incidentLog.snapshot(),
+    incidentLog,
+    sourceId,
   })
 }
 
