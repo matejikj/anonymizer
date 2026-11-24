@@ -47,11 +47,12 @@ export function sanitizeGrpcMessages(
       // Compressed without inverse codec → mask; uncompressed protobuf without schema → mask values
       maskSpan(buffer, cursor + 5, msgLen, collector, packetIndex, 'grpc-msg')
       intents?.recordMaskRange(packetIndex, cursor + 5, msgLen, 'protobuf-schemaless', 'grpc')
+      // T63 — schemaless/compressed message masked → redacted / unsupported.
       coverage.push({
         protocol: 'grpc-message',
         offset: cursor + 5,
         length: msgLen,
-        status: compressed === 1 ? 'unsupported' : 'heuristic',
+        status: compressed === 1 ? 'unsupported' : 'redacted',
       })
     }
     cursor += 5 + msgLen
@@ -63,7 +64,7 @@ export function sanitizeGrpcMessages(
       protocol: 'grpc',
       offset: cursor,
       length: end - cursor,
-      status: 'heuristic',
+      status: 'redacted',
     })
   }
 

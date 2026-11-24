@@ -174,11 +174,12 @@ export function sanitizeWebSocket(
       } else {
         maskSpan(buffer, payloadOff, payloadLen, collector, packetIndex, 'ws-bin')
       }
+      // T63 — binary payload masked → redacted.
       coverage.push({
         protocol: 'websocket-payload',
         offset: payloadOff,
         length: payloadLen,
-        status: 'heuristic',
+        status: 'redacted',
       })
       cursor += frameLen
       continue
@@ -382,7 +383,7 @@ function sanitizeLogicalMessage(
       issues.push('ws-sip-incomplete')
     }
   } else if (kind === 'json') {
-    sanitizeHttpBody({
+    const body = sanitizeHttpBody({
       buffer: logical,
       bodyAbsOffset: 0,
       bodyLength: logical.length,
@@ -397,15 +398,16 @@ function sanitizeLogicalMessage(
       protocol: 'websocket-payload',
       offset: spans[0]!.wireOff,
       length: spans.reduce((n, s) => n + s.len, 0),
-      status: 'covered',
+      status: body.coverageStatus,
     })
   } else {
     maskLogical(local, 0, logical.length, packetIndex, 'ws-text')
+    // T63 — unknown text masked → redacted (until T69).
     coverage.push({
       protocol: 'websocket-payload',
       offset: spans[0]!.wireOff,
       length: spans.reduce((n, s) => n + s.len, 0),
-      status: 'heuristic',
+      status: 'redacted',
     })
   }
 

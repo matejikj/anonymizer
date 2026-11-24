@@ -9,7 +9,6 @@ import { canonicalizeIdentity } from '../../../mapping/canonicalize.ts'
 import { createProtocolNeutralMaskFill } from '../maskFill.ts'
 import { computeFixedLengthAsciiBytes } from '../textPatch.ts'
 import { sanitizeHttpBody } from '../httpBody.ts'
-import { sanitizeTextPayload } from '../../protocols/application/textproto/index.ts'
 import type { LayerCoverage } from '../types.ts'
 import { looksLikeUspRecord, sanitizeUspRecord } from '../usp.ts'
 
@@ -111,7 +110,7 @@ export function sanitizeMessageBody(
   }
   const first = buffer[i]!
   if (first === 0x7b || first === 0x5b) {
-    // `{` or `[`
+    // `{` or `[` — report the real sanitizeHttpBody disposition (T63).
     const result = sanitizeHttpBody({
       buffer,
       bodyAbsOffset: offset,
@@ -127,7 +126,7 @@ export function sanitizeMessageBody(
       protocol: `${protocol}-json`,
       offset,
       length,
-      status: result.coverageStatus === 'covered' ? 'covered' : 'redacted',
+      status: result.coverageStatus,
     })
     return coverage
   }
@@ -142,28 +141,10 @@ export function sanitizeMessageBody(
     })
     return coverage
   }
-  const text = sanitizeTextPayload({
-    buffer,
-    absoluteOffset: offset,
-    byteLength: length,
-    collector,
-    mapping,
-    intents,
-    packetIndex,
-    highPrivacy,
-    protocolId: protocol,
-  })
-  if (text.hitCount === 0 && highPrivacy) {
-    maskBytes(collector, intents, packetIndex, offset, length, `${protocol}-body`, protocol)
-    coverage.push({ protocol: `${protocol}-body`, offset, length, status: 'redacted' })
-  } else {
-    coverage.push({
-      protocol: `${protocol}-body`,
-      offset,
-      length,
-      status: text.coverageStatus === 'covered' ? 'covered' : 'redacted',
-    })
-  }
+  // T63 — until free-text allowlist (T69), mask entire text body in both levels.
+  void highPrivacy
+  maskBytes(collector, intents, packetIndex, offset, length, `${protocol}-body`, protocol)
+  coverage.push({ protocol: `${protocol}-body`, offset, length, status: 'redacted' })
   return coverage
 }
 

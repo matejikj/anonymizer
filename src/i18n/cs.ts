@@ -1499,6 +1499,7 @@ export const cs = {
         'sanitizer-exception': 'výjimka sanitizeru',
         'detector-exception': 'výjimka detektoru',
         'patch-length-mismatch': 'nesoulad délky patche',
+        'status-mismatch': 'nesoulad stavu pokrytí a patchů',
         unknown: 'neznámá chyba',
       },
       incidentFallback: {

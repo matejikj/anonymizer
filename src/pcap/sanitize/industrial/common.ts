@@ -101,6 +101,7 @@ export function sanitizePayloadBody(
     if (usp) return [...usp.coverage]
   }
   if (i < end && (buffer[i] === 0x7b || buffer[i] === 0x5b)) {
+    // T63 — report the real sanitizeHttpBody disposition (no status collapse).
     const result = sanitizeHttpBody({
       buffer,
       bodyAbsOffset: offset,
@@ -116,30 +117,13 @@ export function sanitizePayloadBody(
       protocol: `${protocol}-json`,
       offset,
       length,
-      status: result.coverageStatus === 'covered' ? 'covered' : 'redacted',
+      status: result.coverageStatus,
     }]
   }
-  const text = sanitizeTextPayload({
-    buffer,
-    absoluteOffset: offset,
-    byteLength: length,
-    collector,
-    mapping,
-    intents,
-    packetIndex,
-    highPrivacy,
-    protocolId: protocol,
-  })
-  if (text.hitCount === 0) {
-    maskBytes(collector, intents, packetIndex, offset, length, `${protocol}-body`, protocol)
-    return [{ protocol: `${protocol}-body`, offset, length, status: 'redacted' }]
-  }
-  return [{
-    protocol: `${protocol}-body`,
-    offset,
-    length,
-    status: text.coverageStatus === 'covered' ? 'covered' : 'redacted',
-  }]
+  // T63 — until free-text allowlist (T69), mask entire text body in both levels.
+  void highPrivacy
+  maskBytes(collector, intents, packetIndex, offset, length, `${protocol}-body`, protocol)
+  return [{ protocol: `${protocol}-body`, offset, length, status: 'redacted' }]
 }
 
 /**

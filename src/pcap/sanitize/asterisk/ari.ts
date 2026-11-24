@@ -162,7 +162,7 @@ export function sanitizeAri(
       protocol: 'ari-json',
       offset: bodyOff,
       length: bodyLen,
-      status: bodyResult.coverageStatus === 'covered' ? 'covered' : 'redacted',
+      status: bodyResult.coverageStatus,
     })
     // Overlay ARI resource string fields
     sanitizeAriJsonStrings(

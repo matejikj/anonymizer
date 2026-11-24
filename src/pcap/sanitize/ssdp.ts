@@ -10,9 +10,7 @@ import {
   tokenizeTextProtoMessage,
   dispositionForTextProtoHeader,
   applyPayloadMapHits,
-  hitsFromDetectors,
   maskPayloadSpan,
-  detectIdentitiesInPayload,
   type TextProtoHeaderPolicyTable,
 } from '../protocols/application/textproto'
 import { computeFixedLengthAsciiBytes } from './textPatch'
@@ -108,12 +106,10 @@ export function sanitizeSsdp(
         }], collector, mapping, intents, packetIndex, 'ssdp')
         break
       }
-      case 'detectors': {
-        // Detectors only — extractors + detectors both hit the same IP/URL spans (patch-overlap).
-        const detected = detectIdentitiesInPayload(buffer, abs, len)
-        applyPayloadMapHits(hitsFromDetectors(detected), collector, mapping, intents, packetIndex, 'ssdp')
+      case 'detectors':
+        // T63 — until free-text allowlist (T69), mask free header values entirely.
+        maskPayloadSpan(collector, abs, len, intents, packetIndex, `ssdp-${h.name}`)
         break
-      }
       default:
         maskPayloadSpan(collector, abs, len, intents, packetIndex, `ssdp-${h.name}`)
     }
@@ -123,6 +119,7 @@ export function sanitizeSsdp(
     maskPayloadSpan(collector, msg.body.offset, msg.body.length, intents, packetIndex, 'ssdp-body')
   }
 
+  // T63 — free detector values are fully masked; UUID mapped; structural preserved.
   return {
     coverage: [{ protocol: 'ssdp', offset, length, status: 'covered' }],
     issues: [],

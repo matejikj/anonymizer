@@ -6,15 +6,7 @@ import type { MappingLike } from '../anonymization/mapping'
 import type { IntentCollector } from '../discovery/intentCollector'
 import type { PatchCollector } from './PatchCollector'
 import type { AppLayerResult, LayerCoverage } from './types'
-import {
-  detectIdentitiesInPayload,
-  applyPayloadMapHits,
-  hitsFromDetectors,
-  maskPayloadSpan,
-} from '../protocols/application/textproto'
-import { computeFixedLengthAsciiBytes } from './textPatch'
-import { createProtocolNeutralMaskFill } from './maskFill'
-import { canonicalizeIdentity } from '../../mapping/canonicalize'
+import { maskPayloadSpan } from '../protocols/application/textproto'
 
 const WSD_PORTS = new Set([3702])
 
@@ -53,46 +45,17 @@ export function sanitizeWsDiscovery(
     }
   }
 
-  // UUID addresses (MessageID / EndpointReference / RelatesTo)
-  const uuidRe = /urn:uuid:([0-9a-fA-F-]{36}|[0-9a-fA-F]{32})/gi
-  let m: RegExpExecArray | null
-  while ((m = uuidRe.exec(text)) !== null) {
-    const token = m[0]!
-    const abs = offset + m.index!
-    const hex = (m[1] ?? '').replace(/-/g, '').toLowerCase()
-    const canon = canonicalizeIdentity('opaque-id', hex.length >= 8 ? hex : token.toLowerCase())
-    if (!canon) continue
-    const constraint = { kind: 'text-ascii' as const, byteLength: token.length }
-    intents?.recordEntityReplacement(packetIndex, abs, 'opaque-id', canon, token.length, constraint, token)
-    collector.addDeferred(abs, token.length, ({ mapping: live }) => {
-      try {
-        const alias = live.aliasFor('opaque-id', canon, constraint, token)
-        const body = alias.replace(/^urn:uuid:/i, '')
-        const rebuilt = `urn:uuid:${body}`.slice(0, token.length).padEnd(token.length, '0')
-        return computeFixedLengthAsciiBytes(abs, token.length, rebuilt)
-      } catch {
-        return createProtocolNeutralMaskFill({
-          length: token.length,
-          packetIndex,
-          offset: abs,
-          domain: 'wsd-uuid',
-        })
-      }
-    }, { fallbackKind: 'text-x', protocol: 'ws-discovery', category: 'opaque-id', packetIndex })
-  }
-
-  // XAddrs / http(s) URLs — detectors
-  const hits = detectIdentitiesInPayload(buffer, offset, length)
-  applyPayloadMapHits(hitsFromDetectors(hits), collector, mapping, intents, packetIndex, 'ws-discovery')
-
-  // Scopes often carry site/org names — mask unknown free text between tags when high density?
-  // Baseline: leave non-hit XML structure; unknown attribute values already often caught by detectors.
+  // T63 — until free-text allowlist (T69), fail-closed mask of entire SOAP
+  // (Scopes / free text). UUID + detector mapping returns with T69.
+  void text
+  void mapping
+  maskPayloadSpan(collector, offset, length, intents, packetIndex, 'wsd-interim-mask')
 
   const coverage: LayerCoverage[] = [{
     protocol: 'ws-discovery',
     offset,
     length,
-    status: 'covered',
+    status: 'redacted',
   }]
   return { coverage, issues: [] }
 }

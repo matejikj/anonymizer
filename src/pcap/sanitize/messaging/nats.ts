@@ -242,7 +242,7 @@ function sanitizeConnectJson(
     protocol: 'nats-connect',
     offset,
     length,
-    status: result.coverageStatus === 'covered' ? 'covered' : 'redacted',
+    status: result.coverageStatus,
   })
 
   // Hard guarantee: pass / auth_token / jwt / nkey / sig values never survive.

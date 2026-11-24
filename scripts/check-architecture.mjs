@@ -875,6 +875,36 @@ if (!fs.existsSync(path.join(srcRoot, 'domain', 'safeWorkerError.ts'))) {
   violations.push('src/domain/safeWorkerError.ts: missing T03 worker error sanitizer')
 }
 
+// T63 — forbid collapsing coverageStatus / heuristic into a different status without proof.
+const STATUS_COLLAPSE_SCAN_DIRS = ['pcap/sanitize', 'pcap/protocols', 'pcap/reassembly']
+const FORBIDDEN_STATUS_COLLAPSE_RES = [
+  {
+    name: "coverageStatus === 'covered' ? 'covered' : 'redacted'",
+    re: /coverageStatus\s*===\s*['"]covered['"]\s*\?\s*['"]covered['"]\s*:\s*['"]redacted['"]/,
+  },
+  {
+    name: "heuristic → redacted/covered collapse",
+    re: /===\s*['"]heuristic['"]\s*\?\s*['"](?:redacted|covered)['"]/,
+  },
+]
+for (const rel of STATUS_COLLAPSE_SCAN_DIRS) {
+  const dir = path.join(srcRoot, rel)
+  if (!fs.existsSync(dir)) continue
+  for (const file of walk(dir)) {
+    const code = stripComments(fs.readFileSync(file, 'utf8'))
+    for (const rule of FORBIDDEN_STATUS_COLLAPSE_RES) {
+      if (rule.re.test(code)) {
+        violations.push(
+          `${path.relative(root, file)}: T63 forbids status collapse (${rule.name})`,
+        )
+      }
+    }
+  }
+}
+if (!fs.existsSync(path.join(srcRoot, 'pcap', 'sanitize', 'statusInvariant.ts'))) {
+  violations.push('src/pcap/sanitize/statusInvariant.ts: missing T63 status invariant')
+}
+
 if (violations.length > 0) {
   console.error('Architecture guard failed:\n')
   for (const v of violations) console.error(`  - ${v}`)

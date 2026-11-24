@@ -25,6 +25,8 @@ export const INCIDENT_REASONS = [
   'sanitizer-exception',
   'detector-exception',
   'patch-length-mismatch',
+  /** T63 — producer coverage status did not match applied patches. */
+  'status-mismatch',
   'unknown',
 ] as const
 export type IncidentReason = (typeof INCIDENT_REASONS)[number]
@@ -116,6 +118,7 @@ export function assertIncidentReason(reason: IncidentReason): IncidentReason {
     case 'sanitizer-exception':
     case 'detector-exception':
     case 'patch-length-mismatch':
+    case 'status-mismatch':
     case 'unknown':
       return reason
     default:

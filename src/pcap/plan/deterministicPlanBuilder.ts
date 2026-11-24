@@ -159,6 +159,7 @@ export function buildSanitizationFromSnapshot(
         generationId,
         sourceId: sourceId ?? 'pcap',
         payloadTime,
+        incidentLog: log,
       })
     } catch {
       base = buildIsolatedPacketResult({

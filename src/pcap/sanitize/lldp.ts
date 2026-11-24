@@ -9,12 +9,7 @@ import type { AppLayerResult, LayerCoverage, SanitizationPolicy } from './types'
 import { createProtocolNeutralMaskFill } from './maskFill'
 import { computeFixedLengthAsciiBytes } from './textPatch'
 import { canonicalizeIdentity } from '../../mapping/canonicalize'
-import {
-  detectIdentitiesInPayload,
-  applyPayloadMapHits,
-  hitsFromDetectors,
-  maskPayloadSpan,
-} from '../protocols/application/textproto'
+import { maskPayloadSpan } from '../protocols/application/textproto'
 
 export const ETHERTYPE_LLDP = 0x88cc
 
@@ -112,12 +107,13 @@ export function sanitizeLldp(
         break
       case TLV_PORT_DESC:
       case TLV_SYS_DESC:
+        // T63 — until free-text allowlist (T69), mask descriptions in both levels.
         sanitizeDescription(buffer, valueOff, tlvLen, collector, mapping, intents, packetIndex, policy)
         coverage.push({
           protocol: 'lldp',
           offset: pos,
           length: 2 + tlvLen,
-          status: policy.preset === 'high-privacy' ? 'redacted' : 'heuristic',
+          status: 'redacted',
         })
         break
       case TLV_MGMT_ADDR:
@@ -360,12 +356,11 @@ function sanitizeDescription(
   policy: SanitizationPolicy,
 ): void {
   if (len <= 0) return
-  if (policy.preset === 'high-privacy') {
-    maskSpan(collector, intents, packetIndex, abs, len, 'lldp-desc-hp')
-    return
-  }
-  const hits = detectIdentitiesInPayload(buffer, abs, len)
-  applyPayloadMapHits(hitsFromDetectors(hits), collector, mapping, intents, packetIndex, 'lldp')
+  // T63 — both levels mask until T69; keep signature for call-site compatibility.
+  void buffer
+  void mapping
+  void policy
+  maskSpan(collector, intents, packetIndex, abs, len, 'lldp-desc')
 }
 
 function mapAsciiHostname(

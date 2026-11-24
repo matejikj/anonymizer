@@ -144,16 +144,25 @@ export function sanitizeHttp2(
             bodyLen -= 1 + pad
           }
         }
+        if (bodyOff > payloadOff) {
+          coverage.push({
+            protocol: 'http2-headers',
+            offset: payloadOff,
+            length: bodyOff - payloadOff,
+            status: 'covered',
+          })
+        }
         if (bodyLen > 0) {
           maskSpan(buffer, bodyOff, bodyLen, collector, packetIndex, 'http2-hpack')
           intents?.recordMaskRange(packetIndex, bodyOff, bodyLen, 'hpack-no-rewrite', 'http2')
+          // T63 — HPACK body masked → redacted.
+          coverage.push({
+            protocol: 'http2-headers',
+            offset: bodyOff,
+            length: bodyLen,
+            status: 'redacted',
+          })
         }
-        coverage.push({
-          protocol: 'http2-headers',
-          offset: payloadOff,
-          length: plen,
-          status: 'heuristic',
-        })
         issues.push('http2-hpack-masked')
         break
       }
@@ -193,11 +202,12 @@ export function sanitizeHttp2(
             if (g.issues) issues.push(...g.issues)
           } else {
             maskSpan(buffer, dataOff, dataLen, collector, packetIndex, 'http2-data')
+            // T63 — DATA masked → redacted (until T69).
             coverage.push({
               protocol: 'http2-data',
               offset: dataOff,
               length: dataLen,
-              status: 'heuristic',
+              status: 'redacted',
             })
           }
         }

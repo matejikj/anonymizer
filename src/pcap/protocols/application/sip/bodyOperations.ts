@@ -169,13 +169,14 @@ export function planSipBodyOperations(
   }
 
   if (bodyDecision.kind === 'structured-sipfrag') {
-    // Partial SIP fragment — fail-closed mask (not a complete SIP message)
+    // Partial SIP fragment — fail-closed mask (not a complete SIP message).
+    // T63 — status matches the redact op (masked bytes), not heuristic.
     operations.push(redactOp(bodyDecision.bodySpan, SIP_REDACT_MASK_BYTE))
     coverage.push({
       protocol: 'sip-sipfrag',
       offset: bodyDecision.bodySpan.offset,
       length: bodyDecision.bodySpan.length,
-      status: 'heuristic',
+      status: 'redacted',
     })
     issues.push('sip-body:sipfrag-partial')
     return { operations, issues, coverage }

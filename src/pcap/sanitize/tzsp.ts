@@ -158,10 +158,17 @@ export function sanitizeTzsp(
       mapMac(buffer, innerOff + 10, collector, mapping, intents, packetIndex)
       mapMac(buffer, innerOff + 16, collector, mapping, intents, packetIndex)
       // Remainder (LLC/payload) mask — T40 owns full 802.11
+      coverage.push({ protocol: 'tzsp-80211', offset: innerOff, length: 24, status: 'covered' })
       if (innerLen > 24) {
         maskSpan(buffer, innerOff + 24, innerLen - 24, collector, packetIndex, 'tzsp-80211-body')
+        // T63 — masked body reports redacted (not heuristic).
+        coverage.push({
+          protocol: 'tzsp-80211-body',
+          offset: innerOff + 24,
+          length: innerLen - 24,
+          status: 'redacted',
+        })
       }
-      coverage.push({ protocol: 'tzsp-80211', offset: innerOff, length: innerLen, status: 'heuristic' })
       issues.push('tzsp-80211-partial')
     } else {
       maskSpan(buffer, innerOff, innerLen, collector, packetIndex, 'tzsp-80211-short')
@@ -215,10 +222,20 @@ function applyTzspTag(
       if (tagLen === 6) {
         // Likely MAC-shaped unknown tag
         mapMac(buffer, valOff, collector, mapping, intents, packetIndex)
+        coverage.push({ protocol: 'tzsp-tag', offset: tagOff, length: chunkLen, status: 'covered' })
       } else if (tagLen > 0) {
         maskSpan(buffer, valOff, tagLen, collector, packetIndex, `tzsp-tag-${tag}`)
+        // T63 — masked value reports redacted (not heuristic).
+        coverage.push({ protocol: 'tzsp-tag', offset: tagOff, length: 2, status: 'covered' })
+        coverage.push({
+          protocol: 'tzsp-tag',
+          offset: valOff,
+          length: tagLen,
+          status: 'redacted',
+        })
+      } else {
+        coverage.push({ protocol: 'tzsp-tag', offset: tagOff, length: chunkLen, status: 'covered' })
       }
-      coverage.push({ protocol: 'tzsp-tag', offset: tagOff, length: chunkLen, status: 'heuristic' })
       break
   }
 }

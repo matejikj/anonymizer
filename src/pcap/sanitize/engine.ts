@@ -28,6 +28,7 @@ import { MediaFlowIndex } from '../discovery/mediaFlowIndex';
 import type { ReassemblyContext } from '../reassembly/types';
 import { PacketParseError, PlanInvariantError } from '../plan/planErrors';
 import { buildIsolatedPacketResult } from './packetIsolation';
+import { enforceCoverageStatusInvariant } from './statusInvariant.ts';
 import { dispatchRegisteredApplicationHandlers } from './applicationDispatchRegistry';
 import type { InnerTransportHandler } from './tunnel';
 import { sanitizeTunnel, sanitizeIcmpEmbedded, sanitizeVxlan, sanitizeIcmpv6Ndp, MAX_TUNNEL_DEPTH } from './tunnel';
@@ -168,6 +169,8 @@ export interface SanitizeOptions {
   /** T21 — processing generation / source scope for NetFlow/IPFIX template caches. */
   readonly generationId?: string;
   readonly sourceId?: string;
+  /** T04 / T63 — bounded incident log (deferred failures + status-mismatch). */
+  readonly incidentLog?: import('../../domain/anonymizationIncident').IncidentLog;
   /** T02.S4 — record analytical protocol facts during sanitize/discovery. */
   readonly journal?: import('../kernel/journal').SemanticJournalBuilder;
   readonly kernelSymbolicOps?: import('../kernel/operations').SymbolicOperation[];
@@ -275,6 +278,18 @@ export function sanitizePacket(
         patches: collector.getPatches(),
         resolvePatches: (ctx) => {
           collector.resolveDeferred(ctx);
+          // T63 — status must match patches; remediate gaps (assert left to harness).
+          const mismatch = enforceCoverageStatusInvariant({
+            collector,
+            coverage,
+            packetIndex: packet.index,
+            incidentLog: ctx.incidentLog,
+            sourceId: ctx.sourceId,
+            packetNumber: ctx.packetNumber,
+          });
+          if (mismatch.remediatedSpans > 0) {
+            issues.push('status-mismatch');
+          }
           return collector.getPatches();
         },
         symbolicMapOps: mergeKernelSymbolicMapOps(
@@ -292,7 +307,22 @@ export function sanitizePacket(
       mapping,
       fingerprints: resolvedOptions.fingerprints!,
       payloadTime: resolvedOptions.payloadTime,
+      incidentLog: options.incidentLog,
+      sourceId: options.sourceId,
+      packetIndex: packet.index,
     });
+    {
+      const mismatch = enforceCoverageStatusInvariant({
+        collector,
+        coverage,
+        packetIndex: packet.index,
+        incidentLog: options.incidentLog,
+        sourceId: options.sourceId,
+      });
+      if (mismatch.remediatedSpans > 0) {
+        issues.push('status-mismatch');
+      }
+    }
     return {
       packetIndex: packet.index,
       patches: collector.getPatches(),

@@ -167,13 +167,17 @@ function sanitizeHep3(
 
     if (vendor !== 0) {
       // Unknown vendor — keep framing, mask body
-      if (valLen > 0) maskSpan(buffer, valOff, valLen, collector, packetIndex, `hep-v${vendor}`)
-      coverage.push({
-        protocol: 'hep-chunk',
-        offset: cursor,
-        length: chunkLen,
-        status: 'heuristic',
-      })
+      coverage.push({ protocol: 'hep-chunk', offset: cursor, length: 6, status: 'covered' })
+      if (valLen > 0) {
+        maskSpan(buffer, valOff, valLen, collector, packetIndex, `hep-v${vendor}`)
+        // T63 — vendor body masked; status matches the mask.
+        coverage.push({
+          protocol: 'hep-chunk',
+          offset: valOff,
+          length: valLen,
+          status: 'redacted',
+        })
+      }
       cursor += chunkLen
       continue
     }
@@ -244,13 +248,17 @@ function sanitizeHep3(
         payloadLen = valLen
         break
       default:
-        if (valLen > 0) maskSpan(buffer, valOff, valLen, collector, packetIndex, `hep-t${type}`)
-        coverage.push({
-          protocol: 'hep-chunk',
-          offset: cursor,
-          length: chunkLen,
-          status: 'heuristic',
-        })
+        coverage.push({ protocol: 'hep-chunk', offset: cursor, length: 6, status: 'covered' })
+        if (valLen > 0) {
+          maskSpan(buffer, valOff, valLen, collector, packetIndex, `hep-t${type}`)
+          // T63 — unknown chunk value masked → redacted.
+          coverage.push({
+            protocol: 'hep-chunk',
+            offset: valOff,
+            length: valLen,
+            status: 'redacted',
+          })
+        }
         break
     }
     cursor += chunkLen
@@ -287,7 +295,7 @@ function sanitizeHep3(
       protocol: 'hep-trailer',
       offset: end,
       length: offset + length - end,
-      status: 'heuristic',
+      status: 'redacted',
     })
   }
 
@@ -423,20 +431,21 @@ function sanitizeHepPayload(
     const v = length > 0 ? (buffer[offset]! >> 6) & 0x03 : 0
     if (v === 2) {
       const ok = sanitizeRtcp(buffer, offset, length, collector, mapping, undefined, packetIndex)
-      coverage.push({
-        protocol: 'hep-payload',
-        offset,
-        length,
-        status: ok ? 'covered' : 'heuristic',
-      })
       if (!ok) {
         maskSpan(buffer, offset, length, collector, packetIndex, 'hep-rtcp-fail')
         issues.push('hep-rtcp')
       }
+      // T63 — failure path masks payload → redacted; success stays covered.
+      coverage.push({
+        protocol: 'hep-payload',
+        offset,
+        length,
+        status: ok ? 'covered' : 'redacted',
+      })
       return { coverage, issues: issues.length ? issues : undefined }
     }
     maskSpan(buffer, offset, length, collector, packetIndex, 'hep-rtcp-json')
-    coverage.push({ protocol: 'hep-payload', offset, length, status: 'heuristic' })
+    coverage.push({ protocol: 'hep-payload', offset, length, status: 'redacted' })
     return { coverage, issues: ['hep-rtcp-nonbinary'] }
   }
 
