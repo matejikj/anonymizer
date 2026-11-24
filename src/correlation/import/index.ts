@@ -34,6 +34,12 @@ export type { CompressedFormat, DecompressErrorCode, InflateFormat } from './dec
 export { resolveInputFile, formatGzipInflationNote, formatInflationNote } from './resolveInputFile.ts'
 export type { ResolveInputResult } from './resolveInputFile.ts'
 export type { GzipInflationNote } from './types.ts'
+export {
+  splitLargeInput,
+  needsLargeInputSplit,
+  mergeSplitExportBytes,
+  LARGE_INPUT_SPLIT,
+} from './largeInputSplit.ts'
 
 export {
   formatInputRejection,

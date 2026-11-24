@@ -149,6 +149,16 @@ export interface SourceAdapter<
   buildPlan(request: BuildPlanRequest & { discovery: TDiscovery }): Promise<TPlan>
 }
 
+/** T73 — segment of an auto-split oversized input (shared mapping; merge on export). */
+export interface SourceSplitMeta {
+  readonly splitGroupId: string
+  readonly splitIndex: number
+  readonly splitCount: number
+  readonly uniquePayloadStart: number
+  readonly mergeOutputBaseName: string
+  readonly format: 'text' | 'classic-pcap' | 'pcapng'
+}
+
 export interface StagedSourceDescriptor {
   readonly sourceId: string
   readonly kind: SourceKind
@@ -156,6 +166,7 @@ export interface StagedSourceDescriptor {
   readonly outputFileName?: string
   /** Paste/in-memory inputs use a lower aggregate cap (Stage 24). */
   readonly inputKind?: 'file' | 'paste'
+  readonly split?: SourceSplitMeta
 }
 
 export type SourceLifecyclePhase =
@@ -197,6 +208,8 @@ export interface CorrelationSourceRecord {
   readonly textReview: CorrelationTextReviewState | null
   readonly errorCode: string | null
   readonly errorMessage: string | null
+  /** T73 — when set, export merges this group into one file. */
+  readonly split?: SourceSplitMeta
 }
 
 export type CorrelationSessionPhase = 'empty' | 'staged' | 'processing' | 'ready' | 'failed'

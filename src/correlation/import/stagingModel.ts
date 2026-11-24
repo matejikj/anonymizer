@@ -108,18 +108,21 @@ function readyItem(
   opts?: {
     readonly gzipInflation?: GzipInflationNote
     readonly sourceFileName?: string
+    readonly split?: StagingItemReady['split']
+    readonly displayName?: string
   },
 ): StagingItemReady {
   return {
     id,
     file,
-    fileName: opts?.sourceFileName ?? file.name,
+    fileName: opts?.displayName ?? opts?.sourceFileName ?? file.name,
     byteLength: file.size,
     status: 'ready',
     kind,
     profileLabel: profileLabelForKind(kind),
     gzipInflation: opts?.gzipInflation,
     sourceFileName: opts?.sourceFileName,
+    split: opts?.split,
   }
 }
 
@@ -206,6 +209,31 @@ export async function buildStagingItemsFromFiles(
         rejection: resolved.rejection,
         recoveryAction: 'remove',
       })
+      continue
+    }
+
+    if (resolved.mode === 'split') {
+      const sourceName = resolved.sourceFileName
+      for (let si = 0; si < resolved.split.segments.length; si++) {
+        const seg = resolved.split.segments[si]!
+        const segId = newItemId(seg.file, index * 1000 + si, usedIds)
+        const segFp = fileFingerprint(seg.file)
+        const item = readyItem(segId, seg.file, resolved.kind, {
+          gzipInflation: si === 0 ? resolved.gzipInflation : undefined,
+          sourceFileName: sourceName,
+          displayName: seg.file.name,
+          split: {
+            splitGroupId: resolved.split.splitGroupId,
+            splitIndex: seg.index,
+            splitCount: seg.count,
+            uniquePayloadStart: seg.uniquePayloadStart,
+            mergeOutputBaseName: resolved.split.mergeOutputBaseName,
+            format: seg.format,
+          },
+        })
+        fingerprintToReady.set(segFp, item)
+        out.push(item)
+      }
       continue
     }
 
@@ -348,6 +376,7 @@ export function formatStagingSize(bytes: number): string {
 
 export function stagingDescriptorOutputName(item: StagingItemReady): string {
   // Support-bundle entries: display fileName is the safe alias (may contain '/').
+  // T73 segments keep part names here; export merges via split.mergeOutputBaseName (D7).
   const base =
     item.sourceFileName && item.fileName.includes('/')
       ? item.fileName.replace(/\//g, '_')

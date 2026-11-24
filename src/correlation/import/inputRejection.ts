@@ -83,6 +83,11 @@ export function rejectionForUnsupportedCode(code: string): InputRejection {
       return entry(code, catalog.archiveEmptySupported)
     case 'cancelled':
       return entry(code, catalog.cancelled)
+    case 'correlation-aggregate-too-large':
+    case 'aggregate-too-large':
+      return entry('aggregate-too-large', catalog.aggregateTooLarge)
+    case 'split-failed':
+      return entry(code, catalog.splitFailed)
     default:
       return entry(code, {
         title: catalog.unknownFormat.title,

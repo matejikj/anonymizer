@@ -206,5 +206,6 @@ export function buildStagedSourceRecord(descriptor: StagedSourceDescriptor) {
     textReview: null,
     errorCode: null,
     errorMessage: null,
+    split: descriptor.split,
   }
 }

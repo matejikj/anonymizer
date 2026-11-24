@@ -149,7 +149,7 @@ export async function preflightFile(
     return {
       ok: false,
       code: 'too-large-file',
-      message: `Soubor má ${(file.size / BYTES_PER_MIB).toFixed(1)} MiB. Maximum je ${INPUT_LIMITS.fileMaxBytes / BYTES_PER_MIB} MiB. Rozdělte log na menší části.`,
+      message: `Soubor má ${(file.size / BYTES_PER_MIB).toFixed(1)} MiB. Maximum na segment je ${INPUT_LIMITS.fileMaxBytes / BYTES_PER_MIB} MiB; větší logy se dělí automaticky v rámci limitu sady.`,
     }
   }
 

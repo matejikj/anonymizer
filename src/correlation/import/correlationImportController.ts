@@ -147,12 +147,15 @@ export async function ingestDroppedFiles(files: readonly File[]): Promise<Import
     useAppStore.getState().setStatusMessage('')
   }
 
-  if (files.length === 1) {
-    const only = items[0]
-    if (only && (only.status === 'ready' || only.status === 'duplicate-warning')) {
-      if (only.kind === SK.Text) return { kind: 'single-text', file: only.file }
-      if (only.kind === SK.Pcap) return { kind: 'single-pcap', file: only.file }
-    }
+  const readyOrDup = items.filter((i) => i.status === 'ready' || i.status === 'duplicate-warning')
+  // T73 — one dropped file auto-split into segments → correlation staging (shared mapping).
+  if (files.length === 1 && readyOrDup.length === 1) {
+    const only = readyOrDup[0]!
+    if (only.kind === SK.Text) return { kind: 'single-text', file: only.file }
+    if (only.kind === SK.Pcap) return { kind: 'single-pcap', file: only.file }
+  }
+
+  if (readyOrDup.length === 0) {
     replaceStagingItems(items)
     return { kind: 'nothing' }
   }
@@ -234,6 +237,7 @@ function buildDescriptors(): StagedSourceDescriptor[] {
     file: item.file,
     outputFileName: stagingDescriptorOutputName(item),
     inputKind: 'file' as const,
+    split: item.split,
   }))
 }
 

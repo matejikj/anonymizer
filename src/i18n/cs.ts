@@ -40,7 +40,7 @@ export const cs = {
     uploadLimits: (textMiB: number, lines: number, pcapMiB: number, maxFiles: number, totalMiB: number) =>
       `Text ≤${textMiB} MiB / ${lines.toLocaleString('cs-CZ')} ř. · PCAP ≤${pcapMiB} MiB · Sada ≤${maxFiles} souborů / ${totalMiB} MiB celkem`,
     uploadLimitsHint:
-      'Platí limity jednotlivých souborů i společný limit velikosti celé sady. U textu platí i limit řádků. PCAP zahrnuje i PCAPNG. U komprimovaných vstupů se počítá rozbalená velikost. Velké soubory aplikace zpracuje v rámci limitu sady.',
+      'Platí limity segmentů i společný limit velikosti celé sady. Větší text/PCAP se automaticky rozdělí a výsledek se spojí. U textu platí i limit řádků. U komprimovaných vstupů se počítá rozbalená velikost.',
     help: 'Nápověda',
     docs: 'Technická dokumentace',
     profileDefault: 'Profil: RND Team — Production',
@@ -678,15 +678,27 @@ export const cs = {
     },
     tooLarge: {
       title: 'Soubor je příliš velký.',
-      reason: 'Překračuje limit pro daný typ vstupu (text 90 MiB, PCAP 100 MiB — u .gz platí pro rozbalenou velikost).',
-      action: 'Zkraťte soubor nebo ho rozdělte a nahrajte znovu.',
+      reason: 'Po automatickém dělení by překročil limit celé sady, nebo nejde bezpečně rozdělit.',
+      action: 'Nahrajte menší soubor v rámci limitu sady.',
       detectedType: 'příliš velký soubor',
     },
     tooManyLines: {
       title: 'Log má příliš mnoho řádků.',
-      reason: 'Překračuje limit 400 000 řádků.',
-      action: 'Zkraťte log nebo ho rozdělte na menší soubory.',
+      reason: 'Překračuje limit 400 000 řádků na segment.',
+      action: 'Nahrajte kratší log v rámci limitu.',
       detectedType: 'textový log',
+    },
+    aggregateTooLarge: {
+      title: 'Soubor (nebo sada) přesahuje společný limit velikosti.',
+      reason: 'Automatické dělení zůstává v limitu celé relace; větší vstup nelze zpracovat najednou.',
+      action: 'Nahrajte menší soubor nebo méně položek v rámci limitu sady.',
+      detectedType: 'nad limit sady',
+    },
+    splitFailed: {
+      title: 'Velký soubor se nepodařilo bezpečně rozdělit.',
+      reason: 'Obsah nejde rozdělit na platné segmenty v rámci limitů (poškozený capture nebo příliš velký záznam).',
+      action: 'Nahrajte platný log nebo PCAP v rámci limitu sady.',
+      detectedType: 'dělení vstupu',
     },
     empty: {
       title: 'Soubor je prázdný.',
@@ -1187,7 +1199,7 @@ export const cs = {
       unknownFormat: 'Nepodporovaný formát: {reason}',
       containerInvalid: 'Poškozený container — nelze bezpečně načíst.',
       loadFailed: 'Soubor se nepodařilo načíst.',
-      tooLarge: 'Soubor má {size}. Maximum je {limit}. Zmenšete capture nebo ho rozdělte.',
+      tooLarge: 'Soubor má {size}. Maximum na segment je {limit}; větší vstupy se dělí automaticky v rámci limitu sady.',
       tooSmall: 'Soubor je příliš krátký pro rozpoznání formátu PCAP nebo PCAPNG.',
       emptyFile: 'Soubor je prázdný.',
     },

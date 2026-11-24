@@ -15,6 +15,16 @@ export interface GzipInflationNote {
   readonly inflatedBytes: number
 }
 
+/** T73 — large input auto-split metadata (correlation segments → one merged export). */
+export interface StagingSplitMeta {
+  readonly splitGroupId: string
+  readonly splitIndex: number
+  readonly splitCount: number
+  readonly uniquePayloadStart: number
+  readonly mergeOutputBaseName: string
+  readonly format: 'text' | 'classic-pcap' | 'pcapng'
+}
+
 export interface StagingItemReady {
   readonly id: string
   readonly file: File
@@ -23,10 +33,12 @@ export interface StagingItemReady {
   readonly status: 'ready'
   readonly kind: SourceKind
   readonly profileLabel: string
-  /** Present when the ready File was inflated from `.gz` (original name kept for display). */
+  /** Present when the ready File was inflated from a compressed stream (original name kept for display). */
   readonly gzipInflation?: GzipInflationNote
   /** Display name of the dropped archive when different from `file.name`. */
   readonly sourceFileName?: string
+  /** Present when this ready item is a T73 segment of a larger original. */
+  readonly split?: StagingSplitMeta
 }
 
 export interface StagingItemError {

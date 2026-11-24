@@ -48,7 +48,7 @@ function tooLargeMessage(byteLength: number): string {
     over > 0 && over < BYTES_PER_MIB
       ? `${formatMiB(byteLength)} (+${over} B)`
       : formatMiB(byteLength)
-  return `Soubor má ${sizeLabel}. Maximum je ${formatMiB(MAX_PCAP_FILE_BYTES)}. Zmenšete capture nebo ho rozdělte.`
+  return `Soubor má ${sizeLabel}. Maximum na segment je ${formatMiB(MAX_PCAP_FILE_BYTES)}; větší capture se dělí automaticky v rámci limitu sady.`
 }
 
 function tooSmallMessage(): string {

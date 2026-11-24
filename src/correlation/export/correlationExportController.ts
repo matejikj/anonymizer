@@ -40,6 +40,8 @@ import {
   SHAREABLE_MANIFEST_FILE_NAME,
 } from './correlationShareManifest'
 import { allocateUniqueOutputNames } from './uniqueOutputNames'
+import { mergeSplitExportBytes } from '../import/largeInputSplit.ts'
+import { defaultOutputFileName } from '../sourceLimits.ts'
 import type {
   CorrelationExportFileItem,
   CorrelationExportOutcome,
@@ -471,52 +473,140 @@ export async function runCorrelationExport(input: {
   try {
     const retainedForBundle: { alias: string; data: Uint8Array }[] = []
 
-    for (let i = 0; i < records.length; i++) {
-      const record = records[i]!
+    // T73 — export split groups as one merged file (D7); other sources one-by-one.
+    type ExportUnit =
+      | { readonly kind: 'single'; readonly record: CorrelationSourceRecord }
+      | { readonly kind: 'split'; readonly records: readonly CorrelationSourceRecord[] }
+
+    const splitGroups = new Map<string, CorrelationSourceRecord[]>()
+    const units: ExportUnit[] = []
+    for (const record of records) {
+      if (record.split) {
+        const list = splitGroups.get(record.split.splitGroupId) ?? []
+        list.push(record)
+        splitGroups.set(record.split.splitGroupId, list)
+      } else {
+        units.push({ kind: 'single', record })
+      }
+    }
+    for (const list of splitGroups.values()) {
+      list.sort((a, b) => (a.split?.splitIndex ?? 0) - (b.split?.splitIndex ?? 0))
+      units.push({ kind: 'split', records: list })
+    }
+
+    let unitIndex = 0
+    for (const unit of units) {
+      unitIndex += 1
       if (signal.aborted) throw new CorrelationExportCancelledError()
 
-      setCorrelationExportProgress({
-        phase: 'exporting',
-        fileIndex: i + 1,
-        fileTotal,
-        currentFileName: record.outputFileName,
-        currentMessage: cs.correlationExport.fileProgress(i + 1, fileTotal),
-        completedFiles: [...completedFiles],
-        remainingFiles: remainingOf(completedFiles),
-        usedDirectoryPicker,
-        usedMultiDownloadFallback,
-        downloadUnverified,
-      })
+      if (unit.kind === 'single') {
+        const record = unit.record
+        setCorrelationExportProgress({
+          phase: 'exporting',
+          fileIndex: unitIndex,
+          fileTotal,
+          currentFileName: record.outputFileName,
+          currentMessage: cs.correlationExport.fileProgress(unitIndex, fileTotal),
+          completedFiles: [...completedFiles],
+          remainingFiles: remainingOf(completedFiles),
+          usedDirectoryPicker,
+          usedMultiDownloadFallback,
+          downloadUnverified,
+        })
 
-      const written = await exportOneSource(
-        record,
-        record.outputFileName,
-        directory,
-        signal,
-        (message) => {
-          setCorrelationExportProgress({
-            phase: 'exporting',
-            fileIndex: i + 1,
-            fileTotal,
-            currentFileName: record.outputFileName,
-            currentMessage: message,
-            completedFiles: [...completedFiles],
-            remainingFiles: remainingOf(completedFiles),
-            usedDirectoryPicker,
-            usedMultiDownloadFallback,
-            downloadUnverified,
-          })
-        },
-        packSupportBundle,
+        const written = await exportOneSource(
+          record,
+          record.outputFileName,
+          directory,
+          signal,
+          (message) => {
+            setCorrelationExportProgress({
+              phase: 'exporting',
+              fileIndex: unitIndex,
+              fileTotal,
+              currentFileName: record.outputFileName,
+              currentMessage: message,
+              completedFiles: [...completedFiles],
+              remainingFiles: remainingOf(completedFiles),
+              usedDirectoryPicker,
+              usedMultiDownloadFallback,
+              downloadUnverified,
+            })
+          },
+          packSupportBundle,
+        )
+        if (written.delivery === 'download') downloadUnverified = true
+        completedFiles.push(written.fileName)
+        dataFiles.push(written.fileName)
+        if (packSupportBundle && bundleMeta && written.bytes) {
+          const alias =
+            bundleMeta.aliasByFingerprint.get(fileFingerprint(record.file)) ??
+            record.outputFileName
+          retainedForBundle.push({ alias, data: written.bytes })
+        }
+        continue
+      }
+
+      const group = unit.records
+      const head = group[0]!
+      const mergeName = defaultOutputFileName(
+        head.kind,
+        head.split?.mergeOutputBaseName ?? head.fileName,
       )
-      if (written.delivery === 'download') downloadUnverified = true
-      completedFiles.push(written.fileName)
-      dataFiles.push(written.fileName)
-      if (packSupportBundle && bundleMeta && written.bytes) {
-        const alias =
-          bundleMeta.aliasByFingerprint.get(fileFingerprint(record.file)) ??
-          record.outputFileName
-        retainedForBundle.push({ alias, data: written.bytes })
+      const parts: { bytes: Uint8Array; uniquePayloadStart: number }[] = []
+      for (let gi = 0; gi < group.length; gi++) {
+        const record = group[gi]!
+        setCorrelationExportProgress({
+          phase: 'exporting',
+          fileIndex: unitIndex,
+          fileTotal,
+          currentFileName: mergeName,
+          currentMessage: cs.correlationExport.fileProgress(unitIndex, fileTotal),
+          completedFiles: [...completedFiles],
+          remainingFiles: remainingOf(completedFiles),
+          usedDirectoryPicker,
+          usedMultiDownloadFallback,
+          downloadUnverified,
+        })
+        const written = await exportOneSource(
+          record,
+          record.outputFileName,
+          null, // always blob — merge before deliver
+          signal,
+          (message) => {
+            setCorrelationExportProgress({
+              phase: 'exporting',
+              fileIndex: unitIndex,
+              fileTotal,
+              currentFileName: mergeName,
+              currentMessage: message,
+              completedFiles: [...completedFiles],
+              remainingFiles: remainingOf(completedFiles),
+              usedDirectoryPicker,
+              usedMultiDownloadFallback,
+              downloadUnverified,
+            })
+          },
+          true,
+        )
+        if (!written.bytes) {
+          throw new Error(`Split segment ${record.sourceId} produced no bytes`)
+        }
+        parts.push({
+          bytes: written.bytes,
+          uniquePayloadStart: record.split?.uniquePayloadStart ?? 0,
+        })
+      }
+      const merged = mergeSplitExportBytes(parts)
+      const mergedCopy = new Uint8Array(merged.byteLength)
+      mergedCopy.set(merged)
+      const blob = new Blob([mergedCopy], { type: 'application/octet-stream' })
+      const delivery = await deliverBlob(mergeName, blob, directory)
+      if (delivery === 'download') downloadUnverified = true
+      completedFiles.push(mergeName)
+      dataFiles.push(mergeName)
+      if (packSupportBundle && bundleMeta) {
+        retainedForBundle.push({ alias: mergeName, data: mergedCopy })
       }
     }
 

@@ -1,5 +1,5 @@
 /**
- * T05 / T72 — resolve a dropped File to a ready text/PCAP input (transparent inflate).
+ * T05 / T72 / T73 — resolve a dropped File to a ready text/PCAP input (inflate + optional split).
  */
 
 import { SourceKind as SK } from '../../domain/sourceArtifact.ts'
@@ -21,16 +21,35 @@ import {
   type InputRejection,
 } from './inputRejection.ts'
 import { probeSourceKind, readFileHead, preflightStagingFile } from './sourcePreflightPort.ts'
+import {
+  needsLargeInputSplit,
+  splitLargeInput,
+  type LargeInputSplitOk,
+} from './largeInputSplit.ts'
 import type { GzipInflationNote } from './types.ts'
 
 export type { GzipInflationNote }
 
-export type ResolveInputOk = {
+export type ResolveInputOkSingle = {
   readonly ok: true
+  readonly mode: 'single'
   readonly file: File
   readonly kind: typeof SK.Text | typeof SK.Pcap
   readonly gzipInflation?: GzipInflationNote
 }
+
+export type ResolveInputOkSplit = {
+  readonly ok: true
+  readonly mode: 'split'
+  readonly kind: typeof SK.Text | typeof SK.Pcap
+  readonly split: LargeInputSplitOk
+  readonly gzipInflation?: GzipInflationNote
+  /** Original (possibly inflated) file name for display. */
+  readonly sourceFileName: string
+}
+
+/** @deprecated Prefer checking `mode`; kept for call sites that only need file+kind. */
+export type ResolveInputOk = ResolveInputOkSingle | ResolveInputOkSplit
 
 export type ResolveInputFail = {
   readonly ok: false
@@ -49,7 +68,8 @@ function failCode(code: string): ResolveInputFail {
 }
 
 /**
- * Probe → optional multi-layer inflate (depth ≤ 4) → re-probe → per-kind preflight.
+ * Probe → optional multi-layer inflate (depth ≤ 4) → re-probe →
+ * T73 auto-split when over per-kind size → per-kind preflight on segments/single.
  */
 export async function resolveInputFile(
   file: File,
@@ -73,7 +93,6 @@ export async function resolveInputFile(
     const compressed = detectCompressedFormat(head)
     if (compressed === null) break
     if (compressed === 'zip') {
-      // ZIP containers are expanded via support-bundle path, not here.
       return fail(rejectionForCompressedFormat(compressed as CompressedFormat))
     }
     if (!isInflateFormat(compressed)) {
@@ -120,6 +139,36 @@ export async function resolveInputFile(
     return failCode('unknown-format')
   }
 
+  if (needsLargeInputSplit(working.size, probe.kind)) {
+    const split = await splitLargeInput(working, probe.kind, { signal: options.signal })
+    if (!split.ok) {
+      if (split.code === 'aggregate-too-large') {
+        return fail(rejectionForUnsupportedCode('correlation-aggregate-too-large'))
+      }
+      return fail(rejectionForUnsupportedCode('split-failed'))
+    }
+    // Preflight each segment (must be within per-kind cap).
+    for (const seg of split.segments) {
+      const pre = await preflightStagingFile(seg.file, probe.kind)
+      if (!pre.ok) {
+        const mapped = rejectionForUnsupportedCode(pre.code)
+        return {
+          ok: false,
+          rejection: { ...mapped, reason: pre.message || mapped.reason },
+          message: formatInputRejection({ ...mapped, reason: pre.message || mapped.reason }),
+        }
+      }
+    }
+    return {
+      ok: true,
+      mode: 'split',
+      kind: probe.kind,
+      split,
+      gzipInflation: inflation,
+      sourceFileName: inflation ? file.name : working.name,
+    }
+  }
+
   const preflight = await preflightStagingFile(working, probe.kind)
   if (!preflight.ok) {
     const mapped = rejectionForUnsupportedCode(preflight.code)
@@ -138,6 +187,7 @@ export async function resolveInputFile(
 
   return {
     ok: true,
+    mode: 'single',
     file: working,
     kind: probe.kind,
     gzipInflation: inflation,
@@ -164,5 +214,4 @@ export function formatInflationNote(note: GzipInflationNote): string {
   return formatGzipInflationNote(note)
 }
 
-/** Exported for callers that need the inflate format label. */
 export type { InflateFormat }

@@ -7,14 +7,22 @@ import { decompress as decompressBz2 } from 'bz2'
 import { Decompress as ZstdStreamDecompress, decompress as decompressZstdBuffer } from 'fzstd'
 import * as xzNamespace from 'xz-decompress'
 import {
+  CORRELATION_SESSION_LIMITS,
   MAX_PCAP_FILE_BYTES,
   MAX_TEXT_FILE_BYTES,
 } from '../../domain/capabilityContract.ts'
 
 type XzStreamCtor = new (compressedStream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array>
 
-/** Ceiling while kind is unknown — after inflate, per-kind limits apply again. */
-export const MAX_INFLATED_BYTES = Math.max(MAX_TEXT_FILE_BYTES, MAX_PCAP_FILE_BYTES)
+/**
+ * Ceiling while kind is unknown — T73: allow inflate up to the correlation aggregate so
+ * oversized compressed inputs can be split into per-kind segments afterward.
+ */
+export const MAX_INFLATED_BYTES = Math.max(
+  MAX_TEXT_FILE_BYTES,
+  MAX_PCAP_FILE_BYTES,
+  CORRELATION_SESSION_LIMITS.maxAggregateBytes,
+)
 
 /** Inflated:compressed ratio ceiling (gzip bomb) — aligned with archive bomb policy. */
 export const MAX_GZIP_INFLATION_RATIO = 100

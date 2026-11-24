@@ -21,6 +21,7 @@ import {
   runCorrelationExport,
 } from '../../correlation/export/correlationExportController.ts'
 import type { CorrelationExportScope } from '../../correlation/export/correlationExportTypes.ts'
+import type { SourceSplitMeta } from '../../correlation/types.ts'
 import { supportsDirectoryPicker } from '../../pcap/export/sinks.ts'
 import { resolveInputFile } from '../../correlation/import/resolveInputFile.ts'
 import { defaultOutputFileName } from '../../correlation/sourceLimits.ts'
@@ -192,31 +193,76 @@ export function CorrelationWorkspace() {
           announceCorrelationSource(resolved.message)
           continue
         }
-        const sourceId = `add-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        const result = await addCorrelationSource(
-          {
-            sourceId,
-            kind: resolved.kind,
-            file: resolved.file,
-            outputFileName: defaultOutputFileName(resolved.kind, resolved.file.name),
-            inputKind: 'file',
-          },
-          { signal: ac.signal },
-        )
-        if (!('ok' in result) || !result.ok) {
-          if (
-            ac.signal.aborted ||
-            ('code' in result &&
-              (result.code === 'correlation-cancelled' || result.code === 'correlation-staging-aborted'))
-          ) {
-            cancelled = true
-            break
+        const addOne = async (
+          sourceFile: File,
+          outputFileName: string,
+          split?: SourceSplitMeta,
+        ): Promise<'ok' | 'fail' | 'cancel'> => {
+          const sourceId = `add-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          const result = await addCorrelationSource(
+            {
+              sourceId,
+              kind: resolved.kind,
+              file: sourceFile,
+              outputFileName,
+              inputKind: 'file',
+              split,
+            },
+            { signal: ac.signal },
+          )
+          if (!('ok' in result) || !result.ok) {
+            if (
+              ac.signal.aborted ||
+              ('code' in result &&
+                (result.code === 'correlation-cancelled' || result.code === 'correlation-staging-aborted'))
+            ) {
+              return 'cancel'
+            }
+            return 'fail'
           }
+          selectCorrelationSourceWithAnnounce(sourceId)
+          return 'ok'
+        }
+
+        if (resolved.mode === 'split') {
+          let cancelledSplit = false
+          for (const seg of resolved.split.segments) {
+            const status = await addOne(seg.file, defaultOutputFileName(resolved.kind, seg.file.name), {
+              splitGroupId: resolved.split.splitGroupId,
+              splitIndex: seg.index,
+              splitCount: seg.count,
+              uniquePayloadStart: seg.uniquePayloadStart,
+              mergeOutputBaseName: resolved.split.mergeOutputBaseName,
+              format: seg.format,
+            })
+            if (status === 'cancel') {
+              cancelled = true
+              cancelledSplit = true
+              break
+            }
+            if (status === 'fail') {
+              failed += 1
+              break
+            }
+            ok += 1
+          }
+          if (cancelledSplit) break
+          continue
+        }
+
+        const status = await addOne(
+          resolved.file,
+          defaultOutputFileName(resolved.kind, resolved.file.name),
+        )
+        if (status === 'cancel') {
+          cancelled = true
+          break
+        }
+        if (status === 'fail') {
           failed += 1
           continue
         }
         ok += 1
-        selectCorrelationSourceWithAnnounce(sourceId)
       }
     } finally {
       setAddBusy(false)
