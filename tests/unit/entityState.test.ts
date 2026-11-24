@@ -6,6 +6,7 @@ import {
   createDefaultCategoryMasters,
   isEffectivelyEnabled,
   summarizeCategories,
+  computeAliasSuppressedSummary,
   computeExposedSummary,
   computeSecurityLevel,
 } from '../../src/features/review/entityState.ts'
@@ -46,7 +47,7 @@ describe('entity effective state', () => {
     expect(isEffectivelyEnabled(e, m)).toBe(true)
   })
 
-  it('summarizes categories and exposed values', () => {
+  it('summarizes categories; T71 exposed gate is always empty when analysis done', () => {
     const m = createDefaultCategoryMasters()
     const entities = [
       entity({ key: 'ip::a', category: 'ip', occurrenceCount: 2 }),
@@ -59,17 +60,21 @@ describe('entity effective state', () => {
     expect(ip.occurrenceCount).toBe(5)
     expect(ip.partiallyDisabled).toBe(true)
 
+    // Gate/export: no “exposed originals” after D4 free-token.
     const exp = computeExposedSummary(entities, m)
-    expect(exp.entityCount).toBe(1)
-    expect(exp.occurrenceCount).toBe(3)
+    expect(exp.entityCount).toBe(0)
+    expect(exp.occurrenceCount).toBe(0)
+    const suppressed = computeAliasSuppressedSummary(entities, m)
+    expect(suppressed.entityCount).toBe(1)
+    expect(suppressed.occurrenceCount).toBe(3)
     expect(
       computeSecurityLevel({ analysisDone: true, failedRuleIds: [], exposed: exp }),
-    ).toBe('exposed')
+    ).toBe('ok')
     expect(
       computeSecurityLevel({
         analysisDone: true,
-        failedRuleIds: [],
-        exposed: computeExposedSummary([], m),
+        failedRuleIds: ['custom-1'],
+        exposed: exp,
       }),
     ).toBe('ok')
     expect(
@@ -81,7 +86,7 @@ describe('entity effective state', () => {
     ).toBe('blocked')
   })
 
-  it('rebuilds plan so disabled entity leaks only its own original', () => {
+  it('rebuilds plan so disabled entity gets free-token, never the original (T71/D4)', () => {
     const text = 'user=disp4 ip=10.16.1.105\n'
     const result = analyze(text)
     const packed = packResolvedMatches(
@@ -99,7 +104,8 @@ describe('entity effective state', () => {
     const planOff = buildReplacementPlan(packed, result.entities)
     const outOff = transformWithPlan(text, packed, planOff)
     const disabledSample = result.entities[0]!.originalSample
-    expect(outOff).toContain(disabledSample)
+    expect(outOff).not.toContain(disabledSample)
+    expect(planOff.aliasSuppressedCount).toBeGreaterThan(0)
 
     const bits = buildEffectiveEntityBitset(
       result.entities,

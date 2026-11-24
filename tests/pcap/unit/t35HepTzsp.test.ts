@@ -67,7 +67,7 @@ describe('T35 registry', () => {
     expect(familyForProtocol('tzsp').familyId).toBe('tunnels')
     expect(SEMANTIC_SERVICE_PORTS.has(9060)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(37008)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

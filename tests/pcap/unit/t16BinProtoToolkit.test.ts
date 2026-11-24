@@ -221,6 +221,6 @@ describe('T16 NTLMSSP', () => {
 
 describe('T16 engine version', () => {
   it('bumps PCAP_ENGINE_VERSION for binary toolkit + IMSI/IMEI', () => {
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })

@@ -248,7 +248,7 @@ describe('VoIP media policy E2E (step 8)', () => {
     expect(dropIntents.map((i) => i.packetIndex).sort()).toEqual([1, 2]);
   });
 
-  it('preserve-unsafe marks media as preserved-unsafe without dropping', () => {
+  it('preserve-unsafe mediaPolicy is remapped — RTP not left preserved-unsafe (T68)', () => {
     const packets = callFixtures();
     const policy = {
       ...policyFromPreset('diagnostic'),
@@ -283,7 +283,7 @@ describe('VoIP media policy E2E (step 8)', () => {
       mediaFlowIndex,
     );
     expect(rtpResult.drop).toBe(false);
-    expect(rtpResult.coverage.some((c) => c.protocol === 'rtp' && c.status === 'preserved-unsafe')).toBe(true);
+    expect(rtpResult.coverage.some((c) => c.protocol === 'rtp' && c.status === 'preserved-unsafe')).toBe(false);
   });
 
   it('classifies SRTP SDP as encrypted media and schedules strip under diagnostic strip-payload', () => {

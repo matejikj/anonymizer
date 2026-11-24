@@ -214,6 +214,22 @@ export const MAPPING_DOMAIN_SPECS: readonly MappingDomainSpec[] = [
     exhaustion: 'n/a',
     uniqueness: 'length-stable',
   },
+  {
+    category: 'free-token',
+    kind: 'opaque-id',
+    domainSize: null,
+    reservedNote: 'T69 free-text allowlist miss — length-stable pseudonym, never original',
+    exhaustion: 'n/a',
+    uniqueness: 'length-stable',
+  },
+  {
+    category: 'opaque-bin-id',
+    kind: 'opaque-id',
+    domainSize: null,
+    reservedNote: 'T74 sender-bound binary id — length-stable wire octets',
+    exhaustion: 'n/a',
+    uniqueness: 'length-stable',
+  },
 ] as const
 
 const BY_CATEGORY = new Map<EntityCategory, MappingDomainSpec>(

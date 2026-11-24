@@ -26,7 +26,7 @@ describe('T56 registry / engine', () => {
     expect(APER_SCHEMA_REGISTRY.size).toBe(4)
     expect(getAperSchema(TOY_MODULE_A.id)?.revision).toBe('t56-1')
     expect(getAperSchema(TOY_MODULE_B.id)?.root.kind).toBe('choice')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

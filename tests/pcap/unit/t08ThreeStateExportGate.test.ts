@@ -105,23 +105,24 @@ describe('T08 three-state export gate', () => {
     expect(outcome.exportAllowed).toBe(true)
   })
 
-  it('preserved-unsafe non-media payload is NOT_AI_READY', () => {
+  it('preserved-unsafe residual is AI_READY_WITH_GAPS (T67 — exportable, no ack)', () => {
     const { summary, outcome } = gateFromCoverage([
       { protocol: 'http-body', offset: 0, length: 12, status: 'preserved-unsafe' },
     ])
     expect(summary.exposedRegions).toBe(1)
     expect(summary.secretPassthroughBytes).toBe(12)
-    expect(outcome.gate).toBe('NOT_AI_READY')
-    expect(outcome.exportAllowed).toBe(false)
+    expect(outcome.gate).toBe('AI_READY_WITH_GAPS')
+    expect(outcome.exportAllowed).toBe(true)
   })
 
-  it('leak hits force NOT_AI_READY even when spans are clean', () => {
+  it('leak hits force AI_READY_WITH_GAPS even when spans are clean (T67)', () => {
     const { outcome } = gateFromCoverage(
       [{ protocol: 'ipv4', offset: 0, length: 4, status: 'covered' }],
       'diagnostic',
       { leakHits: 1 },
     )
-    expect(outcome.gate).toBe('NOT_AI_READY')
+    expect(outcome.gate).toBe('AI_READY_WITH_GAPS')
+    expect(outcome.exportAllowed).toBe(true)
   })
 
   it('clean coverage is AI_READY for both profiles', () => {
@@ -163,16 +164,16 @@ describe('T08 three-state export gate', () => {
     expect(outcome.exportAllowed).toBe(true)
   })
 
-  it('text: failed rules → NOT_AI_READY; line isolation → WITH_GAPS; clean → AI_READY', () => {
+  it('text: failed rules / incidents → WITH_GAPS; exposedEntityCount ignored (T71); clean → AI_READY', () => {
     expect(
       resolveTextExportGate({ failedRuleIds: ['r1'], incidentCount: 0, exposedEntityCount: 0 }).gate,
-    ).toBe('NOT_AI_READY')
+    ).toBe('AI_READY_WITH_GAPS')
     expect(
       resolveTextExportGate({ failedRuleIds: [], incidentCount: 3, exposedEntityCount: 0 }).gate,
     ).toBe('AI_READY_WITH_GAPS')
     expect(
       resolveTextExportGate({ failedRuleIds: [], incidentCount: 0, exposedEntityCount: 2 }).gate,
-    ).toBe('NOT_AI_READY')
+    ).toBe('AI_READY')
     expect(
       resolveTextExportGate({ failedRuleIds: [], incidentCount: 0, exposedEntityCount: 0 }).gate,
     ).toBe('AI_READY')

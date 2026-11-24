@@ -54,7 +54,8 @@ describe('capabilityContract', () => {
   })
 
   it('defines correlation session aggregate limits explicitly', () => {
-    expect(CORRELATION_SESSION_LIMITS.maxSources).toBe(8)
+    // T72 — package/support-bundle source count; aggregate bytes remain the hard budget.
+    expect(CORRELATION_SESSION_LIMITS.maxSources).toBe(256)
     expect(CORRELATION_SESSION_LIMITS.maxAggregateBytes).toBe(200 * BYTES_PER_MIB)
     expect(CORRELATION_SESSION_LIMITS.maxSources).toBe(MAPPING_CAPABILITY_LIMITS.maxSourcesPerSession)
     expect(MAX_PCAP_FILE_BYTES).toBeLessThan(CORRELATION_SESSION_LIMITS.maxAggregateBytes)

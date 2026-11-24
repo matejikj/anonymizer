@@ -35,7 +35,7 @@ describe('buildTextAnonymizationOutcome', () => {
     expect(outcome.categories[0]?.category).toBe('ip')
   })
 
-  it('NOT_AI_READY when failed rules or exposed entities', () => {
+  it('AI_READY_WITH_GAPS when failed rules (T71 — never NOT_AI_READY)', () => {
     const masters = createDefaultCategoryMasters()
     const outcome = buildTextAnonymizationOutcome({
       entities: [entity({ key: 'e1', category: 'ip', enabled: false })],
@@ -43,19 +43,20 @@ describe('buildTextAnonymizationOutcome', () => {
       failedRuleIds: ['custom-1'],
       incidents: EMPTY_INCIDENT_LOG_SNAPSHOT,
     })
-    expect(outcome.gate).toBe('NOT_AI_READY')
+    expect(outcome.gate).toBe('AI_READY_WITH_GAPS')
     expect(outcome.failedRuleIds).toContain('custom-1')
-    expect(outcome.summarySentence).toContain('není připravený')
+    expect(outcome.summarySentence.toLowerCase()).not.toMatch(/ověř|zkontrol|není připraven/)
   })
 
-  it('reports no replacements for a disabled category without losing individual preferences', () => {
+  it('disabled category still exportable; individual prefs preserved (T71/D4)', () => {
     const masters = createDefaultCategoryMasters()
     masters.ip = false
     const entities = [entity({ key: 'e1', category: 'ip' })]
     const input = { entities, categoryMasters: masters, failedRuleIds: [] }
     const disabled = buildTextAnonymizationOutcome(input)
     expect(disabled.categories[0]?.enabledUnique).toBe(0)
-    expect(disabled.gate).toBe('NOT_AI_READY')
+    expect(disabled.gate).not.toBe('NOT_AI_READY')
+    expect(['AI_READY', 'AI_READY_WITH_GAPS']).toContain(disabled.gate)
     expect(entities[0].enabled).toBe(true)
     masters.ip = true
     expect(buildTextAnonymizationOutcome(input).categories[0]?.enabledUnique).toBe(1)

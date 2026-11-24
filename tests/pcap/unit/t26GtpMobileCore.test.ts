@@ -153,7 +153,7 @@ describe('T26 registry', () => {
     expect(ids).toContain('gtp')
     expect(familyForProtocol('gtp-u').familyId).toBe('mobile-core')
     expect(familyForProtocol('gtpv2-c').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

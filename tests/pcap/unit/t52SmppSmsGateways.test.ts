@@ -74,7 +74,7 @@ describe('T52 registry', () => {
     expect(familyForProtocol('smpp').familyId).toBe('smpp')
     expect(familyForProtocol('smpp-sm').familyId).toBe('smpp')
     expect(SEMANTIC_SERVICE_PORTS.has(2775)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

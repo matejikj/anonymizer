@@ -153,7 +153,7 @@ describe('T57 registry', () => {
     expect(getAperSchema(S1AP_SCHEMA_MODULE.id)?.revision).toContain('36.413')
     expect(familyForProtocol('s1ap').familyId).toBe('mobile-core')
     expect(familyForProtocol('s1ap-nas').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
     expect(PPID_S1AP).toBe(18)
     expect(S1AP_PINNED_IE_IDS.length).toBeGreaterThanOrEqual(18)
     expect(S1AP_PINNED_PROCEDURES.length).toBeGreaterThanOrEqual(10)

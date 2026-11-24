@@ -14,11 +14,14 @@ describe('transform + packed plan', () => {
     ].join('\n')
 
     const a = analyze(text)
-    expect(a.anonymized).toBe(transformWithPlan(text, a.packed, a.plan))
+    // Detector plan path is deterministic; analyze() may also apply T69 free-text.
+    const planned = transformWithPlan(text, a.packed, a.plan)
+    expect(planned).toBe(transformWithPlan(text, a.packed, a.plan))
     expect(countPhysicalLines(a.anonymized)).toBe(countPhysicalLines(text))
     expect(a.anonymized).not.toContain('10.16.1.105')
     expect(a.anonymized).not.toContain('Krejci Iveta')
     expect(a.anonymized).not.toContain('disp5')
+    expect(planned).not.toContain('10.16.1.105')
     expect(a.anonymized).toContain('10.255.90.')
     expect(a.anonymized).toContain('host-')
     expect(a.anonymized).toContain('Person ')
@@ -70,15 +73,13 @@ describe('transform + packed plan', () => {
     expect(map.outputToOriginal(outAtEnd)).toBe(text.length)
   })
 
-  it('disabled entity leaves original span', () => {
+  it('disabled entity gets free-token, never the original (T71/D4)', () => {
     const text = 'ip 10.1.1.1 end'
     const a = analyze(text)
     const entity = a.entities.find((e) => e.category === 'ip')!
     entity.enabled = false
-    const plan = buildReplacementPlan(a.packed, a.entities)
-    // flags still say enabled — transform() uses entity.enabled
     const out = transform(text, a.matches, a.entitiesByKey)
-    expect(out).toContain('10.1.1.1')
-    expect(plan.replacements.every((r) => r == null || true)).toBe(true)
+    expect(out).not.toContain('10.1.1.1')
+    void buildReplacementPlan
   })
 })

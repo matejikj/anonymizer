@@ -216,7 +216,7 @@ describe('T60 registry', () => {
     expect(ids).toContain('pfcp')
     expect(familyForProtocol('pfcp').familyId).toBe('mobile-core')
     expect(familyForProtocol('pfcp-f-seid').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

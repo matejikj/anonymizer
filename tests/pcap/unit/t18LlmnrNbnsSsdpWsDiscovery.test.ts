@@ -48,7 +48,7 @@ describe('T18 registry', () => {
     expect(familyForProtocol('llmnr').familyId).toBe('discovery')
     expect(familyForProtocol('nbns').familyId).toBe('discovery')
     expect(familyForProtocol('ws-discovery').familyId).toBe('discovery')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

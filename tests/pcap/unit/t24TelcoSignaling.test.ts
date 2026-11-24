@@ -36,7 +36,7 @@ describe('T24 registry', () => {
     expect(ids).toEqual(expect.arrayContaining(['h248', 'rtsp', 'iax2', 'skinny', 'h323']))
     expect(familyForProtocol('h248').familyId).toBe('sip')
     expect(familyForProtocol('rtsp').familyId).toBe('sip')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 
   it('no longer identify-only for H.248 / Skinny / IAX2', () => {

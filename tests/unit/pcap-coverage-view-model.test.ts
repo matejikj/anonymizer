@@ -230,12 +230,14 @@ describe('Stage 6 PcapCoverageViewModel', () => {
     ).toBe('recognized-risk-diagnostic')
   })
 
-  it('heuristic stays a review verdict regardless of level', () => {
-    for (const preset of ['diagnostic', 'high-privacy'] as const) {
-      expect(userVerdictForProtocol({
-        layerKind: 'sanitizer', dominantStatus: 'heuristic', truncateUnsupported: preset === 'high-privacy', preset,
-      })).toBe('heuristic')
-    }
+  it('heuristic is boundary-protected (T64), not a review verdict', () => {
+    expect(userVerdictForProtocol({
+      layerKind: 'sanitizer', dominantStatus: 'heuristic', truncateUnsupported: false, preset: 'diagnostic',
+    })).toBe('protected-export-no-full-analysis')
+    // High-privacy truncates unsupported/heuristic at the boundary.
+    expect(userVerdictForProtocol({
+      layerKind: 'sanitizer', dominantStatus: 'heuristic', truncateUnsupported: true, preset: 'high-privacy',
+    })).toBe('recognized-truncated-safe')
   })
 
   it('redacted content is protected, never reported as preserved', () => {
@@ -350,7 +352,7 @@ describe('Stage 6 PcapCoverageViewModel', () => {
     })
     expect(unsafeMedia.summary.exportLooksSafe).toBe(false)
     expect(unsafeMedia.summary.primaryAction).toBe('confirm-exposed')
-    expect(unsafeMedia.summary.reasons.some((r) => r.includes('není bezpečný'))).toBe(true)
+    expect(unsafeMedia.summary.reasons.some((r) => /RTP|RTCP|médi/i.test(r))).toBe(true)
 
     const blocked = buildPcapCoverageViewModel({
       unifiedCoverage: modelFromProtocol({

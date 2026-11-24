@@ -69,7 +69,7 @@ describe('T49 registry', () => {
     expect(familyForProtocol('csta').familyId).toBe('csta')
     expect(familyForProtocol('csta-xml').familyId).toBe('csta')
     expect(familyForProtocol('sip-csta').familyId).toBe('csta')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

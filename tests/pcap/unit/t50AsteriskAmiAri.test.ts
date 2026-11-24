@@ -42,7 +42,7 @@ describe('T50 registry', () => {
     expect(familyForProtocol('ari-json').familyId).toBe('ami-ari')
     expect(SEMANTIC_SERVICE_PORTS.has(5038)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(8088)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

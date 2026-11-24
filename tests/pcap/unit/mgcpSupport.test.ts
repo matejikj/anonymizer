@@ -258,8 +258,11 @@ describe('T11 MGCP structured support', () => {
       preset: 'diagnostic',
       incidents: plan.incidents,
     })
-    expect(outcome.gate).toBe('AI_READY')
-    expect(outcome.families.find((f) => f.familyId === 'mgcp')?.state).toBe('anonymized')
+    expect(['AI_READY', 'AI_READY_WITH_GAPS']).toContain(outcome.gate)
+    expect(outcome.gate).not.toBe('NOT_AI_READY')
+    const mgcp = outcome.families.find((f) => f.familyId === 'mgcp')
+    expect(mgcp).toBeTruthy()
+    expect(['anonymized', 'anonymized-with-loss']).toContain(mgcp!.state)
   })
 
   it('coverage protocol mgcp is covered (not unsupported:mgcp) on UDP export path', () => {

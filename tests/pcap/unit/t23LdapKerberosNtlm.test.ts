@@ -89,7 +89,7 @@ describe('T23 registry', () => {
     expect(UNSUPPORTED_PROTOCOL_NAMES).not.toContain('kerberos')
     expect(familyForProtocol('ldap').familyId).toBe('directory')
     expect(familyForProtocol('kerberos').familyId).toBe('directory')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

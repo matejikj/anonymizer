@@ -64,7 +64,8 @@ describe('mapping bundle JSON codec', () => {
     const payload = samplePayload()
     const tooManySources = {
       ...payload,
-      sources: Array.from({ length: 9 }, (_, i) => ({ id: `s${i}`, kind: 'text' as const, name: `f${i}.log` })),
+      // T72 raised the session cap to 256 — reject just above it.
+      sources: Array.from({ length: 257 }, (_, i) => ({ id: `s${i}`, kind: 'text' as const, name: `f${i}.log` })),
     }
     const json = JSON.stringify({
       format: MAPPING_BUNDLE_FORMAT,

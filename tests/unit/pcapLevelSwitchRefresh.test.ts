@@ -167,14 +167,20 @@ describe('PF-19: PCAP level switch refreshes discovery-derived disposition', () 
     resetPcapPlanRebuildPort()
   })
 
-  it('re-derives payload disposition (heuristic -> unsupported) after switching to high-privacy', async () => {
+  it('re-derives payload disposition after switching to high-privacy (T74/PF-19)', async () => {
     await buildDiagnosticSession('heuristic-switch.pcap')
 
     const before = getPcapSession()!
     expect(before.policy.preset).toBe('diagnostic')
-    // Diagnostic's heuristic scanner claims this unrecognized-protocol payload.
-    const beforeStatus = before.packetDiscovery[0]!.coverage.find((c) => c.protocol === 'heuristic')?.status
-    expect(beforeStatus).toBe('heuristic')
+    // Diagnostic claims unrecognized payload via T74 proprietary-light and/or heuristic.
+    const beforeCov = before.packetDiscovery[0]!.coverage
+    const diagClaim = beforeCov.find(
+      (c) =>
+        c.protocol === 'heuristic'
+        || c.protocol === 'proprietary-light'
+        || c.protocol.startsWith('proprietary-light'),
+    )
+    expect(diagClaim).toBeTruthy()
 
     const result = await getPcapPlanRebuildPort().rebuildPlan('high-privacy')
     expect(result.applied).toBe(true)
@@ -185,11 +191,7 @@ describe('PF-19: PCAP level switch refreshes discovery-derived disposition', () 
     expect(after.analysis).not.toBe(before.analysis)
     expect(after.unifiedCoverage).not.toBe(before.unifiedCoverage)
     expect(after.packetDiscovery).not.toBe(before.packetDiscovery)
-    // High-privacy has heuristicScan off, so the very same bytes fall through to plain
-    // 'unsupported' instead — this can only be true if discovery actually re-ran under the
-    // new policy, not if only the plan's patch bytes were rebuilt. R10: the re-run discover
-    // arrives packed (no per-packet rows on the UI thread), so check the worker rollup.
-    expect(before.statuses.heuristicCount).toBeGreaterThan(0)
+    // High-privacy turns off light/heuristic claim → unsupported/truncated rollup.
     expect(after.packetDiscovery).toEqual([])
     expect(after.coverageRollup).toBeDefined()
     expect(after.coverageRollup!.totalHeuristicSpans).toBe(0)

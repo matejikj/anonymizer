@@ -65,7 +65,7 @@ describe('T41 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(9092)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(4222)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(12201)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

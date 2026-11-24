@@ -556,6 +556,8 @@ const EXACT: Readonly<Record<string, ProtocolFamilyId>> = {
   heuristic: 'other',
   payload: 'other',
   'processing-failed': 'other',
+  // T74 — light inference over unknown/proprietary payloads (diagnostic)
+  'proprietary-light': 'other',
   'ipproto-112': 'network-headers', // VRRP IP protocol number span
 }
 

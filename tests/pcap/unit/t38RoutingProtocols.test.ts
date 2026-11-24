@@ -92,7 +92,7 @@ describe('T38 registry', () => {
     expect(familyForProtocol('bgp').familyId).toBe('routing')
     expect(familyForProtocol('hsrp').familyId).toBe('routing')
     expect(familyForProtocol('tcp-md5').familyId).toBe('routing')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
     const matrixIds = buildProtocolSupportMatrix().map((r) => r.id)
     expect(matrixIds).toEqual(
       expect.arrayContaining(['ip:ospf', 'ip:eigrp', 'ip:pim', 'ip:igmp', 'llc:isis', 'app:bgp', 'app:rip', 'app:hsrp']),

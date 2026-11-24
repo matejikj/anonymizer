@@ -30,7 +30,7 @@ describe('T34 registry', () => {
   it('registers NULL/LOOP and bumps engine version', () => {
     const ids = listCatalogProtocols().map((p) => p.id)
     expect(ids).toEqual(expect.arrayContaining(['null', 'loop']))
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
     expect(familyForProtocol('null-loop').familyId).toBe('network-headers')
     expect(familyForProtocol('pppoe').familyId).toBe('tunnels')
     expect(familyForProtocol('mpls').familyId).toBe('tunnels')

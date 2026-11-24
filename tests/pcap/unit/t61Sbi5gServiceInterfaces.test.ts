@@ -112,7 +112,7 @@ describe('T61 registry', () => {
     expect(familyForProtocol('sbi5g-n2').familyId).toBe('mobile-core')
     expect(SBI_PINNED_OPERATIONS.length).toBeGreaterThanOrEqual(12)
     expect(SBI_SCHEMA_PIN.release).toBe('REL-18')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
     expect(buildProtocolSupportMatrix().some((r) => r.id === 'app:sbi5g')).toBe(true)
   })
 })

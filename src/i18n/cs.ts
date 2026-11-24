@@ -272,17 +272,19 @@ export const cs = {
     occurrences: 'výskytů',
     masterSwitch: 'Nahradit kategorii ve výstupu',
     entitySwitch: 'Nahradit hodnotu ve výstupu',
-    effectHint: 'Zapnuto = nahradit ve výstupu. Vypnuto = ponechat původní hodnotu.',
+    effectHint:
+      'Zapnuto = kategorie s aliasem. Vypnuto = bez aliasu kategorie; hodnota se stejně nahradí (free-token), originál nikdy.',
     effectHintSet:
       'Přepínače platí jen pro tento textový soubor. Stejná hodnota v PCAP zůstane chráněná.',
     overviewCounts:
-      'Nalezeno {found} · nahrazuje se {replaced} · zůstává původních {kept}',
+      'Nalezeno {found} · s aliasem {replaced} · bez aliasu kategorie {kept}',
     categoryCounts:
-      '{found} nalezených · {replaced} nahrazovaných · {kept} původních · {occs} výskytů',
-    categoryOffHint: 'Kategorie je vypnutá — všechny její hodnoty zůstanou v exportu původní.',
-    partialOff: 'Některé hodnoty jsou vypnuté',
-    valueReplaced: 'nahrazuje se',
-    valueKept: 'ponecháno původní',
+      '{found} nalezených · {replaced} s aliasem · {kept} bez aliasu kategorie · {occs} výskytů',
+    categoryOffHint:
+      'Kategorie je vypnutá — hodnoty se v exportu nahradí bez aliasu kategorie (originál nikdy).',
+    partialOff: 'Některé hodnoty jsou bez aliasu kategorie',
+    valueReplaced: 's aliasem',
+    valueKept: 'bez aliasu kategorie',
     entityBlockedByCategory:
       'Přepínač je zablokovaný, protože je vypnutá celá kategorie. Zapněte kategorii v Přehledu.',
     noFindings:
@@ -488,11 +490,11 @@ export const cs = {
     failed: 'Export se nezdařil',
     blockedHint: 'Export je zablokovaný — opravte selhaná pravidla nebo dokončete analýzu.',
     recomputingHint: 'Export je dočasně nedostupný — právě se přepočítává plán náhrad.',
-    exposedTitle: 'Export s odkrytými hodnotami',
+    exposedTitle: 'Export s mezerami v anonymizaci',
     exposedImpact:
-      'Exportovaný soubor může stále obsahovat citlivé hodnoty, které jste vědomě ponechali odkryté. Sdílejte ho jen s oprávněnými příjemci.',
+      'Část obsahu je skrytá ochranným zásahem — AI ji neuvidí. Export je bezpečný podle aktivní úrovně.',
     exposedDetails: 'Přehled podle kategorií',
-    exportWithExposed: 'Exportovat i s odkrytými hodnotami',
+    exportWithExposed: 'Exportovat',
     stringFallbackWarn:
       'Velký log: kopie může dočasně spotřebovat více paměti. Preferujte stažení .log.',
     clipboardFailed: 'Schránka selhala — připravený výsledek můžete stáhnout.',
@@ -921,7 +923,7 @@ export const cs = {
     overviewLead: (ready: number, review: number) =>
       review === 0
         ? `${ready} ${ready === 1 ? 'soubor je připraven' : ready < 5 ? 'soubory jsou připraveny' : 'souborů je připraveno'} k exportu.`
-        : `${ready} připraveno · ${review} ${review === 1 ? 'vyžaduje kontrolu' : 'vyžadují kontrolu'}`,
+        : `${ready} připraveno · ${review} ${review === 1 ? 'se ještě zpracovává nebo má mezeru' : 'se ještě zpracovává nebo má mezery'}`,
     overviewHint: 'Klikněte na soubor nebo na společnou hodnotu — skočíte rovnou na výskyt.',
     overviewExportHint: 'Vše vypadá v pořádku — můžete exportovat anonymizované soubory.',
     close: 'Zavřít sadu',
@@ -930,22 +932,22 @@ export const cs = {
     toolbarFiles: (files: number) => `${files} ${files === 1 ? 'soubor' : files < 5 ? 'soubory' : 'souborů'}`,
     toolbarShared: (shared: number) => (shared > 0 ? `${shared} společných hodnot` : 'bez společných hodnot'),
     toolbarSharedHint: 'Zobrazit společné hodnoty ve všech souborech',
-    toolbarReady: (allReady: boolean) => (allReady ? 'vše OK' : 'vyžaduje kontrolu'),
+    toolbarReady: (allReady: boolean) => (allReady ? 'vše OK' : 'mezery / nedokončeno'),
     exportFiles: 'Exportovat soubory',
-    exportBlockedNoReady: 'Žádný soubor není připravený k exportu — nejdřív vyřešte problémy v sadě.',
-    readyMessage: (count: number) => `Připraveno ${count} ${count === 1 ? 'soubor' : count < 5 ? 'soubory' : 'souborů'} ke kontrole.`,
+    exportBlockedNoReady: 'Žádný soubor není připravený k exportu — počkejte na dokončení zpracování.',
+    readyMessage: (count: number) => `Připraveno ${count} ${count === 1 ? 'soubor' : count < 5 ? 'soubory' : 'souborů'} k exportu.`,
     summary: (ready: number, review: number) =>
-      `${ready} ${ready === 1 ? 'soubor připraven' : ready < 5 ? 'soubory připraveny' : 'souborů připraveno'} · ${review} ${review === 1 ? 'vyžaduje kontrolu' : review < 5 ? 'vyžadují kontrolu' : 'vyžaduje kontrolu'}`,
-    reviewNextProblem: 'Zkontrolovat problém',
-    problemBannerTitle: 'Problém v sadě',
+      `${ready} ${ready === 1 ? 'soubor připraven' : ready < 5 ? 'soubory připraveny' : 'souborů připraveno'} · ${review} ${review === 1 ? 's mezerou nebo rozpracovaný' : 's mezerami nebo rozpracované'}`,
+    reviewNextProblem: 'Přejít na mezeru',
+    problemBannerTitle: 'Mezera nebo chyba v sadě',
     sourcesNav: 'Soubory v sadě',
     setOverview: 'Přehled sady',
     allSources: (n: number) => `Přehled sady (${n})`,
     sourceSelectLabel: 'Vybrat soubor',
     exportReady: 'Připraveno k exportu',
     exportReadyShort: 'Připraveno',
-    exportBlocked: 'Vyžaduje kontrolu',
-    exportBlockedShort: 'Kontrola',
+    exportBlocked: 'Export dočasně nedostupný',
+    exportBlockedShort: 'Nedostupné',
     sharedValues: (n: number) => `${n} společných hodnot ve více souborech`,
     noSharedValues: 'Soubory jsou nezávislé — export je v pořádku.',
     noSharedValuesDetail:
@@ -976,11 +978,11 @@ export const cs = {
     binaryAliasNote:
       'Binární formát může vyžadovat jinou reprezentaci stejné identity — propojení odpovídá mapě sady.',
     statusReady: 'Připraveno',
-    statusExposed: 'Odkryté',
-    statusBlocked: 'Blokováno',
+    statusExposed: 'Část skryta',
+    statusBlocked: 'Export zablokován',
     statusRebuilding: 'Přepočítává se',
     statusFailed: 'Chyba',
-    statusNeedsReview: 'Vyžaduje kontrolu',
+    statusNeedsReview: 'Rozpracováno',
     statusPending: 'Čeká',
     statusNoFindings: 'Bez nálezů',
     switcherHint: 'Vyberte soubor v liště nad editorem.',
@@ -1513,6 +1515,7 @@ export const cs = {
         'detector-exception': 'výjimka detektoru',
         'patch-length-mismatch': 'nesoulad délky patche',
         'status-mismatch': 'nesoulad stavu pokrytí a patchů',
+        'ledger-unclaimed': 'bajt bez dispozice — automaticky zamaskován',
         unknown: 'neznámá chyba',
       },
       incidentFallback: {
@@ -1598,11 +1601,11 @@ export const cs = {
     /** Stage 6 — unified UX copy catalog for coverage verdicts and actions. */
     coverageUx: {
       verdictSafe: 'Lze bezpečně exportovat podle aktivního profilu',
-      verdictExposed: 'Export je možný, ale data mohou zůstat odkrytá',
+      verdictExposed: 'Export je možný; část obsahu je skrytá — AI ji neuvidí',
       verdictBlocked: 'Export je blokován',
       reasonBlocked: 'Fatální chyba coverage nebo containeru blokuje export.',
-      reasonExposed: 'Profil nebo nepokryté vrstvy mohou ponechat citlivá data.',
-      reasonUnsafeMedia: 'RTP/RTCP média se zachovávají — export není bezpečný.',
+      reasonExposed: 'Část vrstev je skrytá ochranným zásahem — AI ji neuvidí.',
+      reasonUnsafeMedia: 'RTP/RTCP média jsou ošetřená podle úrovně.',
       reasonTruncated: 'Zkráceno {n} payloadů truncation policy.',
       reasonUnsupported: 'Nepodporováno {n} vrstev — obsah skryt podle úrovně.',
       reasonIssues: 'Nalezeno {n} varování integrity.',
@@ -1626,7 +1629,7 @@ export const cs = {
           'Chráněno při exportu, bez plné strukturální analýzy',
         'recognized-truncated-safe': 'Rozpoznáno — vysoké soukromí zkrátí nepodporovaný payload',
         'recognized-risk-diagnostic':
-          'Rozpoznáno — diagnostická úroveň skryje neověřený payload',
+          'Rozpoznáno — diagnostická úroveň skryje neklasifikovaný payload',
         'unsupported-preserved': 'Nepodporováno — při exportu skryto podle úrovně',
         heuristic: 'Heuristicky upraveno a skryto při exportu',
         malformed: 'Poškozená struktura — skryto ochranným zásahem',
@@ -1643,7 +1646,7 @@ export const cs = {
         preserved: 'zachováno',
         truncated: 'zkráceno',
         heuristic: 'heuristicky upraveno',
-        unverifiable: 'neověřitelné',
+        unverifiable: 'nelze doložit',
         blocked: 'blokováno',
       },
       filterActive: 'Aktivní filtry',
@@ -1782,14 +1785,14 @@ export const cs = {
     },
 
     export: {
-      exposedHint: 'Anonymizace je odkrytá — export bude vyžadovat potvrzení.',
+      exposedHint: 'Část obsahu je skrytá — export zůstává bezpečný podle aktivní úrovně.',
       blockedHint: 'Export je blokován kvůli chybám anonymizace nebo containeru.',
       rebuildPendingHint: 'Změna úrovně — probíhá přepočet, export není dostupný.',
       levelMismatchHint: 'Úroveň plánu neodpovídá vybrané — spusťte nový přepočet.',
-      exposedTitle: 'Potvrdit export s rizikem',
+      exposedTitle: 'Export s mezerami',
       exposedImpact:
-        'Aktivní profil může ponechat citlivý obsah. Potvrďte pouze pokud vědomě volíte preserve-unsafe nebo odkrytý režim.',
-      exposedConfirm: 'Potvrdit a exportovat',
+        'Pevné úrovně neponechávají citlivý obsah v exportu. Mezery jsou skryté — AI je neuvidí.',
+      exposedConfirm: 'Exportovat',
       progressRewriting: 'Přepisuji pakety…',
       progressAnonymizing: 'Anonymizuji PCAP',
       progressChecksums: 'Počítám checksumy…',

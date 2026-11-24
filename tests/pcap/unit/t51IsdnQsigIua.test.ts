@@ -192,7 +192,7 @@ describe('T51 registry', () => {
     expect(familyForProtocol('iua').familyId).toBe('isdn')
     expect(familyForProtocol('q931-number').familyId).toBe('isdn')
     expect(SEMANTIC_SERVICE_PORTS.has(9900)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

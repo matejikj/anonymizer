@@ -288,21 +288,21 @@ function sourceNeedsReview(source: CorrelationSourceRecord): boolean {
   return false
 }
 
-/** Stable Czech reason for UI (step 1 problem navigation). */
+/** Stable Czech reason for UI (step 1 problem navigation) — informational, never a call to action. */
 export function sourceProblemReason(source: CorrelationSourceRecord): string {
   if (source.phase === 'failed') {
     return source.errorMessage?.trim() || 'Zpracování tohoto souboru selhalo.'
   }
   if (source.exportState === 'blocked') {
-    return 'Export tohoto souboru je zablokovaný — zkontrolujte anonymizaci.'
+    return 'Export tohoto souboru je zablokovaný (ochranný zásah enginu).'
   }
   if (source.coverageState === 'partial') {
-    return 'Část dat vyžaduje kontrolu před exportem.'
+    return 'U části dat je obsah skrytý — AI ji neuvidí.'
   }
   if (source.phase !== 'planned') {
     return 'Soubor ještě nemá hotový plán anonymizace.'
   }
-  return 'Soubor vyžaduje kontrolu.'
+  return 'Soubor ještě není připravený k exportu.'
 }
 
 export function sourceStatusLabel(source: CorrelationSourceRecord): string {

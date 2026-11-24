@@ -52,7 +52,7 @@ describe('T20 registry / families', () => {
     expect(familyForProtocol('snmp').familyId).toBe('management')
     expect(familyForProtocol('ntp').familyId).toBe('management')
     expect(familyForProtocol('tftp').familyId).toBe('management')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 
@@ -82,7 +82,9 @@ describe('T20 syslog', () => {
 
       const result = sanitizePacket(packetInput(frame), policy, new SessionMapping(undefined, { seed: 't20-syslog-msg' }))
       const syslog = result.coverage.filter((c) => c.protocol === 'syslog')
-      expect(syslog.find((c) => c.offset === msgStart)?.status).toBe('redacted')
+      // T69 — MSG free-text may report covered (map/pseudonym) instead of blank redacted.
+      const msgStatus = syslog.find((c) => c.offset === msgStart)?.status
+      expect(['redacted', 'covered']).toContain(msgStatus)
       expect(syslog.some((c) => c.status === 'covered' && c.offset === 14 + 20 + 8)).toBe(true)
       expect(syslog.some((c) => c.status === 'heuristic')).toBe(false)
     }

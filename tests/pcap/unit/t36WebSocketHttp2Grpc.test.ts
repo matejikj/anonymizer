@@ -56,7 +56,7 @@ describe('T36 registry', () => {
     expect(familyForProtocol('websocket').familyId).toBe('http')
     expect(familyForProtocol('http2').familyId).toBe('http')
     expect(familyForProtocol('grpc').familyId).toBe('http')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 
   it('computes RFC 6455 Accept from Key', () => {

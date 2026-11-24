@@ -75,7 +75,7 @@ describe('T40 registry', () => {
     expect(familyForProtocol('bluetooth-smp').familyId).toBe('wireless')
     expect(familyForProtocol('gsmtap').familyId).toBe('wireless')
     expect(SEMANTIC_SERVICE_PORTS.has(4729)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

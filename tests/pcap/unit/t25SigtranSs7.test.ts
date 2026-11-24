@@ -199,7 +199,7 @@ describe('T25 registry', () => {
     expect(familyForProtocol('sccp').familyId).toBe('mobile-core')
     expect(familyForProtocol('isup').familyId).toBe('mobile-core')
     expect(familyForProtocol('map-imsi').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 
   it('canonicalizes point-code width-stably', () => {

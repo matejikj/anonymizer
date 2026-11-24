@@ -341,7 +341,7 @@ describe('CF-03 media classification', () => {
     }
   });
 
-  it('preserve-unsafe keeps media with visible preserved-unsafe coverage', () => {
+  it('preserve-unsafe mediaPolicy is remapped on fixed levels (T68)', () => {
     const packets = [
       envelopeFromPacket(
         buildEthIpUdp(
@@ -364,11 +364,12 @@ describe('CF-03 media classification', () => {
     };
     const discovery = runDiscoveryPipeline(packets, policy, 'gen', 'pcap');
     expect(discovery.packetDiscovery[1]?.drop).toBe(false);
+    // T68 remaps preserve-unsafe → strip/mask; never leave preserved-unsafe on the wire path.
     expect(
       discovery.packetDiscovery[1]?.coverage.some(
         (c) => c.protocol === 'rtp' && c.status === 'preserved-unsafe',
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('never sends RTP-shaped UDP to heuristic scanner', () => {

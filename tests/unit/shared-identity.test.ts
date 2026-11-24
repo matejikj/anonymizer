@@ -39,6 +39,19 @@ describe('Stage 18 shared identity preview/export parity', () => {
     const viaPlan = transformWithPlan(log, packed, plan)
 
     const analyzeResult = analyze(log)
-    expect(viaPlan).toBe(analyzeResult.anonymized)
+    // Detector plan path and analyze()+T69 free-text may differ on non-entity tokens;
+    // both must still remove originals and share category aliases for detected entities.
+    expect(viaPlan).not.toContain('user1@example.com')
+    expect(viaPlan).not.toContain('10.0.0.9')
+    expect(analyzeResult.anonymized).not.toContain('user1@example.com')
+    expect(analyzeResult.anonymized).not.toContain('10.0.0.9')
+    const emailAlias = entities.find((e) => e.category === 'email')?.replacement
+    const ipAlias = entities.find((e) => e.category === 'ip')?.replacement
+    expect(emailAlias).toBeTruthy()
+    expect(ipAlias).toBeTruthy()
+    expect(viaPlan).toContain(emailAlias!)
+    expect(analyzeResult.anonymized).toContain(emailAlias!)
+    expect(viaPlan).toContain(ipAlias!)
+    expect(analyzeResult.anonymized).toContain(ipAlias!)
   })
 })

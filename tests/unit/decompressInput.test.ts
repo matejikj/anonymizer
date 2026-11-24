@@ -157,23 +157,23 @@ describe('T05 resolveInputFile', () => {
     expect(defaultOutputFileName(result.kind, result.file.name)).toBe('obc2.anonym.log')
   })
 
-  it('rejects zip with actionable Czech message', async () => {
+  it('rejects truncated zip without asking the user to unpack manually (T72/I6)', async () => {
     const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0])
     const result = await resolveInputFile(new File([zip], 'archive.zip'))
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.rejection.code).toBe('compressed-zip')
     expect(result.message).toMatch(/ZIP/i)
-    expect(result.message).toMatch(/Rozbalte/i)
+    expect(result.message).not.toMatch(/rozbalte ručně|rozdělte|nahrajte jednotlivě/i)
   })
 
-  it('rejects nested gzip', async () => {
+  it('accepts nested gzip within nest depth (T72)', async () => {
     const inner = new TextEncoder().encode('nested\n')
     const innerGz = await gzipBytes(inner)
     const outerGz = await gzipBytes(innerGz)
     const result = await resolveInputFile(new File([outerGz], 'nested.log.gz'))
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.rejection.code).toBe('nested-compression')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.kind).toBeDefined()
   })
 })

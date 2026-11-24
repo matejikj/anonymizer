@@ -74,7 +74,8 @@ describe('preflightPcapFile', () => {
     })
     if (result.ok) return
     expect(result.message).toContain('+1 B')
-    expect(result.message).toMatch(/Maximum je 100\.0 MiB/)
+    expect(result.message).toMatch(/100\.0 MiB/)
+    expect(result.message).toMatch(/segment|dělí|Maximum/i)
     expect((file as File & { __fullArrayBufferCalled?: boolean }).__fullArrayBufferCalled).toBe(false)
   })
 

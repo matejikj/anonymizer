@@ -139,7 +139,7 @@ describe('export Krok 9', () => {
     expect(applyPackedLineEndings(lf, endings)).toBe(raw)
   })
 
-  it('disabled match stays original in export snapshot', () => {
+  it('disabled match gets free-token in export snapshot (T71/D4)', () => {
     clearSessionModel()
     const text = 'ip 10.1.1.1 end'
     const session = sessionFromText(text)
@@ -149,7 +149,7 @@ describe('export Krok 9', () => {
     session.plan = buildReplacementPlan(session.packed, session.entities)
     rebuildSessionPlan(session.entities)
     const out = exportAnonymizedReference(getExportPlanSnapshot(session)!)
-    expect(out).toContain('10.1.1.1')
+    expect(out).not.toContain('10.1.1.1')
     expect(session.packed.flags.some((f) => (f & FLAG_ENABLED) === 0)).toBe(true)
   })
 

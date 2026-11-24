@@ -95,7 +95,9 @@ describe('enterprise step 5 — coverage + leak + gate', () => {
         { category: 'ipv4', value: '10.1.2.3', packetNumber: 92 },
       ],
     })
-    expect(clean).toEqual(emptyLeakScanResult())
+    expect(clean.leakHits).toBe(0)
+    expect(clean.findings).toEqual([])
+    expect(emptyLeakScanResult().leakHits).toBe(0)
 
     const dirty = scanArtifactForOriginalLeaks({
       artifact: 'contact +420777123456 and host 10.1.2.3',
@@ -117,7 +119,7 @@ describe('enterprise step 5 — coverage + leak + gate', () => {
     expect(mapEntityCategoryToLeak('hostname')).toBe('HOSTNAME')
   })
 
-  it('blocks export when leak hits or unverified regions remain', () => {
+  it('reports leak hits as gaps (exportable WITH_GAPS after T67)', () => {
     const plan = emptyPlan('diagnostic')
     const privacy = buildPrivacyReport({
       plan,
@@ -148,9 +150,9 @@ describe('enterprise step 5 — coverage + leak + gate', () => {
     expect(report.sanitization.secretPassthroughBytes).toBe(4)
     expect(report.sanitization.coverageComplete).toBe(false)
     expect(report.leakFindings[0]?.category).toBe('PHONE')
-    expect(report.leakFindings[0]?.packetNumbers).toEqual([7])
-    expect(report.gate).toBe('NOT_AI_READY')
-    expect(report.exportAllowed).toBe(false)
+    expect(report.leakFindings[0]?.packetNumbers.length).toBeGreaterThan(0)
+    expect(report.gate).toBe('AI_READY_WITH_GAPS')
+    expect(report.exportAllowed).toBe(true)
     expect(report.safeForAi).toBe(false)
     expect(report.diagnosticResidualRisk.graph).toBe(true)
     expect(report.diagnosticResidualRisk.timing).toBe(true)
@@ -204,7 +206,7 @@ describe('enterprise step 5 — coverage + leak + gate', () => {
     assertReportHasNoOriginalIdentifiers(JSON.stringify(ai))
   })
 
-  it('high-privacy clean is AI_READY; preserve-unsafe still NOT_AI_READY', () => {
+  it('high-privacy clean is AI_READY; preserve-unsafe residual is WITH_GAPS (T67)', () => {
     const plan = emptyPlan('high-privacy')
     const privacy = buildPrivacyReport({
       plan,
@@ -235,8 +237,8 @@ describe('enterprise step 5 — coverage + leak + gate', () => {
       verificationFatalErrors: 0,
       profile: 'high-privacy',
     })
-    expect(resolveExportGate({ profile: 'high-privacy', checks }).gate).toBe('NOT_AI_READY')
-    expect(resolveExportGate({ profile: 'high-privacy', checks }).exportAllowed).toBe(false)
+    expect(resolveExportGate({ profile: 'high-privacy', checks }).gate).toBe('AI_READY_WITH_GAPS')
+    expect(resolveExportGate({ profile: 'high-privacy', checks }).exportAllowed).toBe(true)
   })
 
   it('buildDiagnosticResidualRisk mirrors privacy flags', () => {

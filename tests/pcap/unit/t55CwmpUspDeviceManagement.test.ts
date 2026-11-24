@@ -79,7 +79,7 @@ describe('T55 registry', () => {
     expect(familyForProtocol('cwmp').familyId).toBe('cwmp-usp')
     expect(familyForProtocol('usp-id').familyId).toBe('cwmp-usp')
     expect(SEMANTIC_SERVICE_PORTS.has(7547)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

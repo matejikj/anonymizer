@@ -139,18 +139,19 @@ describe('enterprise step 1 — vocabulary', () => {
       timestampDeltaInvariant: 'PASS' as const,
     }
     expect(resolveExportGate({ profile: 'diagnostic', checks: base }).safeForAi).toBe(true)
+    // T67 — invariant / leak residue → WITH_GAPS, still exportable (fail-closed already applied).
     expect(
       resolveExportGate({
         profile: 'diagnostic',
         checks: { ...base, packetLengthInvariant: 'FAIL' },
       }).gate,
-    ).toBe('NOT_AI_READY')
+    ).toBe('AI_READY_WITH_GAPS')
     expect(
       resolveExportGate({
         profile: 'diagnostic',
         checks: { ...base, leakHits: 1 },
       }).exportAllowed,
-    ).toBe(false)
+    ).toBe(true)
     expect(
       resolveExportGate({
         profile: 'diagnostic',
@@ -222,7 +223,7 @@ describe('enterprise step 1 — export report validity + gate', () => {
     expect(report.safeForAi).toBe(true)
   })
 
-  it('blocks diagnostic when privacy requires unsafe ack without acknowledgement', () => {
+  it('preserved-unsafe residual is WITH_GAPS without requiring user ack (T67/T68)', () => {
     const plan = emptyPlan('diagnostic')
     const privacy = buildPrivacyReport({
       plan,
@@ -250,8 +251,8 @@ describe('enterprise step 1 — export report validity + gate', () => {
       privacy,
       diagnosticPreset: true,
     })
-    expect(report.gate).toBe('NOT_AI_READY')
-    expect(report.exportAllowed).toBe(false)
+    expect(report.gate).toBe('AI_READY_WITH_GAPS')
+    expect(report.exportAllowed).toBe(true)
     expect(report.safeForAi).toBe(false)
   })
 

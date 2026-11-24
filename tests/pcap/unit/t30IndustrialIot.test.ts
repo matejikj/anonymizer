@@ -55,7 +55,7 @@ describe('T30 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(1883)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(502)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(20_000)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

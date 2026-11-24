@@ -134,7 +134,7 @@ describe('T14 application services — contracts', () => {
   })
 
   it(`bumps PCAP_ENGINE_VERSION for Date rewrite (${PCAP_ENGINE_VERSION})`, () => {
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 
@@ -220,7 +220,7 @@ describe('T14 HTTP Date — export pipeline', () => {
       expect(text.includes('sess=secret')).toBe(false)
       expect(dateHeader.includes('*'), `Date header was masked not shifted: ${dateHeader}`).toBe(false)
       expect(text).toMatch(/Date: [A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT/)
-      expect(result.plan.engineVersion).toBe('2.37.0')
+      expect(result.plan.engineVersion).toBe('2.44.0')
     }
   })
 })

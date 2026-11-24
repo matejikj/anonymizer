@@ -57,7 +57,7 @@ describe('T53 registry', () => {
     expect(familyForProtocol('sip-pidf').familyId).toBe('emergency-location')
     expect(familyForProtocol('sip-lost').familyId).toBe('emergency-location')
     expect(familyForProtocol('pidf').familyId).toBe('emergency-location')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

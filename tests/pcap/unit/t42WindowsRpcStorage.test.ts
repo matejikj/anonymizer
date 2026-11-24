@@ -76,7 +76,7 @@ describe('T42 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(3260)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(111)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(2049)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

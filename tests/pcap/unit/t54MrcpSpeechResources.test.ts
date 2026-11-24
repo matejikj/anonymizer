@@ -53,7 +53,7 @@ describe('T54 registry', () => {
     expect(familyForProtocol('mrcp').familyId).toBe('mrcp')
     expect(familyForProtocol('mrcp-body').familyId).toBe('mrcp')
     expect(SEMANTIC_SERVICE_PORTS.has(3242)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

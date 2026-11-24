@@ -60,7 +60,7 @@ describe('T59 registry', () => {
     expect(familyForProtocol('nas-emm').familyId).toBe('mobile-core')
     expect(familyForProtocol('nas-imsi').familyId).toBe('mobile-core')
     expect(familyForProtocol('nas-5gmm').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.44.0')
   })
 })
 

@@ -316,13 +316,13 @@ describe('gate preview never greener than the session statuses', () => {
       profileHash: 'gate',
     })
 
-  it('preserved-unsafe sanitizer coverage → NOT_AI_READY', () => {
+  it('preserved-unsafe sanitizer coverage → AI_READY_WITH_GAPS (T67)', () => {
     const unsafe = sanitizerCoverageForExport([], coverageRollupFromDiscovery(DISCOVERY))
-    expect(vm(unsafe, 'exposed').summary.gateBadge).toBe('NOT_AI_READY')
+    expect(vm(unsafe, 'exposed').summary.gateBadge).toBe('AI_READY_WITH_GAPS')
   })
 
   it('exposed status alone never yields AI_READY', () => {
-    expect(vm(undefined, 'exposed').summary.gateBadge).toBe('NOT_AI_READY')
+    expect(vm(undefined, 'exposed').summary.gateBadge).toBe('AI_READY_WITH_GAPS')
   })
 
   it('clean coverage stays AI_READY', () => {
