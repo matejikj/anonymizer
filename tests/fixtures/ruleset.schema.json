@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rnd-log-anonymizer:schema:ruleset:1",
+  "title": "rnd-log-anonymizer ruleset v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "schemaVersion", "profile"],
+  "properties": {
+    "$schema": {
+      "const": "urn:rnd-log-anonymizer:schema:ruleset:1"
+    },
+    "format": {
+      "const": "rnd-log-anonymizer-ruleset"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "builtins", "settings", "rules"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "builtins": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ip",
+            "hostname",
+            "sip-phone",
+            "email",
+            "person",
+            "user-id",
+            "internal-id"
+          ],
+          "properties": {
+            "ip": { "type": "boolean" },
+            "hostname": { "type": "boolean" },
+            "sip-phone": { "type": "boolean" },
+            "email": { "type": "boolean" },
+            "person": { "type": "boolean" },
+            "user-id": { "type": "boolean" },
+            "internal-id": { "type": "boolean" }
+          }
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hostnameSuffixes", "userIdPrefixes", "internalIdPrefixes"],
+          "properties": {
+            "hostnameSuffixes": {
+              "type": "array",
+              "maxItems": 100,
+              "items": { "type": "string", "minLength": 1, "maxLength": 253 }
+            },
+            "userIdPrefixes": {
+              "type": "array",
+              "maxItems": 50,
+              "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+            },
+            "internalIdPrefixes": {
+              "type": "array",
+              "maxItems": 50,
+              "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+            }
+          }
+        },
+        "rules": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "enabled",
+              "kind",
+              "pattern",
+              "category",
+              "replacement"
+            ],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "enabled": { "type": "boolean" },
+              "kind": { "enum": ["literal", "regex"] },
+              "pattern": { "type": "string", "minLength": 1, "maxLength": 2000 },
+              "caseSensitive": { "type": "boolean" },
+              "wholeWord": { "type": "boolean" },
+              "category": {
+                "enum": [
+                  "ip",
+                  "hostname",
+                  "sip-phone",
+                  "email",
+                  "person",
+                  "user-id",
+                  "internal-id",
+                  "custom"
+                ]
+              },
+              "replacement": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind"],
+                    "properties": { "kind": { "const": "generated" } }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "const": "fixed" },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                    }
+                  }
+                ]
+              },
+              "description": { "type": "string", "maxLength": 1000 },
+              "priority": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,111 @@
+/**
+ * Shared data-view chrome — CodeMirror, packet grids, coverage tables.
+ * Opaque surfaces only. Forensic Bench: 2px left selection rail (not thick fill/glow).
+ */
+
+:root {
+  --data-row-height: 1.75rem;
+  --data-selection-bg: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  --data-hover-bg: color-mix(in srgb, var(--color-ink) 4%, transparent);
+  --data-current-line-bg: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  --data-match-bg: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  /* Original spans to replace — amber exposed, same weight as scrubbed aliases */
+  --data-original-bg: color-mix(in srgb, var(--color-warn) 28%, var(--surface-data));
+  --data-original-outline: color-mix(in srgb, var(--color-warn) 65%, transparent);
+  --data-original-ink: var(--color-warn);
+  /* Scrubbed aliases — forest safe, stronger than selection wash */
+  --data-anon-bg: color-mix(in srgb, var(--color-ok) 28%, var(--surface-data));
+  --data-anon-outline: color-mix(in srgb, var(--color-ok) 65%, transparent);
+  --data-anon-ink: var(--color-ok);
+  --data-focus-ring: var(--focus-ring);
+  --data-gutter-bg: var(--surface-raised);
+  --data-scrollbar-thumb: color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+.surface-data,
+.data-surface,
+.dual-log,
+.packet-grid,
+.coverage-view,
+.cm-editor {
+  background: var(--surface-data);
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.dual-log__editor .cm-editor,
+.pcap-packet-table,
+.pcap-coverage {
+  --cm-row-height: var(--data-row-height);
+}
+
+/* Active line / occurrence — rail + subtle tint */
+.cm-editor .cm-activeLine {
+  background: var(--data-current-line-bg);
+  box-shadow: var(--selection-rail);
+}
+
+.cm-editor .cm-selectionBackground,
+.cm-editor .cm-content ::selection {
+  background: var(--data-selection-bg) !important;
+}
+
+.cm-editor .cm-anon-replacement {
+  background: var(--data-anon-bg);
+  color: var(--data-anon-ink);
+  font-weight: var(--weight-semibold);
+  box-shadow: none;
+  outline: 1px solid var(--data-anon-outline);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.cm-editor .cm-original-match {
+  background: var(--data-original-bg);
+  color: var(--data-original-ink);
+  font-weight: var(--weight-semibold);
+  box-shadow: none;
+  outline: 1px solid var(--data-original-outline);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  animation: none;
+}
+
+.cm-editor .cm-sync-match {
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--surface-data));
+  color: var(--color-accent);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--selection-rail);
+  outline: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-radius: 2px;
+  animation: none;
+}
+
+.cm-editor .cm-sync-line {
+  background: var(--data-selection-bg);
+  box-shadow: var(--selection-rail);
+}
+
+.packet-grid tbody tr:hover,
+.pcap-packet-table tbody tr:hover {
+  background: var(--data-hover-bg);
+}
+
+.packet-grid tbody tr[aria-selected='true'],
+.pcap-packet-table tbody tr[aria-selected='true'] {
+  background: var(--data-selection-bg);
+  box-shadow: var(--selection-rail);
+}
+
+.dual-log__splitter,
+.workspace__splitter {
+  background: var(--color-border-subtle);
+}
+
+.dual-log__editor .cm-scroller::-webkit-scrollbar-thumb,
+.packet-grid::-webkit-scrollbar-thumb {
+  background: var(--data-scrollbar-thumb);
+  border-radius: var(--radius-control);
+}

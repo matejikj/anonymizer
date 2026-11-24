@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "task": "T46",
+  "description": "Sanitized capacity evidence. No originals, aliases, or private paths.",
+  "measuredAt": "2026-10-17",
+  "gitCommitHint": "R10/T46 MAX_SIZE_FULL browser evidence on Darwin; see browserRunBlockers for gaps",
+  "maxSizeFullGate": false,
+  "triBrowserEvidenceComplete": false,
+  "environment": {
+    "nodePolicy": "LTS required in CI",
+    "browsers": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "playwrightBrowsersPath": "./.playwright-browsers",
+    "limitsMiB": {
+      "text": 90,
+      "pcap": 100,
+      "correlation": 200
+    },
+    "nodeVersion": "v22.15.0",
+    "os": "Darwin 27.0.0"
+  },
+  "nodeEngine": {
+    "commands": [
+      "npm run bench:pcap-capacity",
+      "npm run bench:baseline"
+    ],
+    "note": "CPU parse/sanitize/export only — not browser heap/TTI SLA",
+    "publishedSummaryRef": "tests/performance/results/capacity-evidence.json + PCAP-CAPACITY-BENCH when regenerated",
+    "benchBaselineGeneratedAt": "2026-10-17T18:39:04.649Z",
+    "benchBaselineMicroRows": 5,
+    "benchPcapCapacityGeneratedAt": "2026-10-17T19:46:13.471Z"
+  },
+  "browserBudgetBaseline": {
+    "file": "tests/performance/results/max-size-baseline.json",
+    "scenariosCovered": [
+      "text-90mib-lf-default::{chromium,firefox,webkit}",
+      "text-90mib-crlf-production-profile::{chromium,firefox,webkit}",
+      "pcap-100mib-classic-safe::{chromium,firefox,webkit}",
+      "pcap-100mib-pcapng-diagnostic::chromium",
+      "pcap-export-blob-fallback::{chromium,firefox,webkit}",
+      "text-cancel-detection::chromium",
+      "pcap-cancel-load::chromium"
+    ],
+    "regressionPolicy": "fail if wallMs > 1.25× baseline without MAX_SIZE_BASELINE_ALLOW_REGRESSION=1"
+  },
+  "browserRuns": [
+    {
+      "scenario": "pcap-100mib-classic-diagnostic",
+      "browser": "chromium",
+      "wallMs": 20952,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "pcap-100mib-classic-diagnostic",
+      "browser": "webkit",
+      "wallMs": 69839,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "pcap-100mib-pcapng-diagnostic",
+      "browser": "chromium",
+      "wallMs": 20436,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "pcap-cancel-load",
+      "browser": "chromium",
+      "wallMs": 78,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "pcap-export-blob-fallback",
+      "browser": "chromium",
+      "wallMs": 5046,
+      "exportMs": 5046,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "pcap-export-blob-fallback",
+      "browser": "webkit",
+      "wallMs": 8078,
+      "exportMs": 8078,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "text-90mib-crlf-production-profile",
+      "browser": "chromium",
+      "wallMs": 505,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "text-90mib-crlf-production-profile",
+      "browser": "webkit",
+      "wallMs": 256,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "text-90mib-lf-default",
+      "browser": "chromium",
+      "wallMs": 42923,
+      "exportMs": 442,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "text-90mib-lf-default",
+      "browser": "webkit",
+      "wallMs": 98460,
+      "exportMs": 529,
+      "os": "Darwin 27.0.0"
+    },
+    {
+      "scenario": "text-cancel-detection",
+      "browser": "chromium",
+      "wallMs": 598,
+      "os": "Darwin 27.0.0"
+    }
+  ],
+  "browserRunBlockers": [
+    {
+      "scenario": "text-90mib-lf-default",
+      "browser": "firefox",
+      "status": "not_measured"
+    },
+    {
+      "scenario": "text-90mib-crlf-production-profile",
+      "browser": "firefox",
+      "status": "not_measured"
+    },
+    {
+      "scenario": "pcap-100mib-classic-safe",
+      "browser": "firefox",
+      "status": "not_measured"
+    },
+    {
+      "scenario": "pcap-export-blob-fallback",
+      "browser": "firefox",
+      "status": "not_measured"
+    }
+  ],
+  "harnessNotes": [
+    "90 MiB text fixtures must stay under TEXT_INPUT_LIMITS.fileMaxLines (400k); generateMaximumText now sizes filler lines accordingly",
+    "Playwright webServer skips npm run build when dist/index.html exists (MAX_SIZE_FORCE_BUILD=1 to override); foreign WIP tsc errors blocked fresh build during this run",
+    "Collect rows: node scripts/collect-capacity-browser-runs.mjs after release:max-size:ui:full",
+    "Firefox R10 blocker on this host: Playwright firefox-1538 headless fails browserType.launch with sandbox_extension_issue_file_to_process for plugin-container.app (Operation not permitted). Chromium+WebKit fullGate rows collected; firefox remains not_measured."
+  ],
+  "instructions": "After Playwright install, run release:max-size:ui:full and append sanitized {scenario,browser,wallMs,exportMs,os} rows to browserRuns."
+}

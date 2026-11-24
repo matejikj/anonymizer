@@ -1,0 +1,377 @@
+/**
+ * Forensic Bench — foundation token contract
+ * (evolves Clear Glass Operations: same surface stack, product palette retuned).
+ *
+ * Palette story: cold graphite neutrals + signal teal accent (scrub / air-gap),
+ * matte status greens/ambers/reds. No SaaS sky-blue, no purple, no candy cyan.
+ *
+ * Surfaces:
+ *   Canvas → Data (opaque) → Raised → Glass overlay (chrome only)
+ * Glass is FORBIDDEN on editors, packet grids, coverage tables, and long forms.
+ * Local system fonts only — no remote / WOFF2.
+ */
+
+:root {
+  /* ── Typography (local system stacks only) ── */
+  --font-sans:
+    "Segoe UI Variable", "Segoe UI", "SF Pro Text", "SF Pro Display", system-ui, -apple-system,
+    "Helvetica Neue", sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Cascadia Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* Type roles — display / page / section / body / meta / label / mono-data */
+  --text-display: clamp(1.75rem, 3.2vw, 2.25rem);
+  --text-page-title: 1.25rem; /* 20 */
+  --text-section-title: 1.0625rem; /* 17 */
+  --text-title: var(--text-page-title); /* alias */
+  --text-body: 0.9375rem; /* 15 */
+  --text-meta: 0.8125rem; /* 13 */
+  --text-label: 0.6875rem; /* 11 */
+  --text-mono: 0.8125rem; /* 13 — logs, offsets, bytes only */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --line: 1.45;
+  --line-tight: 1.3;
+  --tracking-display: -0.03em;
+  --tracking-title: -0.018em;
+  --tracking-label: 0.05em;
+
+  /* Legacy size aliases */
+  --text-xs: 0.75rem;
+  --text-sm: var(--text-meta);
+  --text-md: var(--text-body);
+  --text-lg: var(--text-section-title);
+  --text-xl: 1.75rem;
+
+  /* Spacing — 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-gutter: var(--space-4);
+  --space-panel-gap: var(--space-3);
+  --space-content-max: 42rem; /* landing / staging / completion */
+
+  /* Geometry — Forensic Bench (tighter instrument radii) */
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-overlay: 10px;
+  --radius-surface: var(--radius-panel);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-overlay);
+
+  /* Density */
+  --control-height-compact: 32px;
+  --control-height-default: 36px;
+  --control-height-comfortable: 40px;
+  --hit-target-min: 40px;
+  --density: compact; /* workspace default; comfortable on landing/dialogs */
+
+  /* PCAP Wireshark workspace — Forensic Bench selection rail */
+  --selection-rail-width: 2px;
+  --selection-rail-color: var(--color-accent);
+  --selection-rail: inset var(--selection-rail-width) 0 0 0 var(--selection-rail-color);
+  --pcap-row-height: 28px;
+  --pcap-selection-bg: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  --pcap-selection-outline: transparent;
+  --pcap-selection-focus: var(--color-accent);
+  --pcap-splitter-size: 8px;
+  --pcap-font-data: var(--font-mono);
+  --pcap-font-data-size: var(--text-mono);
+  --pcap-proto-sip: color-mix(in srgb, var(--color-accent-glow) 10%, transparent);
+  --pcap-proto-dns: color-mix(in srgb, var(--color-ok) 10%, transparent);
+  --pcap-proto-tcp: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  --pcap-proto-udp: color-mix(in srgb, var(--color-warn) 8%, transparent);
+  --pcap-filter-valid: color-mix(in srgb, var(--color-ok) 55%, var(--color-border));
+  --pcap-filter-incomplete: color-mix(in srgb, var(--color-warn) 55%, var(--color-border));
+  --pcap-filter-invalid: color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
+  --pcap-color-rule-fg: inherit;
+  --pcap-color-rule-bg: transparent;
+  --pcap-row-selected-fg: inherit;
+  --pcap-row-selected-bg: var(--pcap-selection-bg);
+  --pcap-row-marked-fg: var(--color-warn);
+  --pcap-row-issue-fg: var(--color-danger);
+  --pcap-row-change-bg: color-mix(in srgb, var(--color-warn) 8%, transparent);
+  --pcap-compare-splitter: 6px;
+  --pcap-pane-border: var(--color-border-subtle);
+
+  /* Icon stroke (outline set) */
+  --icon-stroke: 1.75px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 18px;
+  --icon-size-lg: 20px;
+
+  /* Motion — Forensic Bench clamp 120–160 ms; no bounce on security/error */
+  --motion-fast: 120ms;
+  --motion-default: 140ms;
+  --motion-slow: 160ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Z-index stack */
+  --z-base: 0;
+  --z-sticky: 20;
+  --z-dropdown: 40;
+  --z-drawer: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* Breakpoints (shell-aligned) */
+  --bp-narrow: 899px;
+  --bp-tablet: 1199px;
+  --bp-desktop: 1200px;
+  --bp-wide: 1600px;
+}
+
+/* ── Light — cold graphite bench ── */
+:root,
+[data-theme='light'] {
+  color-scheme: only light;
+
+  /* Ink / graphite neutrals (lab metal — not lilac SaaS gray) */
+  --color-bg: #e3e6ea; /* canvas */
+  --color-bg-elevated: #f8f9fa;
+  --color-bg-muted: #cfd4da;
+  --color-ink: #0c1118;
+  --color-ink-muted: #3d4754;
+  --color-border: #b4bcc6;
+  --color-border-subtle: color-mix(in srgb, var(--color-ink) 14%, transparent);
+  --color-border-interactive: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+
+  /* Product accent — signal teal (scrub / local-only), not cobalt SaaS */
+  --color-accent: #0e5860;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #d2e6e8;
+  --color-accent-glow: #3a969e; /* muted signal LED — not candy cyan */
+  --color-highlight: color-mix(in srgb, var(--color-accent) 18%, #ffffff);
+  --color-highlight-outline: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  --color-focus: #0a4a51;
+
+  /* Semantic — matte lab status, never gradient on verdicts */
+  --color-ok: #1b5f47; /* scrubbed / safe output */
+  --color-ok-soft: #e3f0ea;
+  --color-warn: #6f4e0d; /* exposed / needs review */
+  --color-warn-soft: #f3ebd6;
+  --color-danger: #9a3830; /* blocked / mapping risk */
+  --color-danger-soft: #f5e6e5;
+  --color-neutral: #55606c; /* unverifiable */
+  --color-neutral-soft: #e6e9ec;
+
+  /* Four surface levels */
+  --surface-canvas: var(--color-bg);
+  --surface-data: #f8f9fa; /* opaque data plane */
+  --surface-raised: #eceef1; /* panels / inspector / matte chrome */
+  /* Legacy name: chrome is matte raised (Forensic Bench) — not translucent glass */
+  --surface-glass: var(--surface-raised);
+
+  /* Legacy elevation aliases */
+  --surface-0: var(--surface-canvas);
+  --surface-1: var(--surface-data);
+  --surface-2: var(--surface-raised);
+
+  /* Chrome material — matte instrument (hairline only, no blur/soft drop) */
+  --glass-fill: var(--surface-raised);
+  --glass-border: var(--color-border-subtle);
+  --glass-highlight: none;
+  --glass-blur: 0px;
+  --glass-opacity: 1;
+  --glass-saturate: 1;
+  --glass-backdrop: none;
+  --glass-shadow: none;
+
+  /* Stage 8 semantic aliases — prefer these in components */
+  --text-primary: var(--color-ink);
+  --text-muted: var(--color-ink-muted);
+  --text-inverse: var(--color-accent-ink);
+  --border-default: var(--color-border);
+  --border-subtle: var(--color-border-subtle);
+  --border-interactive: var(--color-border-interactive);
+  --surface-canvas-token: var(--surface-canvas);
+  --surface-data-token: var(--surface-data);
+  --surface-raised-token: var(--surface-raised);
+  --surface-glass-token: var(--surface-glass);
+
+  --shadow-sm: none;
+  --shadow-shell: none;
+  --shadow-float: none;
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--color-focus) 40%, transparent);
+
+  /* Semantic status tokens (text + icon + color required) */
+  --status-safe: var(--color-ok);
+  --status-safe-bg: var(--color-ok-soft);
+  --status-warn: var(--color-warn);
+  --status-warn-bg: var(--color-warn-soft);
+  --status-blocked: var(--color-danger);
+  --status-blocked-bg: var(--color-danger-soft);
+  --status-neutral: var(--color-neutral);
+  --status-neutral-bg: var(--color-neutral-soft);
+}
+
+/* ── Dark — instrument charcoal ── */
+[data-theme='dark'] {
+  color-scheme: only dark;
+
+  --color-bg: #090d11;
+  --color-bg-elevated: #11171e;
+  --color-bg-muted: #1e2a38;
+  --color-ink: #e6ecf1;
+  --color-ink-muted: #8a99a8;
+  --color-border: color-mix(in srgb, var(--color-ink) 20%, transparent);
+  --color-border-subtle: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --color-border-interactive: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
+
+  --color-accent: #6bb8bf;
+  --color-accent-ink: #061012;
+  --color-accent-soft: #123038;
+  --color-accent-glow: #4da3aa;
+  --color-highlight: color-mix(in srgb, var(--color-accent) 28%, #0d1218);
+  --color-highlight-outline: color-mix(in srgb, var(--color-accent) 70%, transparent);
+  --color-focus: #8fd0d6;
+
+  --color-ok: #73ad92;
+  --color-ok-soft: #10241c;
+  --color-warn: #c9a84f;
+  --color-warn-soft: #2a2312;
+  --color-danger: #d49a9a;
+  --color-danger-soft: #2c171b;
+  --color-neutral: #8492a1;
+  --color-neutral-soft: #151c24;
+
+  --surface-canvas: var(--color-bg);
+  --surface-data: #0d1218;
+  --surface-raised: #151c24;
+  --surface-glass: var(--surface-raised);
+
+  --surface-0: var(--surface-canvas);
+  --surface-1: var(--surface-data);
+  --surface-2: var(--surface-raised);
+
+  --glass-fill: var(--surface-raised);
+  --glass-border: var(--color-border-subtle);
+  --glass-highlight: none;
+  --glass-blur: 0px;
+  --glass-opacity: 1;
+  --glass-saturate: 1;
+  --glass-backdrop: none;
+  --glass-shadow: none;
+
+  --shadow-sm: none;
+  --shadow-shell: none;
+  --shadow-float: none;
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--color-focus) 45%, transparent);
+
+  --status-safe: var(--color-ok);
+  --status-safe-bg: var(--color-ok-soft);
+  --status-warn: var(--color-warn);
+  --status-warn-bg: var(--color-warn-soft);
+  --status-blocked: var(--color-danger);
+  --status-blocked-bg: var(--color-danger-soft);
+  --status-neutral: var(--color-neutral);
+  --status-neutral-bg: var(--color-neutral-soft);
+}
+
+/* Matte chrome utility — header / overlays (never on data surfaces) */
+.surface-glass {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  box-shadow: none;
+  border-radius: var(--radius-overlay);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.surface-data {
+  background: var(--surface-data);
+  border-radius: var(--radius-panel);
+  /* Explicitly opaque — no backdrop-filter */
+}
+
+.surface-raised {
+  background: var(--surface-raised);
+  border-radius: var(--radius-panel);
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+}
+
+.surface-canvas {
+  background: var(--surface-canvas);
+}
+
+/* Chrome stays matte even if backdrop-filter is available */
+.app-header,
+.command-strip,
+.ds-command-bar:not(.workspace-chrome),
+.app-toast,
+.popover,
+.first-visit-tour,
+.ds-glass-panel {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Opaque fallback when backdrop-filter is unavailable (chrome is already matte) */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .surface-glass,
+  .app-header,
+  .command-strip,
+  .app-toast,
+  .popover,
+  .first-visit-tour {
+    background: var(--surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .surface-glass,
+  .app-header,
+  .command-strip,
+  .app-toast,
+  .popover,
+  .first-visit-tour {
+    background: var(--surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --glass-blur: 0px;
+    --glass-fill: Canvas;
+    --glass-border: CanvasText;
+    --surface-data: Canvas;
+    --surface-raised: Canvas;
+    --color-ink: CanvasText;
+    --color-accent: Highlight;
+    --status-safe: LinkText;
+    --status-warn: Mark;
+    --status-blocked: Mark;
+  }
+
+  .surface-glass,
+  .app-header,
+  .modal {
+    background: Canvas;
+    border: 1px solid CanvasText;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

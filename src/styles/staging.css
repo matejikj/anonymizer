@@ -1,0 +1,220 @@
+/** Correlation staging (extracted from features.css — DESIGN_MOVES step 9). */
+
+/* Stage 27 — multi-source staging (Forensic Bench: flat rows, content max) */
+.staging-view {
+  display: grid;
+  gap: var(--space-3);
+  max-width: var(--space-content-max);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-gutter);
+}
+
+.staging-view__toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.staging-list__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.staging-list__summary {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-meta);
+}
+
+.staging-list__lead {
+  margin: 0;
+}
+
+.staging-list__limit {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-warn-soft);
+  color: var(--color-warn-ink);
+}
+
+.staging-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.staging-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-data);
+  box-shadow: none;
+}
+
+.staging-row--highlight {
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--color-warn) 45%, var(--color-border-subtle));
+  background: var(--color-warn-soft);
+}
+
+.staging-row--error {
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border-subtle));
+}
+
+.staging-row__main {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.staging-row__status {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.staging-row__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.staging-row__name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-semibold);
+}
+
+.staging-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-meta);
+}
+
+.staging-row__error,
+.staging-row__warn {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-meta);
+}
+
+.staging-row__warn {
+  color: var(--color-warn-ink);
+}
+
+.staging-row__remove {
+  flex-shrink: 0;
+}
+
+.staging-banner {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border-subtle);
+  font-size: var(--text-meta);
+  background: var(--surface-data);
+  box-shadow: none;
+}
+
+.staging-banner--ok {
+  background: var(--color-ok-soft);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, var(--color-border));
+}
+
+.staging-banner--warn {
+  background: var(--color-warn-soft);
+  border-color: var(--color-warn);
+}
+
+.staging-banner__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-tight);
+}
+
+.staging-banner__body,
+.staging-banner__hint {
+  margin: 0 0 var(--space-2);
+}
+
+.staging-banner__impact {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-meta);
+}
+
+.staging-banner__impact--muted {
+  color: var(--color-ink-muted);
+}
+
+.staging-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.staging-banner__options {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.staging-view__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.staging-view__primary {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: end;
+}
+
+.staging-view__defaults {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-meta);
+}
+
+.staging-view__blocked {
+  margin: 0;
+  color: var(--color-warn);
+  font-size: var(--text-meta);
+  max-width: 22rem;
+  text-align: right;
+}
+
+.staging-view__error {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+.staging-view__done {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-ok-soft);
+}
+
+.staging-view__advanced {
+  font-size: var(--text-meta);
+  color: var(--color-ink-muted);
+}
+

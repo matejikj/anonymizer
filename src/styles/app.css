@@ -1,0 +1,21 @@
+/**
+ * Clear Glass Operations — style entry (Stage 8 cascade order).
+ * Do not add rules here; extend the layer files.
+ * Feature domains were split in DESIGN_MOVES step 9 — keep import order stable.
+ */
+@import './tokens.css';
+@import './foundations.css';
+@import './base.css';
+@import './shell.css';
+@import './workspace-layout.css';
+@import './primitives.css';
+@import './patterns.css';
+@import './design-system.css';
+@import './progress-splash.css';
+@import './data-view.css';
+@import './pcap-features.css';
+@import './staging.css';
+@import './corr-workspace.css';
+@import './corr-export-completion.css';
+@import './resolve-features.css';
+@import './features.css';

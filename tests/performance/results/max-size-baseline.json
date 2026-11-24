@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "Approved max-size browser gate baselines (micro-fixture smoke). Update only with explicit review.",
+  "scenarios": {
+    "text-90mib-lf-default::chromium": { "wallMs": 120000, "exportMs": 8000 },
+    "text-90mib-lf-default::firefox": { "wallMs": 150000, "exportMs": 10000 },
+    "text-90mib-lf-default::webkit": { "wallMs": 150000, "exportMs": 10000 },
+    "text-90mib-crlf-production-profile::chromium": { "wallMs": 130000 },
+    "text-90mib-crlf-production-profile::firefox": { "wallMs": 160000 },
+    "text-90mib-crlf-production-profile::webkit": { "wallMs": 160000 },
+    "pcap-100mib-classic-safe::chromium": { "wallMs": 180000 },
+    "pcap-100mib-classic-safe::firefox": { "wallMs": 220000 },
+    "pcap-100mib-classic-safe::webkit": { "wallMs": 220000 },
+    "pcap-100mib-pcapng-diagnostic::chromium": { "wallMs": 200000 },
+    "pcap-export-blob-fallback::chromium": { "exportMs": 60000 },
+    "pcap-export-blob-fallback::firefox": { "exportMs": 90000 },
+    "pcap-export-blob-fallback::webkit": { "exportMs": 90000 },
+    "text-cancel-detection::chromium": { "wallMs": 1500 },
+    "pcap-cancel-load::chromium": { "wallMs": 1500 }
+  }
+}

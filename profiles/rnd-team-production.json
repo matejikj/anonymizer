@@ -1,0 +1,542 @@
+{
+  "$schema": "urn:rnd-log-anonymizer:schema:ruleset:1",
+  "format": "rnd-log-anonymizer-ruleset",
+  "schemaVersion": 2,
+  "profile": {
+    "id": "rnd-team-production",
+    "name": "RND Team — Production (Maximální Bezpečnost + Debugovatelnost)",
+    "description": "Jediný profil určený pro produkci. Anonymizuje VŠE citlivého (IPs, emaily, hesla, klíče, jména, porty, verze, UUIDs, ...) ale ZACHOVÁVÁ Java stack traces a strukturu kódu pro debugging. Deterministic replacement zajišťuje konzistenci a možnost sledovat entitu přes log.",
+    "builtins": {
+      "ip": true,
+      "hostname": true,
+      "sip-phone": true,
+      "email": true,
+      "person": true,
+      "user-id": true,
+      "internal-id": true,
+      "port": true
+    },
+    "settings": {
+      "hostnameSuffixes": [
+        ".example.invalid",
+        ".example.internal",
+        ".example.com",
+        ".local",
+        ".cz",
+        ".com",
+        ".org",
+        ".eu",
+        ".net"
+      ],
+      "userIdPrefixes": [
+        "disp",
+        "user",
+        "admin",
+        "svc-",
+        "operator",
+        "dispatcher",
+        "emp",
+        "employee"
+      ],
+      "internalIdPrefixes": [
+        "MP_",
+        "GRP_",
+        "RF_",
+        "AG_",
+        "CALL_",
+        "TERM_",
+        "SESSION_",
+        "CHAN_"
+      ]
+    },
+    "rules": [
+      {
+        "id": "ipv4-all",
+        "name": "IPv4 Address — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b",
+        "caseSensitive": false,
+        "category": "ip",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Any IPv4 address",
+        "priority": 10000
+      },
+      {
+        "id": "ipv6-all",
+        "name": "IPv6 Address — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4})",
+        "caseSensitive": false,
+        "category": "ip",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "IPv6 addresses",
+        "priority": 9999
+      },
+      {
+        "id": "email-all",
+        "name": "Email Address — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*",
+        "caseSensitive": false,
+        "category": "email",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Any email address",
+        "priority": 9998
+      },
+      {
+        "id": "sip-uri-all",
+        "name": "SIP URI — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "sip:[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+(:[0-9]{1,5})?",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "SIP URIs",
+        "priority": 9997
+      },
+      {
+        "id": "phone-e164",
+        "name": "Phone — E.164",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\+[1-9]\\d{1,14}",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Phone numbers E.164",
+        "priority": 9996
+      },
+      {
+        "id": "phone-generic",
+        "name": "Phone — Generic Formats",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:\\+?\\d{1,3}[-.]?)?\\(?\\d{3}\\)?[-.]?\\d{3}[-.]?\\d{4}",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Phone numbers various formats",
+        "priority": 9995
+      },
+      {
+        "id": "uuid-all",
+        "name": "UUID — All Formats",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "UUIDs",
+        "priority": 9994
+      },
+      {
+        "id": "mac-address-all",
+        "name": "MAC Address — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "MAC addresses",
+        "priority": 9993
+      },
+      {
+        "id": "jwt-token-all",
+        "name": "JWT Token — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "[JWT-TOKEN]"
+        },
+        "description": "JWT tokens",
+        "priority": 9992
+      },
+      {
+        "id": "password-field-all",
+        "name": "Password Field — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Pp]assword|pwd|passwd)\\s*[=:]\\s*([^\\s,;}]+)",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "password=[REDACTED]"
+        },
+        "description": "Password fields",
+        "priority": 9991
+      },
+      {
+        "id": "api-key-all",
+        "name": "API Key/Token — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Aa]pi[_-]?[Kk]ey|[Tt]oken|[Aa]uth|[Cc]redentials)\\s*[=:]\\s*([\\w\\-._]+)",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "[REDACTED]"
+        },
+        "description": "API keys, tokens, credentials",
+        "priority": 9990
+      },
+      {
+        "id": "database-connection-all",
+        "name": "Database Connection String",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Jj]dbc:[a-zA-Z]+://[^/]+/[^;\\s]+)",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "jdbc:[db-type]://[redacted]/[database]"
+        },
+        "description": "JDBC connection strings",
+        "priority": 9989
+      },
+      {
+        "id": "http-url-all",
+        "name": "HTTP/HTTPS URL",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "https?://[a-zA-Z0-9._-]+(?::[0-9]{1,5})?(?:/[a-zA-Z0-9._-]*)*",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "[URL-REDACTED]"
+        },
+        "description": "HTTP/HTTPS URLs",
+        "priority": 9988
+      },
+      {
+        "id": "port-all",
+        "name": "Port Number — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": ":[0-9]{4,5}\\b",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": ":[PORT]"
+        },
+        "description": "Port numbers",
+        "priority": 9987
+      },
+      {
+        "id": "version-semver-all",
+        "name": "Semantic Version — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\b[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.]+)?(?:\\+[A-Za-z0-9.]+)?\\b",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "X.Y.Z"
+        },
+        "description": "Version numbers",
+        "priority": 9986
+      },
+      {
+        "id": "session-id-all",
+        "name": "Session/Call ID — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Ss]ession[_-]?[Ii]d|[Cc]all[_-]?[Ii]d)\\s*[=:]\\s*([a-fA-F0-9\\-_]{8,})",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Session and Call IDs (deterministic)",
+        "priority": 9985
+      },
+      {
+        "id": "request-id-all",
+        "name": "Request/Transaction ID — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Rr]equest[_-]?[Ii]d|[Tt]ransaction[_-]?[Ii]d|traceId|requestId)\\s*[=:]\\s*([a-fA-F0-9\\-_]{8,})",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Request/Transaction IDs (deterministic)",
+        "priority": 9984
+      },
+      {
+        "id": "hostname-in-error-msg",
+        "name": "Hostname in Error Messages",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\(host[_-]?[0-9]+\\.example\\.(?:invalid|internal|com)(?:\\([^)]*\\))?\\)",
+        "caseSensitive": false,
+        "category": "hostname",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Hostname in error messages like (host-22.example.invalid)",
+        "priority": 9980
+      },
+      {
+        "id": "hostname-quoted",
+        "name": "Hostname in Quotes",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "['\"](?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+)['\"]",
+        "caseSensitive": false,
+        "category": "hostname",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Hostnames in quotes",
+        "priority": 9979
+      },
+      {
+        "id": "dispatcher-id-all",
+        "name": "Dispatcher ID — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\bdisp[0-9]{1,4}\\b",
+        "caseSensitive": false,
+        "category": "user-id",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Dispatcher IDs (deterministic)",
+        "priority": 9970
+      },
+      {
+        "id": "username-pattern-all",
+        "name": "Username/Login — All",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Uu]ser|[Uu]sername|[Ll]ogin)\\s*[=:]\\s*['\"]?([a-zA-Z0-9._-]+)['\"]?",
+        "caseSensitive": false,
+        "category": "user-id",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Usernames and logins (deterministic)",
+        "priority": 9960
+      },
+      {
+        "id": "tenant-id-mp-all",
+        "name": "Tenant ID — MP Prefix",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\bMP_[A-Za-z0-9_]{2,}\\b",
+        "caseSensitive": true,
+        "category": "internal-id",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Tenant identifiers (deterministic)",
+        "priority": 9950
+      },
+      {
+        "id": "internal-id-prefix-all",
+        "name": "Internal ID — All Prefixes",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\b(?:GRP|RF|AG|CALL|TERM|SESSION|CHAN|DEV|CONFIG|AUTO|NORMAL|ACTIVE|IDLE|ID|REF)_[A-Za-z0-9_]{2,}\\b",
+        "caseSensitive": true,
+        "category": "internal-id",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Internal identifiers with standard prefixes (deterministic)",
+        "priority": 9940
+      },
+      {
+        "id": "specific-logout-msg",
+        "name": "Logout Message",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "Logout\\s+terminal:\\s+'([^']+)'\\s+with\\s+user\\s+login:\\s+'([^']+)'",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "Logout terminal: '[TERM]' with user login: '[USER]'"
+        },
+        "description": "Logout pattern from source code",
+        "priority": 8000
+      },
+      {
+        "id": "specific-login-msg",
+        "name": "Login Message",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "Login\\s+terminal:\\s+'([^']+)'\\s+with\\s+user\\s+login:\\s+'([^']+)'",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "Login terminal: '[TERM]' with user login: '[USER]'"
+        },
+        "description": "Login pattern from source code",
+        "priority": 7990
+      },
+      {
+        "id": "callid-pattern-all",
+        "name": "Call ID Pattern",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "callId=['\"]?([^'\"\\s,;]+)['\"]?",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "callId= patterns (deterministic)",
+        "priority": 7980
+      },
+      {
+        "id": "domain-id-pattern-all",
+        "name": "Domain ID Pattern",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "domain\\s+id=['\"]?([^'\"\\s,;]+)['\"]?",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "domain id= patterns (deterministic)",
+        "priority": 7970
+      },
+      {
+        "id": "base64-long-string",
+        "name": "Base64 Long String",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "\\b(?:[A-Za-z0-9+/]{40,}={0,2})\\b",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "[BASE64-DATA]"
+        },
+        "description": "Long base64-encoded strings (potential secrets)",
+        "priority": 7950
+      },
+      {
+        "id": "file-path-absolute",
+        "name": "File Path — Absolute",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[A-Z]:\\\\(?:[a-zA-Z0-9._-]+\\\\)*[a-zA-Z0-9._-]*|\\/(?:[a-zA-Z0-9._-]+\\/)*[a-zA-Z0-9._-]*)",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "fixed",
+          "value": "[PATH-REDACTED]"
+        },
+        "description": "Absolute file paths",
+        "priority": 7940
+      },
+      {
+        "id": "certificate-serial-all",
+        "name": "Certificate Serial",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Ss]erial(?:\\s+[Nn]umber)?|[Ss]ubject)\\s*[=:]\\s*([a-fA-F0-9:]{20,})",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "SSL certificate serials and subjects",
+        "priority": 7930
+      },
+      {
+        "id": "terminal-id-pattern-all",
+        "name": "Terminal ID Pattern",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Tt]erminal|[Dd]evice)[_-]?[Ii]d\\s*[=:]\\s*([a-zA-Z0-9._-]+)",
+        "caseSensitive": false,
+        "category": "hostname",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Terminal/device IDs (deterministic)",
+        "priority": 7920
+      },
+      {
+        "id": "machine-name-pattern-all",
+        "name": "Machine/Server Name",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Mm]achine|[Ss]erver)[_-]?[Nn]ame\\s*[=:]\\s*['\"]?([a-zA-Z0-9._-]+)['\"]?",
+        "caseSensitive": false,
+        "category": "hostname",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Machine/server names (deterministic)",
+        "priority": 7910
+      },
+      {
+        "id": "channel-number-pattern-all",
+        "name": "Channel Number",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Cc]hannel|[Cc]h)[\\s:=]+(\\d{1,4})",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Channel numbers (deterministic)",
+        "priority": 7900
+      },
+      {
+        "id": "slot-number-pattern-all",
+        "name": "Slot/Timeslot Number",
+        "enabled": true,
+        "kind": "regex",
+        "pattern": "(?:[Ss]lot|[Tt]imeslot|[Tt]s)[\\s:=]+(\\d{1,2})",
+        "caseSensitive": false,
+        "category": "custom",
+        "replacement": {
+          "kind": "generated"
+        },
+        "description": "Slot numbers (deterministic)",
+        "priority": 7890
+      }
+    ]
+  }
+}

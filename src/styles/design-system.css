@@ -1,0 +1,384 @@
+/**
+ * Forensic Bench — design-system surfaces.
+ * Matte chrome; glass/blur forbidden on DataSurface and shell.
+ * Button / IconButton visual contract lives in primitives.css (flat instrument).
+ */
+
+.ds-data-surface {
+  background: var(--surface-data);
+  border-radius: var(--radius-panel);
+  color: var(--text-primary);
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.ds-raised-panel {
+  background: var(--surface-raised);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+.ds-glass-panel {
+  /* Legacy class: matte chrome (Forensic Bench) */
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-overlay);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--text-primary);
+}
+
+.ds-card {
+  background: var(--surface-raised);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--border-subtle);
+  padding: var(--space-4);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.ds-inspector {
+  background: var(--surface-raised);
+  border-left: 1px solid var(--border-subtle);
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-command-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-default);
+  padding: var(--space-2) var(--space-gutter);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.ds-command-bar__context,
+.ds-command-bar__status,
+.ds-command-bar__tools,
+.ds-command-bar__primary,
+.ds-command-bar__overflow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ds-command-bar__primary {
+  margin-inline-start: auto;
+}
+
+.ds-command-bar__overflow {
+  position: relative;
+}
+
+/* DESIGN_MOVES step 2 — shared file-level chrome (text + PCAP). */
+.workspace-chrome.ds-command-bar,
+.workspace-chrome {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--surface-2);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  min-height: auto;
+  position: relative;
+  top: auto;
+  flex-shrink: 0;
+}
+
+.workspace-chrome__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.workspace-chrome__file {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-muted);
+}
+
+.workspace-chrome__stats {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.workspace-chrome__nav,
+.workspace-chrome__layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.workspace-chrome .ds-command-bar__tools {
+  gap: var(--space-2);
+}
+
+.workspace-chrome__nav {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--color-border);
+}
+
+.workspace-chrome--embedded .ds-command-bar__tools .workspace-chrome__nav:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.workspace-chrome__nav-label {
+  font-size: var(--text-meta);
+  font-weight: var(--weight-semibold);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.workspace-chrome__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.workspace-chrome .ds-command-bar__primary .workspace-chrome__actions {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--color-border);
+}
+
+.workspace-chrome .security-chip {
+  flex-shrink: 1;
+  max-width: 16rem;
+}
+
+.ds-empty-state,
+.ds-error-state,
+.ds-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  max-width: var(--space-content-max);
+  margin-inline: auto;
+  padding: var(--space-5) var(--space-gutter);
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.ds-empty-state__title,
+.ds-error-state__title,
+.ds-loading-state__title {
+  margin: 0;
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+}
+
+.ds-empty-state__body,
+.ds-error-state__body,
+.ds-loading-state__body {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-body);
+}
+
+.ds-file-row,
+.ds-entity-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--data-row-height, 1.75rem);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.ds-file-row:hover,
+.ds-entity-row:hover {
+  background: var(--data-hover-bg, color-mix(in srgb, var(--color-ink) 4%, transparent));
+}
+
+.ds-file-row[aria-selected='true'],
+.ds-entity-row[aria-selected='true'],
+.ds-file-row.is-selected,
+.ds-entity-row.is-selected {
+  background: var(--data-selection-bg, color-mix(in srgb, var(--color-accent) 8%, transparent));
+  box-shadow: var(--selection-rail);
+}
+
+.ds-file-row__name,
+.ds-entity-row__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-file-row__meta,
+.ds-entity-row__meta {
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-export-summary {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-panel);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+}
+
+.ds-export-summary__section + .ds-export-summary__section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.ds-status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ds-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.status-glyph {
+  display: inline-flex;
+  align-items: center;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ds-glass-panel,
+  .ds-command-bar {
+    background: var(--surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ds-glass-panel,
+  .ds-command-bar {
+    background: var(--surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .ds-glass-panel,
+  .ds-command-bar,
+  .ds-raised-panel,
+  .ds-card {
+    background: Canvas;
+    border: 1px solid CanvasText;
+    backdrop-filter: none;
+  }
+}
+
+/* Gallery — Forensic Bench chrome demo (step 8) */
+.gallery-bench-menubar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
+  box-shadow: none;
+}
+
+.gallery-bench-menubar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.gallery-bench-menubar__privacy {
+  display: inline-flex;
+  color: var(--color-ink-muted);
+}
+
+.gallery-bench-menubar__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-inline: auto;
+}
+
+.gallery-bench-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border-subtle);
+}
+
+.gallery-bench-dot--active {
+  background: var(--color-accent);
+}
+
+.gallery-bench-menubar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.gallery-bench-row {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+}
+
+.gallery-bench-row:last-child {
+  border-bottom: none;
+}
+
+.gallery-bench-row--selected {
+  background: var(--data-selection-bg, color-mix(in srgb, var(--color-accent) 8%, transparent));
+  box-shadow: var(--selection-rail);
+}
+
+.gallery-bench-row--hover {
+  background: color-mix(in srgb, var(--color-ink-muted) 6%, transparent);
+}

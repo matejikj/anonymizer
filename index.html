@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="rnd-log-anonymizer — lokální anonymizace logů. Obsah logu neopustí prohlížeč."
+    />
+    <title>rnd-log-anonymizer</title>
+    <script>
+      /* Avoid flash before React: resolve rnd-log-anonymizer:pref:theme → data-theme. */
+      (function () {
+        try {
+          var raw = localStorage.getItem('rnd-log-anonymizer:pref:theme')
+          var pref = raw ? JSON.parse(raw) : 'system'
+          var dark =
+            pref === 'dark' ||
+            (pref !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,88 @@
+# Dependencies & build
+node_modules
+dist
+dist-ssr
+*.local
+.playwright-browsers
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+credentials.json
+secrets/
+
+# Private / non-synthetic captures & sample dumps (never commit real traffic)
+files/*
+!files/.gitkeep
+*.pcap
+*.pcapng
+*.cap
+*.sensitive.local.json
+dt-pcap.sensitive.local.json
+
+# Logs — never commit (runtime, fixtures, templates, package managers)
+*.log
+**/*.log
+logs/*
+!logs/.gitkeep
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.out
+nohup.out
+*.log.*
+*.log.gz
+*.log.zip
+
+
+# Release artifacts generated locally
+release/sbom.cdx.json
+release/SHA256SUMS
+release/SHA256SUMS.asc
+release/release-manifest.json
+
+# Test runners & generated fixtures
+test-results
+playwright-report
+tests/performance/fixtures/
+tests/performance/results/**
+!tests/performance/results/.gitkeep
+!tests/performance/results/max-size-baseline.json
+!tests/performance/results/capacity-evidence.json
+tests/pcap/bench/results/
+tests/pcap/fixtures/fuzz-corpus/
+tests/pcap/fixtures/generated/
+tests/e2e/fixtures/*
+!tests/e2e/fixtures/.gitkeep
+tests/performance/*-REPORT.md
+
+# Obsolete construction / internal docs (do not re-commit)
+ANONYMIZER.md
+docs/
+tasks/
+*.REPORT.md
+ACCEPTANCE-*.md
+IMPLEMENTATION-*.md
+FINDINGS-*.md
+PROTOCOL-REVIEW.md
+PROTOCOL-IMPLEMENTATION-CONTRACT.md
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.cursor/

@@ -1,0 +1,138 @@
+/** Base reset + type + elevation (Stage 8). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--line);
+  color: var(--color-ink);
+  background: var(--surface-0);
+}
+
+/* Type roles — single source (DESIGN_MOVES step 4). Prefer these over ad-hoc font-size. */
+.type-display {
+  font-size: var(--text-display);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--line-tight);
+}
+
+.type-page-title,
+.type-title {
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-title);
+  line-height: var(--line-tight);
+}
+
+.type-section-title {
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-tight);
+}
+
+.type-body {
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--line);
+}
+
+.type-meta {
+  font-size: var(--text-meta);
+  font-weight: var(--weight-regular);
+  color: var(--color-ink-muted);
+  letter-spacing: 0;
+  line-height: var(--line);
+}
+
+.type-label {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.type-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  font-weight: var(--weight-regular);
+  line-height: var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Elevation helpers (map existing chrome in Krok 1; layout rewrite is Krok 2) */
+.surface-0 {
+  background: var(--surface-0);
+}
+
+.surface-1 {
+  background: var(--surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-surface);
+}
+
+.surface-card {
+  background: var(--surface-1);
+  border: 0;
+  border-radius: var(--radius-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-2 {
+  background: var(--surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--shadow-float);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: 0;
+  z-index: 20;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-elevated);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transform: translateY(-120%);
+  transition: transform 120ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(var(--space-3));
+}

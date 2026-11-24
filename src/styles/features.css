@@ -1,0 +1,177 @@
+/** Feature leftovers: shared chips and cross-cutting bits (DESIGN_MOVES step 9). */
+
+@keyframes pcap-progress-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pcap-progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pcap-progress-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes pcap-progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes pcap-progress-tip {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mapping bundle browse & search — styles live in resolve-features.css */
+
+
+.btn--tiny {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+.command-strip__scope {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.app-header__detection-lead {
+  margin: 0 0 0.35rem;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  max-width: 28rem;
+}
+
+.app-header__detection-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+}
+
+.app-header__detection-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.app-header__detection-scope-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-ink-muted);
+}
+
+.file-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-control);
+  background: var(--color-bg-muted);
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-chip__icon {
+  flex-shrink: 0;
+}
+
+.status-chip--compact {
+  padding: 0.25rem;
+}
+
+.status-chip--compact .status-chip__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.status-chip--ok {
+  background: var(--color-ok-soft);
+  color: var(--color-ok);
+}
+
+.status-chip--warn {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+}
+
+.status-chip--error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.status-chip--duplicate {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+}
+
+.status-chip--active {
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--surface-1));
+  color: var(--color-accent);
+}
+
+.status-chip--waiting {
+  background: var(--surface-2);
+  color: var(--color-ink-muted);
+}
+
+@keyframes corr-completion-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

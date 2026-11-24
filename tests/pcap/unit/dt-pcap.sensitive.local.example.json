@@ -1,0 +1,12 @@
+{
+  "strings": [
+    "DISP UNIT15",
+    "DISPUNIT15",
+    "RADIO2",
+    "EXAMPLE-AGENT-1.0.0"
+  ],
+  "ips": [
+    [10, 230, 0, 10],
+    [10, 230, 0, 20]
+  ]
+}

@@ -1,0 +1,308 @@
+/**
+ * Forensic Bench — shell foundations.
+ * Applies the token contract to chrome / layout only.
+ */
+
+/* Density modes on shell */
+.app-shell[data-density='comfortable'] {
+  --control-height: var(--control-height-comfortable);
+  --space-gutter: var(--space-5);
+}
+
+.app-shell,
+.app-shell[data-density='compact'] {
+  --control-height: var(--control-height-compact);
+}
+
+.app-shell[data-density='default'] {
+  --control-height: var(--control-height-default);
+}
+
+/* Header = matte instrument menubar */
+.app-header {
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  z-index: var(--z-sticky);
+  min-height: 44px;
+  max-height: 48px;
+  padding: 0 var(--space-gutter);
+  gap: var(--space-2);
+}
+
+.app-header__privacy-pill,
+.app-header__privacy {
+  color: var(--color-ink-muted);
+}
+
+/* Data plane stays opaque */
+.app-main,
+.workspace,
+.dual-log,
+.pcap-workspace,
+.coverage-view,
+.packet-grid,
+.cm-editor,
+.editor-pane {
+  background: var(--surface-data);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app-main {
+  background: var(--surface-canvas);
+  min-height: 0;
+}
+
+/* Landing / empty — denser, not sparse */
+.empty {
+  max-width: var(--space-content-max);
+  margin-inline: auto;
+  padding: var(--space-5) var(--space-gutter) var(--space-6);
+  gap: var(--space-4);
+}
+
+.empty__intro h1,
+.empty__intro .type-page-title {
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-title);
+  line-height: var(--line-tight);
+  color: var(--color-ink);
+}
+
+.empty__lead {
+  font-size: var(--text-meta);
+  color: var(--color-ink-muted);
+  max-width: 36rem;
+}
+
+/* Forensic Bench step 3 — hero dropzone = raised opaque + hairline (no glass, no badges). */
+.dropzone--hero {
+  border-radius: var(--radius-panel);
+  background: var(--surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  padding: var(--space-5);
+  min-height: 8.5rem;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition:
+    border-color var(--motion-default) var(--ease-standard),
+    background var(--motion-default) var(--ease-standard);
+}
+
+.dropzone--hero.dropzone--active,
+.dropzone--hero:focus-visible {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent-soft) 55%, var(--surface-raised));
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-theme='dark'] .dropzone--hero {
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropzone--hero {
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+
+  .dropzone--hero.dropzone--active {
+    transform: none;
+  }
+}
+
+/* Command strip — sticky matte chrome */
+.command-strip,
+.workspace-command-strip,
+.pcap-command-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-default);
+  padding: var(--space-2) var(--space-gutter);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.command-strip__primary,
+.workspace-command-strip__export,
+.pcap-command-bar__export {
+  margin-inline-start: auto;
+}
+
+/* Long-form overlays stay opaque raised (WCAG); chrome is matte too. */
+.modal,
+.help-panel,
+.docs-panel,
+.dialog {
+  background-color: var(--surface-data);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  border-radius: var(--radius-overlay);
+  isolation: isolate;
+  opacity: 1;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-theme='dark'] .modal,
+[data-theme='dark'] .help-panel,
+[data-theme='dark'] .docs-panel,
+[data-theme='dark'] .dialog {
+  background-color: var(--color-bg-elevated);
+}
+
+.modal {
+  z-index: var(--z-modal);
+}
+
+.help-panel,
+.docs-panel {
+  z-index: var(--z-drawer);
+}
+
+.toast,
+.app-toast,
+.popover,
+.first-visit-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  border-radius: var(--radius-overlay);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.app-toast {
+  z-index: var(--z-toast);
+}
+
+/* State matrix — interactive + semantic (text + icon + color) */
+[data-state='default'],
+[data-state='hover'],
+[data-state='active'],
+[data-state='focus'],
+[data-state='disabled'],
+[data-state='loading'],
+[data-state='error'],
+[data-state='success'],
+[data-state='warning'],
+[data-state='empty'] {
+  transition:
+    background-color var(--motion-default) var(--ease-standard),
+    border-color var(--motion-default) var(--ease-standard),
+    color var(--motion-default) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+[data-state='disabled'] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+[data-state='loading'] {
+  cursor: progress;
+}
+
+[data-status='safe'] {
+  color: var(--status-safe);
+  background: var(--status-safe-bg);
+}
+
+[data-status='warn'],
+[data-status='exposed'] {
+  color: var(--status-warn);
+  background: var(--status-warn-bg);
+}
+
+[data-status='blocked'],
+[data-status='danger'] {
+  color: var(--status-blocked);
+  background: var(--status-blocked-bg);
+}
+
+[data-status='neutral'],
+[data-status='unverifiable'] {
+  color: var(--status-neutral);
+  background: var(--status-neutral-bg);
+}
+
+/* Status chips stay matte — no glass, no gradient */
+.status-chip,
+.verdict-badge,
+.coverage-chip {
+  border-radius: var(--radius-control);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  backdrop-filter: none;
+  background-image: none;
+}
+
+/* Control sizing */
+.btn,
+.input,
+.select,
+.chip {
+  min-height: var(--control-height, var(--control-height-default));
+  border-radius: var(--radius-control);
+}
+
+.btn--icon,
+.btn--tiny.btn--icon {
+  min-width: var(--hit-target-min);
+  min-height: var(--hit-target-min);
+}
+
+/* Type utility roles live in base.css (DESIGN_MOVES step 4) — do not redefine here. */
+
+/* Icon stroke contract */
+.ui-icon {
+  stroke-width: var(--icon-stroke);
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  flex-shrink: 0;
+}
+
+.ui-icon--sm {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.ui-icon--lg {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+}
+
+/* Shell breakpoints — gutters */
+@media (max-width: 899px) {
+  :root {
+    --space-gutter: var(--space-3);
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --space-gutter: var(--space-5);
+  }
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --space-gutter: var(--space-6);
+  }
+}

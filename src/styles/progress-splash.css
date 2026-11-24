@@ -1,0 +1,108 @@
+/**
+ * Lab progress — Forensic Bench (opaque canvas, no hero splash motion).
+ */
+
+.progress-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: var(--space-content-max);
+  margin: var(--space-5) auto;
+  padding: var(--space-4) var(--space-gutter);
+  text-align: center;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.progress-splash__eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.progress-splash__title {
+  margin: 0;
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-title);
+  line-height: var(--line-tight);
+}
+
+.progress-splash__file {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-mono);
+  color: var(--text-muted);
+}
+
+.progress-splash__bar {
+  width: min(22rem, 100%);
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.progress-splash__indeterminate {
+  height: 0.35rem;
+  border-radius: var(--radius-control);
+  background: var(--color-bg-muted);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-splash__indeterminate::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 36%;
+  background: var(--color-accent);
+  animation: progress-splash-indeterminate var(--motion-slow) linear infinite;
+  animation-duration: 1.2s;
+}
+
+.progress-splash__percent,
+.progress-splash__detail,
+.progress-splash__tip,
+.progress-splash__elapsed {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-meta);
+}
+
+.progress-splash__actions {
+  margin-top: var(--space-3);
+}
+
+.progress-splash__sources {
+  width: min(28rem, 100%);
+  display: grid;
+  gap: var(--space-2);
+  text-align: start;
+  margin-top: var(--space-2);
+}
+
+@keyframes progress-splash-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(280%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-splash__indeterminate::after {
+    animation: none;
+    inset: 0;
+    width: 100%;
+    opacity: 0.45;
+    transform: none;
+  }
+}
