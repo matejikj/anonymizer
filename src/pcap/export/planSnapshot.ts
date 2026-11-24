@@ -122,6 +122,11 @@ export interface PcapPlanSnapshot {
     readonly autoRemediated: import('./leakRemediation').AutoRemediationSummary
     readonly residualLeakHits: number
   }
+  /** T66 — cross-protocol identity propagation counts (no originals). */
+  readonly identityPropagation?: {
+    readonly hits: number
+    readonly packets: number
+  }
 }
 
 export interface BuiltExportPacket {
@@ -154,7 +159,8 @@ export interface BuiltExportPacket {
 /** Bumped — fail-closed DHCPv4/v6 options, H.225.0 two-octet User-user IE, heuristic syslog MSG. */
 /** Bumped for T62 — disposition ledger + residual sweep on unclaimed export bytes. */
 /** Bumped for T65 — leak auto-remediation patches on the immutable plan. */
-export const PCAP_ENGINE_VERSION = '2.39.0'
+/** Bumped for T66 — cross-protocol identity propagation on plan bytes. */
+export const PCAP_ENGINE_VERSION = '2.40.0'
 
 export { EMPTY_INCIDENT_LOG_SNAPSHOT }
 

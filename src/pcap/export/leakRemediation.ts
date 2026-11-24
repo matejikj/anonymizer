@@ -18,6 +18,8 @@ import type { PcapPlanPacket, PcapPlanSnapshot } from './planSnapshot'
 import type { DispositionLedgerAggregate } from './dispositionLedger'
 import { emptyDispositionAggregate } from './dispositionLedger'
 import { hydrateDescriptorForExport } from './incremental/hydrateSlice'
+import type { MappingSnapshot } from '../../mapping/types'
+import { propagateIdentitiesOnPlan } from '../plan/identityPropagation'
 
 export const LEAK_REMEDIATION_MAX_PASSES = 3
 
@@ -305,25 +307,11 @@ function mergeRemediationIntoLedger(
   }
 }
 
-/**
- * Hydrate originals from the source blob, then remediate. Used by export coordinator
- * when the plan was built without retained packet payloads.
- */
-export async function hydrateAndRemediatePlan(input: {
+async function hydratePlanEnvelopes(input: {
   readonly plan: PcapPlanSnapshot
   readonly descriptors: readonly PacketRecordDescriptor[]
   readonly sourceBlob: Blob
-  readonly originals: readonly LeakScanOriginal[]
-  readonly maxPasses?: number
-}): Promise<LeakRemediationResult> {
-  if (!input.originals.length) {
-    return {
-      plan: input.plan,
-      autoRemediated: emptySummary(0),
-      residualLeakHits: 0,
-    }
-  }
-
+}): Promise<PacketEnvelope[]> {
   const envelopes: PacketEnvelope[] = new Array(input.plan.packets.length)
   for (const planPkt of input.plan.packets) {
     if (planPkt.drop) continue
@@ -331,8 +319,6 @@ export async function hydrateAndRemediatePlan(input: {
     if (!descriptor) continue
     envelopes[planPkt.index] = await hydrateDescriptorForExport(input.sourceBlob, descriptor)
   }
-
-  // Fill gaps with empty shells so index alignment holds for remediatePlanLeaks.
   for (let i = 0; i < input.plan.packets.length; i++) {
     if (envelopes[i]) continue
     const planPkt = input.plan.packets[i]!
@@ -349,9 +335,52 @@ export async function hydrateAndRemediatePlan(input: {
       data: new Uint8Array(0),
     }
   }
+  return envelopes
+}
+
+/**
+ * Hydrate originals from the source blob, propagate known identities (T66),
+ * then remediate residual leaks (T65). Used when plan was built without payloads.
+ */
+export async function hydrateAndRemediatePlan(input: {
+  readonly plan: PcapPlanSnapshot
+  readonly descriptors: readonly PacketRecordDescriptor[]
+  readonly sourceBlob: Blob
+  readonly originals: readonly LeakScanOriginal[]
+  readonly mappingSnapshot?: MappingSnapshot
+  readonly maxPasses?: number
+}): Promise<LeakRemediationResult> {
+  const needsHydrate =
+    (input.originals.length > 0)
+    || (input.mappingSnapshot !== undefined && input.plan.identityPropagation === undefined)
+  if (!needsHydrate) {
+    return {
+      plan: input.plan,
+      autoRemediated: emptySummary(0),
+      residualLeakHits: 0,
+    }
+  }
+
+  const envelopes = await hydratePlanEnvelopes(input)
+  let plan = input.plan
+  if (input.mappingSnapshot) {
+    plan = propagateIdentitiesOnPlan({
+      plan,
+      packets: envelopes,
+      snapshot: input.mappingSnapshot,
+    }).plan
+  }
+
+  if (!input.originals.length) {
+    return {
+      plan,
+      autoRemediated: emptySummary(0),
+      residualLeakHits: 0,
+    }
+  }
 
   return remediatePlanLeaks({
-    plan: input.plan,
+    plan,
     packets: envelopes,
     originals: input.originals,
     maxPasses: input.maxPasses,

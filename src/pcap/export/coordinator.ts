@@ -31,6 +31,7 @@ import type { PcapProfile } from '../profile/schema'
 import type { LayerCoverage, SanitizationPolicy } from '../sanitize/types'
 import type { BuildPrivacyReportInput } from '../privacy/privacyReport'
 import { hydrateAndRemediatePlan } from './leakRemediation'
+import { getSharedMappingClient } from '../../mapping/sharedMappingClient'
 
 export type PcapExportPhase =
   | 'idle'
@@ -225,15 +226,20 @@ export async function runPcapExport(input: {
       progress('picking', 0, total, 'Připravuji export…')
     }
 
-    // T65 — scan + auto-remediate surviving originals before first write.
+    // T66/T65 — propagate known identities, then auto-remediate residual leaks.
     let plan = input.plan
-    if (input.leakOriginals && input.leakOriginals.length > 0) {
-      progress('rewriting', 0, total, 'Odstraňuji zjištěné úniky…')
+    const published = getSharedMappingClient().getPublishedSnapshot() ?? undefined
+    if (
+      (input.leakOriginals && input.leakOriginals.length > 0)
+      || (published && plan.identityPropagation === undefined)
+    ) {
+      progress('rewriting', 0, total, 'Doplňuji náhrady a kontroluji úniky…')
       const remediated = await hydrateAndRemediatePlan({
         plan,
         descriptors: input.descriptors,
         sourceBlob: input.sourceBlob,
-        originals: input.leakOriginals,
+        originals: input.leakOriginals ?? [],
+        mappingSnapshot: published,
       })
       plan = remediated.plan
       token.throwIfCancelled()

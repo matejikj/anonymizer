@@ -23,6 +23,10 @@ export {
 } from './mappingClosureValidation'
 export { mergePatchesStrict } from './mergePatchesStrict'
 export {
+  propagateIdentitiesOnPlan,
+  type IdentityPropagationSummary,
+} from './identityPropagation'
+export {
   emptyPlanChangeCounts,
   emptyPlanAuditFields,
   addPlanChangeCounts,

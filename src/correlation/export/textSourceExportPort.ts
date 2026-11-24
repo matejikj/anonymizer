@@ -17,6 +17,7 @@ import {
   type ExportResult,
 } from '../../features/export-log/exportCoordinator'
 import type { ExportPlanSnapshot } from '../../features/export-log/replacementSnapshot'
+import { applyIdentityPropagationToExportPlan } from '../../features/export-log/identityPropagation'
 import { patchEntitySummariesFromSnapshot } from '../../engine/entityRegistry'
 import { getSharedMappingClient } from '../../mapping/sharedMappingClient'
 import type { Entity } from '../../domain/types'
@@ -45,7 +46,7 @@ export function buildTextExportSnapshot(
     createdOrder: s.createdOrder,
   }))
 
-  return {
+  const base: ExportPlanSnapshot = {
     plan: plan.plan,
     packed: plan.packed,
     entities,
@@ -56,6 +57,8 @@ export function buildTextExportSnapshot(
     mode: original.length > 2_000_000 ? 'large' : 'common',
     byteLength: discovery.byteLength,
   }
+  // T66 — shared MappingAuthority identities rewrite free text across correlation sources.
+  return applyIdentityPropagationToExportPlan(base, snapshot)
 }
 
 export async function loadTextFileForExport(file: File): Promise<{ text: string; lineEndings: Uint8Array }> {

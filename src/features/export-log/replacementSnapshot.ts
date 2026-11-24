@@ -6,6 +6,8 @@ import type { Entity, PackedMatchIndex } from '../../domain/types.ts'
 import type { ReplacementPlan } from '../../engine/transform.ts'
 import type { ReplacementSnapshot } from '../../workers/protocol.ts'
 import { getSessionModel, type SessionModel } from '../workspace/sessionModel.ts'
+import { getSharedMappingClient } from '../../mapping/sharedMappingClient.ts'
+import { applyIdentityPropagationToExportPlan } from './identityPropagation.ts'
 
 export type ExportPlanSnapshot = {
   plan: ReplacementPlan
@@ -24,7 +26,7 @@ export function getExportPlanSnapshot(
   session: SessionModel | null = getSessionModel(),
 ): ExportPlanSnapshot | null {
   if (!session) return null
-  return {
+  const base: ExportPlanSnapshot = {
     plan: session.plan,
     packed: session.packed,
     entities: session.entities,
@@ -35,6 +37,10 @@ export function getExportPlanSnapshot(
     mode: session.meta.mode,
     byteLength: session.meta.byteLength,
   }
+  // T66 — rewrite known identities outside detector hits (shared MappingAuthority).
+  const published = getSharedMappingClient().getPublishedSnapshot()
+  if (!published) return base
+  return applyIdentityPropagationToExportPlan(base, published)
 }
 
 /**

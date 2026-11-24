@@ -26,6 +26,7 @@ import {
   type PcapPlanSnapshot,
 } from '../export/planSnapshot'
 import { remediatePlanLeaks } from '../export/leakRemediation'
+import { propagateIdentitiesOnPlan } from './identityPropagation'
 import type { LeakScanOriginal } from '../trust/leakScanner'
 import { MAX_ENTITY_CARDINALITY } from '../../domain/capabilityContract'
 import { mergePatchesStrict } from './mergePatchesStrict'
@@ -327,7 +328,7 @@ export function buildDeterministicPlan(input: {
     payloadTime,
     input.generationId,
   )
-  const plan = buildPlanSnapshot({
+  let plan = buildPlanSnapshot({
     generationId: input.generationId,
     profile: input.profile,
     format: input.format,
@@ -342,8 +343,17 @@ export function buildDeterministicPlan(input: {
     sourceId,
   })
 
-  const originals = input.leakOriginals?.slice(0, MAX_ENTITY_CARDINALITY) ?? []
   const hasPayloads = input.packets.some((p) => p.data.length > 0)
+  if (hasPayloads) {
+    // T66 — rewrite known identities in free text before T65 leak safety net.
+    plan = propagateIdentitiesOnPlan({
+      plan,
+      packets: input.packets,
+      snapshot: input.snapshot,
+    }).plan
+  }
+
+  const originals = input.leakOriginals?.slice(0, MAX_ENTITY_CARDINALITY) ?? []
   if (originals.length === 0 || !hasPayloads) return plan
 
   return remediatePlanLeaks({

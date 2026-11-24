@@ -76,6 +76,12 @@ export {
   setTextMappingClientForTests,
 } from './textMappingPort'
 export {
+  IdentityRegistry,
+  type PropagatableIdentity,
+  type IdentityHit,
+} from './identityRegistry'
+export { isCommonWordAllowlisted } from './commonWordAllowlist'
+export {
   getSharedMappingClient,
   resetSharedMappingClient,
   setSharedMappingClientForTests,
