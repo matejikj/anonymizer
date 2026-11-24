@@ -12,7 +12,6 @@ import type {
   ApplicationDispatchHit,
 } from './applicationDispatchTypes.ts'
 import type { AppLayerResult } from './types.ts'
-import type { InnerTransportHandler } from './tunnel.ts'
 import { sanitizeHttp } from './http.ts'
 import { sanitizeHttp2, looksLikeHttp2Preface, looksLikeHttp2Frame } from './http2.ts'
 import { sanitizeWebSocket, looksLikeWebSocketFrame } from './websocket.ts'

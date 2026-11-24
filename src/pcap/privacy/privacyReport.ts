@@ -50,7 +50,7 @@ export interface BuildPrivacyReportInput {
 export function countPreservedUnsafeSpans(coverage: readonly LayerCoverage[]): number {
   let n = 0;
   for (const span of coverage) {
-    if (span.status === 'preserved-unsafe') n += 1;
+    if (span.status === 'preserved-unsafe') n += span.aggregateCount ?? 1;
   }
   return n;
 }

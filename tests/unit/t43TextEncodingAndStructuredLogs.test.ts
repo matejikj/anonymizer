@@ -26,10 +26,10 @@ function encodeUtf16Le(text: string, withBom = true): Uint8Array {
   return new Uint8Array([...bom, ...body])
 }
 
-/** Minimal CP1250 bytes for Czech sample name Novak stastny (diacritics in fixture strings). */
+/** Minimal CP1250 bytes for "Novák šťastný" (Czech). */
 function cp1250CzechSample(): Uint8Array {
-  // CP1250 bytes for "Novak stastny" (Czech sample name without diacritics in comment): Novak + space + stastny
-  // CP1250: accented letters use 0xE1 (a-acute), 0x9A (s-caron), 0x9D (t-caron), 0xFD (y-acute)
+  // N o v á k   š ť a s t n ý
+  // á=0xE1 in both; š=0x9A, ť=0x9D, ý=0xFD in CP1250
   return new Uint8Array([
     0x4e, 0x6f, 0x76, 0xe1, 0x6b, 0x20, 0x9a, 0x9d, 0x61, 0x73, 0x74, 0x6e, 0xfd, 0x0a,
   ])

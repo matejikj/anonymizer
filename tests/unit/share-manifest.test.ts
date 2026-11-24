@@ -98,7 +98,7 @@ describe('Stage 29 shareable correlation manifest', () => {
       sources: [
         {
           sourceId: 'a',
-          outputFileName: 'template-konos-as.anonym.log',
+          outputFileName: 'template-appsrv.anonym.log',
           kind: 'text' as const,
         },
       ],
@@ -107,7 +107,7 @@ describe('Stage 29 shareable correlation manifest', () => {
       ],
     }
     const json = JSON.stringify(manifest)
-    expect(() => assertShareableManifestHasNoLeaks(json, ['konos'])).not.toThrow()
+    expect(() => assertShareableManifestHasNoLeaks(json, ['appsrv'])).not.toThrow()
   })
 
   it('still rejects originals embedded in correlation aliases', () => {
@@ -117,10 +117,10 @@ describe('Stage 29 shareable correlation manifest', () => {
       partial: false,
       sources: [{ sourceId: 'a', outputFileName: 'out.anonym.log', kind: 'text' as const }],
       correlationGroups: [
-        { tag: 'c1-deadbeef', category: 'host' as const, aliases: ['safe', 'konos-leak'] },
+        { tag: 'c1-deadbeef', category: 'host' as const, aliases: ['safe', 'secrethost-leak'] },
       ],
     }
     const json = JSON.stringify(manifest)
-    expect(() => assertShareableManifestHasNoLeaks(json, ['konos'])).toThrow(/original identifier/)
+    expect(() => assertShareableManifestHasNoLeaks(json, ['secrethost'])).toThrow(/original identifier/)
   })
 })

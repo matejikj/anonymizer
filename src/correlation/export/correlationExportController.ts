@@ -437,7 +437,7 @@ export async function runCorrelationExport(input: {
 
   let directory: FileSystemDirectoryHandle | null = null
   // Skip directory picker unless explicitly requested — default matches single-file
-  // text/PCAP export (browser download to Downloads).
+  // text/PCAP export (browser download to Stažené / Downloads).
   if (input.preferDirectoryPicker === true && supportsDirectoryPicker()) {
     directory = await pickExportDirectory()
     if (directory) usedDirectoryPicker = true

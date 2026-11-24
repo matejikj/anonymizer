@@ -199,6 +199,11 @@ export interface LayerCoverage {
   readonly offset: number;
   readonly length: number;
   readonly status: CoverageStatus;
+  /**
+   * UI thread only (R10 packed discover): this entry stands for N sanitizer spans with the
+   * same protocol × status, `length` = their total bytes. Counting consumers weight by it.
+   */
+  readonly aggregateCount?: number;
 }
 
 export interface PacketSanitizationResult {

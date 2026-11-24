@@ -48,7 +48,7 @@ describe('Step 1 — mixed set shell and staging', () => {
     useAppStore.getState().resetSession()
   })
 
-  it('shows analyze blocked reason when fewer than two ready files', () => {
+  it('allows the same analysis action with one ready file', () => {
     const items: StagingItem[] = [
       {
         id: 'a',
@@ -62,13 +62,11 @@ describe('Step 1 — mixed set shell and staging', () => {
     ]
     replaceStagingItems(items)
     useAppStore.getState().bumpCorrelationEpoch()
-    expect(getStagingConfirmBlockedReason()).toBe(cs.correlationStaging.blockedNeedTwo)
+    expect(getStagingConfirmBlockedReason()).toBeNull()
     render(<CorrelationStagingView />)
-    expect(screen.getByTestId('staging-confirm')).toBeDisabled()
-    expect(screen.getByTestId('staging-blocked-reason')).toHaveTextContent(
-      cs.correlationStaging.blockedNeedTwo,
-    )
-    expect(screen.getByTestId('staging-confirm')).toHaveTextContent(cs.correlationStaging.confirm)
+    expect(screen.getByTestId('staging-confirm')).toBeEnabled()
+    expect(screen.queryByTestId('staging-blocked-reason')).toBeNull()
+    expect(screen.getByTestId('staging-confirm')).toHaveTextContent(cs.correlationStaging.confirmSingle)
   })
 
   it('opens the first attention source after analysis and focuses problems without identities', async () => {

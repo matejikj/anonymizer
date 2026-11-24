@@ -4,6 +4,8 @@
  */
 
 import type { CaptureFormat, ParseIssue } from '../domain/types'
+import { mergeCoverageRollup } from '../processing/packedCaptureWire'
+import { indexedPacketProtocols } from '../coverage/packetProtocolIndex'
 import type { AnalysisResult, EntityEntry, PacketSummary } from '../protocols/analysis'
 import type { LayerCoverage, SanitizationPolicy } from '../sanitize/types'
 import type { PacketDiscoveryResult } from '../discovery/types'
@@ -97,6 +99,8 @@ export interface PcapSession {
   readonly profileHash: string
   readonly policy: SanitizationPolicy
   readonly statuses: PcapSessionStatuses
+  /** R10 — worker-side coverage totals; kept so plan rebuilds recompute honest statuses. */
+  readonly coverageRollup?: import('../processing/packedCaptureWire').WireCoverageRollup
   readonly classicHeader?: PcapSourceDescriptor['classicHeader']
   readonly pcapngSections?: PcapSourceDescriptor['pcapngSections']
   readonly pcapngInterfaces?: PcapSourceDescriptor['pcapngInterfaces']
@@ -157,23 +161,7 @@ export function createSlimPcapSession(input: CreateSlimPcapSessionInput): PcapSe
           packetDiscovery: input.packetDiscovery,
           entityIntents: input.entityIntents,
         })
-  const unifiedCoverage = input.coverageRollup
-    ? {
-        ...coverageBundle.unifiedCoverage,
-        totalUnsupportedSpans: Math.max(
-          coverageBundle.unifiedCoverage.totalUnsupportedSpans,
-          input.coverageRollup.totalUnsupportedSpans,
-        ),
-        totalTruncatedSpans: Math.max(
-          coverageBundle.unifiedCoverage.totalTruncatedSpans,
-          input.coverageRollup.totalTruncatedSpans,
-        ),
-        totalHeuristicSpans: Math.max(
-          coverageBundle.unifiedCoverage.totalHeuristicSpans,
-          input.coverageRollup.totalHeuristicSpans,
-        ),
-      }
-    : coverageBundle.unifiedCoverage
+  const unifiedCoverage = mergeCoverageRollup(coverageBundle.unifiedCoverage, input.coverageRollup)
   const statuses = computeStatusesFromDiscovery({
     issues: input.descriptor.issues,
     analysis: input.analysis,
@@ -204,6 +192,7 @@ export function createSlimPcapSession(input: CreateSlimPcapSessionInput): PcapSe
     profileHash: hashProfile(input.profile),
     policy,
     statuses,
+    coverageRollup: input.coverageRollup,
     classicHeader: input.descriptor.classicHeader,
     pcapngSections: input.descriptor.pcapngSections,
     pcapngInterfaces: input.descriptor.pcapngInterfaces,
@@ -316,6 +305,7 @@ export function updateSessionPlan(plan: PcapPlanSnapshot, profile: PcapProfile, 
       entityOccurrenceIndex: session.entityOccurrenceIndex,
       plan,
       policy,
+      coverageRollup: session.coverageRollup,
     }),
   }
 }
@@ -340,14 +330,18 @@ export function updateSessionDiscoveryAndPlan(input: {
   plan: PcapPlanSnapshot
   profile: PcapProfile
   mappingRevision: number
+  /** R10 — rollup from the re-run discover; `packetDiscovery` is empty on the packed path. */
+  coverageRollup?: import('../processing/packedCaptureWire').WireCoverageRollup
 }): void {
   if (!session) return
   const policy = profileToSanitizationPolicy(input.profile)
+  const unifiedCoverage = mergeCoverageRollup(input.unifiedCoverage, input.coverageRollup)
   session = {
     ...session,
     analysis: input.analysis,
     packetDiscovery: input.packetDiscovery,
-    unifiedCoverage: input.unifiedCoverage,
+    unifiedCoverage,
+    coverageRollup: input.coverageRollup,
     entityOccurrenceIndex: input.entityOccurrenceIndex,
     issues: [...input.issues],
     plan: input.plan,
@@ -359,10 +353,11 @@ export function updateSessionDiscoveryAndPlan(input: {
       issues: input.issues,
       analysis: input.analysis,
       packetDiscovery: input.packetDiscovery,
-      unifiedCoverage: input.unifiedCoverage,
+      unifiedCoverage,
       entityOccurrenceIndex: input.entityOccurrenceIndex,
       plan: input.plan,
       policy,
+      coverageRollup: input.coverageRollup,
     }),
   }
 }
@@ -392,6 +387,18 @@ export function computeStatusesFromDiscovery(input: {
     heuristicCount = Math.max(heuristicCount, input.coverageRollup.totalHeuristicSpans)
     droppedCount += input.coverageRollup.discoveryDropCount
     issueCount += input.coverageRollup.discoveryIssueCount
+    // Packed path: `perPacket` only carries analysis spans, sanitizer spans are in the rollup.
+    // Take the larger of the two per kind instead of summing (they can describe the same span).
+    let analysisReassembly = 0
+    let analysisMalformed = 0
+    for (const spans of input.unifiedCoverage.perPacket) {
+      for (const span of spans) {
+        if (span.status === 'requires-reassembly') analysisReassembly++
+        if (span.status === 'malformed') analysisMalformed++
+      }
+    }
+    reassemblyCount = Math.max(analysisReassembly, input.coverageRollup.requiresReassemblySpans)
+    issueCount += Math.max(analysisMalformed, input.coverageRollup.malformedSpans)
   } else {
     for (const spans of input.unifiedCoverage.perPacket) {
       if (spans.some((s) => s.status === 'truncated')) truncatedCount++
@@ -623,7 +630,7 @@ export function buildFilterContextFromSession(
     capturedLength: descriptor.capturedLength,
     linkType: descriptor.linkType,
     data: new Uint8Array(0),
-    protocols: getPacketProtocols(packetIndex),
+    protocols: getPacketProtocols(packetIndex, true),
     changed: !!planPkt && (planPkt.patches.length > 0 || planPkt.truncatedLength !== undefined) || meta.changed,
     hasIssue,
     srcIpv4: ipv4[0],
@@ -650,15 +657,18 @@ export function buildFilterContextFromSession(
   return withViewMappedEndpoints(base, dataView)
 }
 
-/** Structural decode + sanitizer/discovery coverage — used by display filter and packet list. */
-export function getPacketProtocols(packetIndex: number): readonly string[] {
+/** Structural decode + sanitizer coverage; filtering also needs generic payload family membership. */
+export function getPacketProtocols(packetIndex: number, includePayload = false): readonly string[] {
   if (!session || packetIndex < 0 || packetIndex >= session.descriptors.length) return []
   const out = new Set<string>()
+  for (const protocol of indexedPacketProtocols(session.unifiedCoverage.packetProtocols, packetIndex)) {
+    if (includePayload || protocol !== 'payload') out.add(protocol)
+  }
   for (const p of session.analysis.summaries[packetIndex]?.protocols ?? []) {
     if (p) out.add(p)
   }
   for (const span of unifiedSpansForPacket(session.unifiedCoverage, packetIndex)) {
-    if (span.protocol && span.protocol !== 'payload') out.add(span.protocol)
+    if (span.protocol && (includePayload || span.protocol !== 'payload')) out.add(span.protocol)
   }
   return [...out]
 }

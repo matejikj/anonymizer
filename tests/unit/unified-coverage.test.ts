@@ -20,6 +20,7 @@ import { createTestPcapSessionFromPackets } from '../pcap/unit/pcapSessionTestHe
 import { buildExportReport } from '../../src/pcap/export/report'
 import type { ExportValidationOutcome } from '../../src/pcap/export/incremental/baselineCompare'
 import { emptyChecksumCounts } from '../../src/pcap/checksums/types'
+import { analyzePackets } from '../../src/pcap/protocols/analysis'
 
 function mockValidation(valid = true): ExportValidationOutcome {
   return {
@@ -108,6 +109,19 @@ function makeDnsPacket(packetNumber: number): PacketEnvelope {
 }
 
 describe('Stage 10 — unified coverage model', () => {
+  it.each([false, true])('keeps malformed aggregate evidence with sanitizer coverage=%s', sanitizer => {
+    const analysis = { ...analyzePackets([]),
+      coverage: [{ protocolId: 'sip', packetCount: 1, unsupportedCount: 0, issues: ['malformed-test'] }],
+      summaries: [{ packetNumber: 0, protocols: ['sip'], issues: [], hasUnsupported: false }],
+    }
+    const model = buildUnifiedCoverageModel({ packetCount: 1, analysis,
+      packetDiscovery: sanitizer ? [{ packetIndex: 0, packetNumber: 0, drop: false, issues: [], intents: [],
+        coverage: [{ protocol: 'sip', offset: 0, length: 10, status: 'covered' }] }] : [],
+    })
+    expect(model.byProtocol.find(p => p.protocol === 'sip')).toMatchObject({
+      dominantStatus: 'malformed', packetCount: 1, issues: ['malformed-test'],
+    })
+  })
   beforeEach(() => {
     clearPcapSession()
   })

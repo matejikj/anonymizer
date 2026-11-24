@@ -39,7 +39,7 @@ describe('T39 registry', () => {
     expect(familyForProtocol('ipmi').familyId).toBe('management')
     expect(SEMANTIC_SERVICE_PORTS.has(3389)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(623)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

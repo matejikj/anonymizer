@@ -59,7 +59,7 @@ function concat(...parts: Uint8Array[]): Uint8Array {
 
 describe('T19 registry', () => {
   it('bumps engine version and assigns L2 families', () => {
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
     expect(DIAGNOSTIC_POLICY.lldp).toBe(true)
     expect(DIAGNOSTIC_POLICY.lacp).toBe(true)
     expect(DIAGNOSTIC_POLICY.eapol).toBe(true)

@@ -21,6 +21,7 @@ export function processHttpOverReassembledView(
   view: ReassembledView,
   primaryPacketIndex: number,
   payloadOffsetOnPrimary: number,
+  highPrivacy = false,
 ): Map<number, PacketReassemblyOverlay> {
   const overlays = new Map<number, PacketReassemblyOverlay>()
   if (view.bytes.length === 0 || !looksLikeHttpBuffer(view.bytes)) {
@@ -36,6 +37,7 @@ export function processHttpOverReassembledView(
     mapping,
     intents,
     primaryPacketIndex,
+    highPrivacy,
   )
   if (!httpResult) return overlays
 
@@ -99,6 +101,7 @@ export function sanitizeHttpReassembledView(
   view: ReassembledView,
   mapping: MappingLike,
   payloadTime?: import('../kernel/payloadTimeCodec').PayloadTimeSession,
+  highPrivacy = false,
 ): Map<number, BytePatch[]> {
   if (view.status !== 'complete' || view.bytes.length === 0) return new Map()
   if (!looksLikeHttpBuffer(view.bytes)) return new Map()
@@ -111,6 +114,7 @@ export function sanitizeHttpReassembledView(
     mapping,
     intents,
     view.packetIndices[0] ?? 0,
+    highPrivacy,
   )
   if (!result) return new Map()
   // T14 — payloadTime required for HTTP Date/Last-Modified capture-aligned rewrite.
@@ -125,11 +129,12 @@ function sanitizeReassembledHttpPayload(
   mapping: MappingLike,
   intents: IntentCollector,
   packetIndex: number,
+  highPrivacy: boolean,
 ) {
   if (looksLikeSbi(bytes, 0, bytes.length)) {
     return sanitizeSbi5g(bytes, 0, bytes.length, collector, mapping, intents, packetIndex)
   }
-  return sanitizeHttp(bytes, 0, bytes.length, collector, mapping, intents, packetIndex)
+  return sanitizeHttp(bytes, 0, bytes.length, collector, mapping, intents, packetIndex, highPrivacy)
 }
 
 function projectCoverageOffset(

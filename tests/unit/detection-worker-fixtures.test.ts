@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DetectionSession } from '../../src/workers/detectionSession.ts'
 import { createDefaultRulesetConfig } from '../../src/domain/configSchema.ts'
-import { FIXTURE_LOGS, readFixtureLog } from '../fixtures/loadFixtures.ts'
+import { FIXTURE_LOGS, FIXTURE_LOGS_AVAILABLE, readFixtureLog } from '../fixtures/loadFixtures.ts'
 import { allMustNotLeakTokens } from '../fixtures/mustNotLeak.ts'
 import { fromTransferableBuffers } from '../../src/engine/packedMatchIndex.ts'
 import { transformWithPlan, buildReplacementPlan } from '../../src/engine/transform.ts'
@@ -14,7 +14,7 @@ import { rulesetToDetectorConfig } from '../../src/domain/configSchema.ts'
 import { detectOnPhysicalLine } from '../../src/engine/detectLine.ts'
 import { createLineAssembler, pushText } from '../../src/features/import-log/streamingDecode.ts'
 
-describe('Krok 3 fixture streaming detection', () => {
+describe.skipIf(!FIXTURE_LOGS_AVAILABLE)('Krok 3 fixture streaming detection', () => {
   for (const name of FIXTURE_LOGS) {
     it(`streams ${name} without leaking curated tokens`, () => {
       const original = readFixtureLog(name)

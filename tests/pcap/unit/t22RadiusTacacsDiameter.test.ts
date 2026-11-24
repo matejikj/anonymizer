@@ -58,7 +58,7 @@ describe('T22 registry', () => {
     expect(familyForProtocol('radius').familyId).toBe('aaa')
     expect(familyForProtocol('tacacs').familyId).toBe('aaa')
     expect(familyForProtocol('diameter').familyId).toBe('aaa')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

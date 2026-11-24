@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import { cs } from '../../src/i18n/cs'
 
@@ -46,6 +47,7 @@ test('network smoke: sample import + export never leaves the origin', async ({ p
 
   await page.getByTestId('try-sample').click()
   await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+  await closeTextOutcomeDialog(page)
   await expect(page.getByTestId('export-bar')).toBeVisible()
 
   const downloadPromise = page.waitForEvent('download')

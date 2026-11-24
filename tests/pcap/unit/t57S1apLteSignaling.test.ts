@@ -148,12 +148,12 @@ function indexOfSubarray(hay: Uint8Array, needle: Uint8Array): number {
 }
 
 describe('T57 registry', () => {
-  it('registers S1AP APER schema, mobile-core family, engine 2.35.0', () => {
+  it('registers S1AP APER schema, mobile-core family, engine 2.36.1', () => {
     expect(APER_SCHEMA_REGISTRY.size).toBe(4)
     expect(getAperSchema(S1AP_SCHEMA_MODULE.id)?.revision).toContain('36.413')
     expect(familyForProtocol('s1ap').familyId).toBe('mobile-core')
     expect(familyForProtocol('s1ap-nas').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
     expect(PPID_S1AP).toBe(18)
     expect(S1AP_PINNED_IE_IDS.length).toBeGreaterThanOrEqual(18)
     expect(S1AP_PINNED_PROCEDURES.length).toBeGreaterThanOrEqual(10)

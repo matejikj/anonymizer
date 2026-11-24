@@ -3,6 +3,8 @@
  */
 
 import { countUnsupportedFromUnified } from '../../pcap/coverage/buildUnifiedCoverage'
+import { sanitizerCoverageForExport } from '../../pcap/processing/packedCaptureWire'
+import { countPreservedUnsafeSpans } from '../../pcap/privacy/privacyReport'
 import { SourceKind as SK } from '../../domain/sourceArtifact'
 import {
   ALL_CATEGORIES,
@@ -107,6 +109,13 @@ export function assessCorrelationSourceExport(record: CorrelationSourceRecord): 
     const unsupported = countUnsupportedFromUnified(discovery.discovery.unifiedCoverage)
     const fatalIssues = discovery.container.issues.filter((i) => i.severity >= 2)
     if (fatalIssues.length > 0 || discovery.discovery.analysis.entityOverflow) return 'blocked'
+    // Same rule as the single-file statuses (PF-19): any preserved-unsafe sanitizer span means
+    // readable content is left in the output — never 'ready'/'gaps'.
+    const sanitizerCoverage = sanitizerCoverageForExport(
+      discovery.discovery.packetDiscovery,
+      discovery.container.coverageRollup,
+    )
+    if (countPreservedUnsafeSpans(sanitizerCoverage) > 0) return 'exposed'
     if (unsupported > 0) {
       const disposition = resolveCoverageDisposition(policy, 'unsupported', 'generic')
       if (disposition === 'preserve-unsafe') return 'exposed'

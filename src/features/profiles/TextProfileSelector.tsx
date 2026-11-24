@@ -28,14 +28,58 @@ export function TextProfileSelector() {
   const dialog = useAppStore((s) => s.profileDialog)
   const [profiles, setProfiles] = useState<StoredProfile[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const [pending, setPending] = useState(false)
+  const pendingRef = useRef(false)
+  const listRequest = useRef(0)
   const menuWrapRef = useRef<HTMLDivElement>(null)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
-    void bootstrapProfiles().then(() => refreshProfileList().then(setProfiles))
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  /** IndexedDB reads resolve asynchronously — never set state after unmount. */
+  const reloadProfiles = () => {
+    const request = ++listRequest.current
+    return refreshProfileList().then((list) => {
+      if (mountedRef.current && request === listRequest.current) setProfiles(list)
+    })
+  }
+
+  const runMutation = async (action: () => Promise<unknown>) => {
+    if (pendingRef.current) return
+    pendingRef.current = true
+    setPending(true)
+    try {
+      await action()
+      await reloadProfiles()
+    } catch {
+      useAppStore.getState().setToast({ message: cs.profiles.operationFailed })
+    } finally {
+      pendingRef.current = false
+      if (mountedRef.current) setPending(false)
+    }
+  }
+
+  const removeProfile = () => {
+    setMenuOpen(false)
+    void runMutation(async () => {
+      const result = await deleteActiveProfile()
+      useAppStore.getState().setToast({
+        message: result.ok ? cs.profiles.deleted : cs.profiles.cannotDeleteDefault,
+      })
+    })
+  }
+
+  useEffect(() => {
+    void bootstrapProfiles().then(reloadProfiles)
   }, [])
 
   useEffect(() => {
-    void refreshProfileList().then(setProfiles)
+    void reloadProfiles()
   }, [profileEpoch])
 
   useEffect(() => {
@@ -55,7 +99,7 @@ export function TextProfileSelector() {
     }
   }, [menuOpen])
 
-  const requestSwitch = async (id: string) => {
+  const requestSwitch = (id: string) => runMutation(async () => {
     const result = await activateProfile(id)
     if (!result.ok && result.reason === 'dirty') {
       useAppStore.getState().setPendingSwitchProfileId(id)
@@ -63,7 +107,7 @@ export function TextProfileSelector() {
       return
     }
     setMenuOpen(false)
-  }
+  })
 
   const onExport = () => {
     const { warnings } = prepareExport()
@@ -87,6 +131,7 @@ export function TextProfileSelector() {
           <select
             data-testid="profile-select"
             value={activeId}
+            disabled={pending}
             onChange={(e) => void requestSwitch(e.target.value)}
             aria-invalid={dirty || undefined}
             aria-label={cs.profiles.selectLabel}
@@ -105,6 +150,7 @@ export function TextProfileSelector() {
             variant="ghost"
             size="tiny"
             data-testid="profile-edit"
+            disabled={pending}
             onClick={() => useAppStore.getState().setProfileDialog('edit')}
           >
             {cs.profiles.editShort}
@@ -113,9 +159,21 @@ export function TextProfileSelector() {
             variant="ghost"
             size="tiny"
             data-testid="profile-new"
-            onClick={() => void createNewProfile().then(() => refreshProfileList().then(setProfiles))}
+            disabled={pending}
+            onClick={() => void runMutation(() => createNewProfile())}
           >
             {cs.profiles.newShort}
+          </Button>
+          <Button
+            variant="ghost"
+            size="tiny"
+            data-testid="profile-delete-direct"
+            aria-label={cs.profiles.delete}
+            disabled={pending || isBuiltin}
+            title={isBuiltin ? cs.profiles.cannotDeleteDefault : cs.profiles.delete}
+            onClick={removeProfile}
+          >
+            {cs.profiles.deleteShort}
           </Button>
           {dirty ? (
             <>
@@ -126,7 +184,8 @@ export function TextProfileSelector() {
                 variant="secondary"
                 size="tiny"
                 data-testid="profile-save"
-                onClick={() => void saveActiveProfile()}
+                disabled={pending}
+                onClick={() => void runMutation(() => saveActiveProfile())}
               >
                 {cs.profiles.save}
               </Button>
@@ -134,7 +193,8 @@ export function TextProfileSelector() {
                 variant="ghost"
                 size="tiny"
                 data-testid="profile-revert"
-                onClick={() => void revertActiveProfile()}
+                disabled={pending}
+                onClick={() => void runMutation(() => revertActiveProfile())}
               >
                 {cs.profiles.revertShort}
               </Button>
@@ -145,6 +205,7 @@ export function TextProfileSelector() {
               variant="ghost"
               size="tiny"
               data-testid="profile-menu-btn"
+              disabled={pending}
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               aria-label={cs.profiles.menuAria}
@@ -161,7 +222,7 @@ export function TextProfileSelector() {
                     data-testid="profile-duplicate"
                     onClick={() => {
                       closeMenu()
-                      void duplicateActiveProfile().then(() => refreshProfileList().then(setProfiles))
+                      void runMutation(() => duplicateActiveProfile())
                     }}
                   >
                     {cs.profiles.duplicate}
@@ -200,16 +261,7 @@ export function TextProfileSelector() {
                     className="profile-menu__danger"
                     disabled={isBuiltin}
                     title={isBuiltin ? cs.profiles.cannotDeleteDefault : undefined}
-                    onClick={() => {
-                      closeMenu()
-                      void deleteActiveProfile().then((r) => {
-                        if (!r.ok) {
-                          useAppStore.getState().setToast({ message: cs.profiles.cannotDeleteDefault })
-                        } else {
-                          useAppStore.getState().setToast({ message: cs.profiles.deleted })
-                        }
-                      })
-                    }}
+                    onClick={removeProfile}
                   >
                     {cs.profiles.delete}
                   </button>

@@ -13,7 +13,7 @@ import { UNSUPPORTED_PROTOCOL_NAMES } from '../../../src/pcap/sanitize/unsupport
 import {
   buildProtocolSupportMatrix,
   buildSupportRequestClipboard,
-  renderProtocolSupportMatrixMarkdown,
+  protocolMatrixMarkers,
   supportRequestUserMessage,
 } from '../../../src/pcap/docs/protocolSupportMatrix.ts'
 import {
@@ -92,13 +92,11 @@ describe('T32 protocol support matrix', () => {
     }
   })
 
-  it('renders a non-empty protocol support matrix without construction markdown', () => {
-    const rows = buildProtocolSupportMatrix()
-    const markdown = renderProtocolSupportMatrixMarkdown(rows)
-    expect(rows.length).toBeGreaterThan(0)
-    expect(markdown).toMatch(/\|/)
-    expect(fs.existsSync(path.join(root, 'ANONYMIZER.md'))).toBe(false)
-    expect(fs.existsSync(path.join(root, 'docs/PCAP_ANONYMIZATION_OVERVIEW.md'))).toBe(false)
+  it('keeps the reference matrix in protocolSupportMatrix.ts without duplicating it in the explanatory overview', () => {
+    const overview = fs.readFileSync(path.join(root, 'docs/PCAP_ANONYMIZATION_OVERVIEW.md'), 'utf8')
+    expect(overview).toContain('protocolSupportMatrix.ts')
+    expect(overview).not.toContain(protocolMatrixMarkers().start)
+    expect(overview).not.toMatch(/^\|/m)
   })
 
   it('support request clipboard has codes/counts only — no canary payload', () => {

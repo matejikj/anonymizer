@@ -30,8 +30,8 @@ export function sanitizeMototrboIpsc(
 ): AppLayerResult | null {
   if (!MOTOTRBO_PORTS.has(dstPort)) return null;
 
-  const filler = new Uint8Array(length); // zero-filled
-  try { collector.add(offset, filler); } catch { /* overlap */ }
+  // maskRange replaces any overlapping patch, so the 'redacted' claim below always holds.
+  collector.maskRange(offset, new Uint8Array(length)); // zero-filled
 
   return { coverage: [{ protocol: 'mototrbo-ipsc', offset, length, status: 'redacted' }] };
 }

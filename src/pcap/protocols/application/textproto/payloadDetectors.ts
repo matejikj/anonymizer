@@ -94,7 +94,10 @@ export function detectIdentitiesInPayload(
   const resolved = resolveOverlaps(raw)
   const hits: PayloadDetectorHit[] = []
   for (const match of resolved) {
-    const identityCat = CATEGORY_TO_IDENTITY[match.category]
+    // The PCAP authority uses wire IP namespaces, including for textual representations.
+    const identityCat = match.category === 'ip'
+      ? (match.normalized.includes(':') ? 'ipv6' : 'ipv4')
+      : CATEGORY_TO_IDENTITY[match.category]
     if (!identityCat) continue
     const spelling = match.original
     const byteLength = match.end - match.start

@@ -11,7 +11,7 @@ import { familyForProtocol } from '../../../src/pcap/coverage/protocolFamilies'
 const ROOT = join(import.meta.dirname, '../../../src/pcap')
 const SCAN_DIRS = [join(ROOT, 'sanitize'), join(ROOT, 'protocols')]
 
-/** Intentional catch-alls — must stay visible as "Other" in cs UI (Ostatní). */
+/** Intentional catch-alls — must stay visible as „Ostatní“. */
 const ALLOWED_OTHER = new Set(['heuristic', 'payload', 'processing-failed'])
 
 const LITERAL_RE = /protocol:\s*'([^']+)'/g

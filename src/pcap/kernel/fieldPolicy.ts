@@ -16,7 +16,7 @@ export type FieldIdentityRole =
   | 'secret'
   | 'content'
 
-/** Machine-checkable field description — names from PROTOCOL-IMPLEMENTATION-CONTRACT. */
+/** Machine-checkable field descriptor — names from PROTOCOL-IMPLEMENTATION-CONTRACT. */
 export interface FieldPolicyDescriptor {
   readonly variant: string
   readonly fieldPath: string

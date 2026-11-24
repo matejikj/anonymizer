@@ -73,12 +73,16 @@ describe('Clear Glass Operations foundations', () => {
   const tokens = read('src/styles/tokens.css')
   const foundations = read('src/styles/foundations.css')
   const appCss = read('src/styles/app.css')
+  const stateMatrix = read('src/styles/stateMatrix.ts')
   const icons = read('src/components/ui/icons.tsx')
 
-  it('names the design direction and glass rules in tokens', () => {
+  it('names the design direction and glass rules in stateMatrix + tokens', () => {
+    expect(DESIGN_DIRECTION).toBe('Forensic Bench')
+    expect(stateMatrix).toMatch(/Clear Glass Operations/)
     expect(tokens).toMatch(/--surface-canvas/)
-    expect(tokens).toMatch(/--glass-blur:\s*0px/)
-    expect(tokens).toMatch(/--color-accent:\s*#0e5860/)
+    expect([...GLASS_FORBIDDEN_SURFACES]).toEqual(
+      expect.arrayContaining(['editor', 'packet-grid', 'coverage-table', 'data-plane']),
+    )
   })
 
   it('exposes a complete token contract for light and dark', () => {

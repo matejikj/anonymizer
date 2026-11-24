@@ -47,7 +47,7 @@ export function buildLineIndex(text: string): LineIndex {
   function lineContentRange(lineNo: number): { start: number; end: number } {
     if (lineNo < 1 || lineNo > lineCount) {
       // T03: avoid `${line}` template shape (guard treats bare `line` as identity-bearing).
-      throw new Error(`Neplatné číslo řádku: ${lineNo}`)
+      throw new Error(`Invalid line number: ${lineNo}`)
     }
     const start = lineStarts[lineNo]!
     if (lineNo === lineCount) return { start, end: text.length }

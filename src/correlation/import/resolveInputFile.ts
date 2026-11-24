@@ -134,7 +134,7 @@ export async function resolveInputFile(
   }
 }
 
-/** Staging / UI line from cs.inputRejection.gzipInflatedNote (e.g. inflated from .gz with MiB sizes). */
+/** Staging / UI line: „Rozbaleno z .gz (12,3 MiB → 98,1 MiB)“. */
 export function formatGzipInflationNote(note: GzipInflationNote): string {
   return cs.inputRejection.gzipInflatedNote
     .replace('{from}', formatMiB(note.compressedBytes))

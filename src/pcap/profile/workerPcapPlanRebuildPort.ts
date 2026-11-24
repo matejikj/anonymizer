@@ -104,6 +104,7 @@ export function createWorkerPcapPlanRebuildPort(): PcapPlanRebuildPort {
           plan,
           profile,
           mappingRevision: result.snapshot.revision,
+          coverageRollup: container.coverageRollup,
         })
       } else {
         const result = await orchestratePlanRebuild({

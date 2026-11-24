@@ -12,6 +12,9 @@ import { SEMANTIC_SERVICE_PORTS } from '../../../src/pcap/anonymization/portPoli
 import { dnp3Crc16 } from '../../../src/pcap/sanitize/industrial/dnp3'
 import { CoapBlock2Session } from '../../../src/pcap/sanitize/industrial/coapBlock2Session.ts'
 import { OpcuaChannelSession } from '../../../src/pcap/sanitize/industrial/opcuaChannelSession.ts'
+import { sanitizeOpcua } from '../../../src/pcap/sanitize/industrial/opcua'
+import { PatchCollector } from '../../../src/pcap/sanitize/PatchCollector'
+import { FingerprintSession } from '../../../src/pcap/anonymization/fingerprintSession'
 import { UNSUPPORTED_PROTOCOL_NAMES } from '../../../src/pcap/sanitize/unsupportedIdentification'
 
 function packetInput(data: Uint8Array) {
@@ -40,7 +43,7 @@ function writeU16be(buf: Uint8Array, o: number, v: number): void {
 }
 
 describe('T30 registry', () => {
-  it('registers industrial handlers, family, ports, and engine 2.35.0', () => {
+  it('registers industrial handlers, family, ports, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toEqual(
       expect.arrayContaining(['mqtt', 'coap', 'modbus', 'iec104', 'dnp3', 'opcua']),
@@ -52,7 +55,7 @@ describe('T30 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(1883)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(502)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(20_000)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 
@@ -209,8 +212,8 @@ function buildOpcuaChunk(msgType: string, body: Uint8Array): Uint8Array {
   return out
 }
 
-function buildOpcuaOpnSign(): Uint8Array {
-  const openInner = new Uint8Array(24)
+function buildOpcuaOpnSign(extra: Uint8Array = new Uint8Array(0)): Uint8Array {
+  const openInner = new Uint8Array(24 + extra.length)
   let p = 0
   writeU32le(openInner, p, 0)
   p += 4
@@ -221,6 +224,8 @@ function buildOpcuaOpnSign(): Uint8Array {
   p = writeUaByteString(openInner, p, null)
   writeU32le(openInner, p, 3_600_000)
   p += 4
+  openInner.set(extra, p)
+  p += extra.length
   const openBody = openInner.subarray(0, p)
 
   const ext = new Uint8Array(1 + 4 + 1 + 4 + openBody.length)
@@ -336,6 +341,23 @@ describe('T30 OPC UA MSG Sign', () => {
     expect(result.issues).toContain('opcua-msg-sign-plaintext')
     const out = applyPatches(pkt, result)
     expect(latin1(out).includes('T30-OPC-AUDIT-SECRET')).toBe(false)
+  })
+
+  it('masks the OpenSecureChannel request body it reports as redacted', () => {
+    // Handler level: the engine's generic in-place fallback must not be what hides the canary.
+    const canary = new TextEncoder().encode('OPN-REQUEST-HEADER-CANARY')
+    const opn = buildOpcuaOpnSign(canary)
+    const mapping = new SessionMapping(undefined, { seed: 't30-opcua-opn-body' })
+    const collector = new PatchCollector(opn.length)
+    const result = sanitizeOpcua(opn, 0, opn.length, 40_000, 4840, collector, mapping, 0, false, undefined, {
+      opcuaChannel: new OpcuaChannelSession(),
+    })
+    expect(result?.issues).toContain('opcua-opn-parsed')
+    expect(result?.coverage.some((c) => c.protocol === 'opcua-auth' && c.status === 'redacted')).toBe(true)
+    collector.resolveDeferred({ mapping, fingerprints: new FingerprintSession() })
+    const out = opn.slice()
+    for (const p of collector.getPatches()) out.set(p.data, p.offset)
+    expect(latin1(out).includes('OPN-REQUEST-HEADER-CANARY')).toBe(false)
   })
 
   it('fail-closed masks SignAndEncrypt MSG body', () => {

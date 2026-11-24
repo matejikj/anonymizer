@@ -3,6 +3,7 @@
  * Architecture enforcement guards.
  * Runs in CI via `npm run check:architecture` — not a local-only checklist.
  */
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -519,6 +520,8 @@ function collectMarkdownFiles(dir, out = []) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === 'dist') continue
+      // Nested git checkouts (e.g. a local working copy kept inside anonym/) are not our docs.
+      if (fs.existsSync(path.join(full, '.git'))) continue
       collectMarkdownFiles(full, out)
     } else if (entry.name.endsWith('.md')) {
       out.push(full)
@@ -527,7 +530,31 @@ function collectMarkdownFiles(dir, out = []) {
   return out
 }
 
-const MD_FILES = collectMarkdownFiles(root)
+/**
+ * Only documents git would actually ship (tracked, or untracked-but-not-ignored) are checked:
+ * gitignored local material (scratch notes, a nested working copy, agent skills) may link
+ * anywhere. Falls back to a plain directory walk outside a git checkout.
+ */
+function listShippedMarkdownFiles() {
+  try {
+    const out = execFileSync(
+      'git',
+      ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*.md'],
+      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 },
+    )
+    const files = out
+      .split('\0')
+      .filter(Boolean)
+      .map((f) => path.join(root, f))
+      .filter((f) => fs.existsSync(f))
+    // An empty list means git isn't telling us anything useful (never "nothing to check").
+    return files.length > 0 ? files : null
+  } catch {
+    return null
+  }
+}
+
+const MD_FILES = listShippedMarkdownFiles() ?? collectMarkdownFiles(root)
 
 function checkMarkdownLinks(file) {
   const content = fs.readFileSync(file, 'utf8')

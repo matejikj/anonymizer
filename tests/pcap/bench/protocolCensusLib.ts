@@ -273,7 +273,7 @@ export function formatCensusMarkdown(report: ProtocolCensusReport): string {
   )
   if (telecom.length > 0) {
     lines.push('')
-    lines.push('## Telecom phase 3 (T49–T61 families)')
+    lines.push('## Telekom fáze 3 (T49–T61 rodiny)')
     lines.push('')
     lines.push('| Priority | Family | Packets | Masked B | Captures |')
     lines.push('|---:|---|---:|---:|---:|')

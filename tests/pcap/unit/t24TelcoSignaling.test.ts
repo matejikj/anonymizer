@@ -36,7 +36,7 @@ describe('T24 registry', () => {
     expect(ids).toEqual(expect.arrayContaining(['h248', 'rtsp', 'iax2', 'skinny', 'h323']))
     expect(familyForProtocol('h248').familyId).toBe('sip')
     expect(familyForProtocol('rtsp').familyId).toBe('sip')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 
   it('no longer identify-only for H.248 / Skinny / IAX2', () => {
@@ -147,38 +147,58 @@ describe('T24 Skinny', () => {
 describe('T24 H.323', () => {
   it('maps Q.931 called party number and masks H.225 UUIE tail', () => {
     const digits = '420111222333'
-    // TPKT + Q.931 SETUP with Called Party Number + User-User (H.225 stand-in)
-    const numIeLen = 1 + digits.length
     const uuieLen = 8
-    const q931 = new Uint8Array(4 + 2 + numIeLen + 2 + uuieLen)
-    q931[0] = 0x08 // PD
-    q931[1] = 0x01 // call ref len
-    q931[2] = 0x01 // call ref
-    q931[3] = 0x05 // SETUP
-    q931[4] = 0x70 // Called party number
-    q931[5] = numIeLen
-    q931[6] = 0x81 // type/plan
-    for (let i = 0; i < digits.length; i++) q931[7 + i] = digits.charCodeAt(i)
-    const uuieOff = 7 + digits.length
-    q931[uuieOff] = 0x7e // User-user IE
-    q931[uuieOff + 1] = uuieLen
-    for (let i = 0; i < uuieLen; i++) q931[uuieOff + 2 + i] = 0xaa
-    const tpktLen = 4 + q931.length
-    const payload = new Uint8Array(tpktLen)
-    payload[0] = 3
-    payload[1] = 0
-    payload[2] = (tpktLen >> 8) & 0xff
-    payload[3] = tpktLen & 0xff
-    payload.set(q931, 4)
+    const { payload, uuieDataOff } = buildH323Setup({ calledDigits: digits, uuieLen })
     const frame = buildEthIpTcp([10, 0, 0, 1], [10, 0, 0, 2], 50002, 1720, 1, payload)
     const mapping = new SessionMapping(undefined, { seed: 't24-h323' })
     const result = sanitizePacket(packetInput(frame), DIAGNOSTIC_POLICY, mapping)
     expect(result.coverage.some((c) => c.protocol === 'h323')).toBe(true)
     // Parent must not silently claim covered when UUIE/H.225 was mask-only.
     expect(result.coverage.some((c) => c.protocol === 'h323' && c.status === 'redacted')).toBe(true)
+    // H.225.0 two-octet User-user length must not be read as a truncated IE.
+    expect(result.coverage.some((c) => c.protocol.startsWith('h323') && c.status === 'malformed')).toBe(false)
+    expect(result.coverage.some((c) => c.protocol === 'h323-uuie' && c.status === 'redacted')).toBe(true)
     const out = applyPatches(frame, result)
     expect(new TextDecoder('latin1').decode(out).includes(digits)).toBe(false)
     // User-user / H.225 body masked
-    expect(out[14 + 20 + 20 + 4 + uuieOff + 2]).not.toBe(0xaa)
+    for (let i = 0; i < uuieLen; i++) expect(out[14 + 20 + 20 + uuieDataOff + i]).not.toBe(0xaa)
+  })
+
+  it('parses IEs around a User-user IE longer than 255 bytes (two-octet length)', () => {
+    const display = 'Dispatcher Test'
+    const { payload, uuieDataOff } = buildH323Setup({ display, calledDigits: '555123', uuieLen: 300 })
+    const frame = buildEthIpTcp([10, 0, 0, 1], [10, 0, 0, 2], 50002, 1720, 1, payload)
+    const mapping = new SessionMapping(undefined, { seed: 't24-h323-long' })
+    const result = sanitizePacket(packetInput(frame), DIAGNOSTIC_POLICY, mapping)
+    expect(result.coverage.some((c) => c.protocol.startsWith('h323') && c.status === 'malformed')).toBe(false)
+    expect(result.coverage.find((c) => c.protocol === 'h323-uuie')?.length).toBe(300)
+    const out = applyPatches(frame, result)
+    const text = new TextDecoder('latin1').decode(out)
+    expect(text.includes(display)).toBe(false)
+    expect(text.includes('555123')).toBe(false)
+    expect(out[14 + 20 + 20 + uuieDataOff + 299]).not.toBe(0xaa)
   })
 })
+
+/** TPKT + Q.931 SETUP as used by H.225.0: optional Display, Called Party Number, User-user. */
+function buildH323Setup(input: { display?: string; calledDigits: string; uuieLen: number }): {
+  payload: Uint8Array
+  uuieDataOff: number
+} {
+  const ies: number[] = []
+  if (input.display) {
+    ies.push(0x28, input.display.length, ...[...input.display].map((ch) => ch.charCodeAt(0)))
+  }
+  ies.push(0x70, 1 + input.calledDigits.length, 0x81, ...[...input.calledDigits].map((ch) => ch.charCodeAt(0)))
+  // User-user IE: H.225.0 codes its length in two octets.
+  ies.push(0x7e, (input.uuieLen >> 8) & 0xff, input.uuieLen & 0xff)
+  const q931Header = [0x08, 0x01, 0x01, 0x05] // PD, call ref len, call ref, SETUP
+  const uuieDataOff = 4 + q931Header.length + ies.length
+  const tpktLen = uuieDataOff + input.uuieLen
+  const payload = new Uint8Array(tpktLen)
+  payload.set([3, 0, (tpktLen >> 8) & 0xff, tpktLen & 0xff], 0)
+  payload.set(q931Header, 4)
+  payload.set(ies, 4 + q931Header.length)
+  payload.fill(0xaa, uuieDataOff)
+  return { payload, uuieDataOff }
+}

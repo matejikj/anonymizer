@@ -68,13 +68,13 @@ function wrapPdu(commandId: number, status: number, seq: number, body: Uint8Arra
 }
 
 describe('T52 registry', () => {
-  it('registers smpp handler, family, port, and engine 2.35.0', () => {
+  it('registers smpp handler, family, port, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('smpp')
     expect(familyForProtocol('smpp').familyId).toBe('smpp')
     expect(familyForProtocol('smpp-sm').familyId).toBe('smpp')
     expect(SEMANTIC_SERVICE_PORTS.has(2775)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

@@ -6,6 +6,7 @@ import { findDeepestNodeAtOffset, nodePath } from '../dissection/types'
 import { highlightRangeForPane } from './fieldCounterpartMapping.ts'
 import { getPcapSession } from './pcapSession.ts'
 import type { PcapDataView } from './pcapUiPrefs.ts'
+import { usePcapPanelScrollSync } from './pcapPanelScrollSync.tsx'
 
 const BYTES_PER_ROW = 16
 const MID_GAP_AFTER = 8
@@ -16,9 +17,10 @@ const MID_GAP_AFTER = 8
 const BYTE_ROW_HEIGHT_FALLBACK = 20
 const OVERSCAN_ROWS = 10
 
-function useViewportHeight(ref: { current: HTMLDivElement | null }): number {
+function useViewportHeight(ref: { current: HTMLDivElement | null }, enabled: boolean): number {
   const [height, setHeight] = useState(0)
   useEffect(() => {
+    if (!enabled) return
     const el = ref.current
     if (!el) return
     if (typeof ResizeObserver === 'undefined') {
@@ -32,7 +34,7 @@ function useViewportHeight(ref: { current: HTMLDivElement | null }): number {
     ro.observe(el)
     setHeight(el.clientHeight)
     return () => ro.disconnect()
-  }, [ref])
+  }, [ref, enabled])
   return height
 }
 
@@ -58,19 +60,18 @@ export function PcapByteGrid({ sources, roots, loading = false, dataView: dataVi
   const [copyFlash, setCopyFlash] = useState(false)
   const [scrollTop, setScrollTop] = useState(0)
   const [rowHeight, setRowHeight] = useState(BYTE_ROW_HEIGHT_FALLBACK)
-  const viewportHeight = useViewportHeight(gridRef)
+  // Loading replaces the scroll element; measure and observe its replacement as well.
+  const viewportHeight = useViewportHeight(gridRef, !loading)
 
   const source = sources.find((s) => s.id === activeByteSourceId) ?? sources[0]
   const bytes = source?.bytes ?? new Uint8Array(0)
   const fieldMap = source?.fieldMap ?? []
   const planPkt = getPcapSession()?.plan.packets[selectedPacketIndex]
 
-  // PF-13: reset scroll on packet/source switch — with virtualization, a stale scrollTop past
-  // the new (possibly shorter) content's height would clamp the visible window to nothing.
-  useEffect(() => {
-    setScrollTop(0)
-    if (gridRef.current) gridRef.current.scrollTop = 0
-  }, [source?.id, selectedPacketIndex])
+  const onGridScroll = usePcapPanelScrollSync({
+    channel: `bytes:${source?.id ?? 'frame'}`, dataView, viewport: gridRef,
+    enabled: !loading, onLocalScroll: setScrollTop,
+  })
 
   const measureFirstRow = useCallback((el: HTMLDivElement | null) => {
     if (!el) return
@@ -127,13 +128,6 @@ export function PcapByteGrid({ sources, roots, loading = false, dataView: dataVi
     const last = Math.min(rows.length, first + Math.max(visibleCount, 1))
     return { start: first, end: last }
   }, [rows.length, scrollTop, rowHeight, viewportHeight])
-
-  const onGridScroll = useCallback(() => {
-    const el = gridRef.current
-    if (!el) return
-    const top = el.scrollTop
-    setScrollTop((prev) => (Math.abs(prev - top) < 0.5 ? prev : top))
-  }, [])
 
   const selectOffset = useCallback(
     (offset: number) => {

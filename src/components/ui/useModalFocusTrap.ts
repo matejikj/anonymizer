@@ -46,10 +46,13 @@ export function useModalFocusTrap(options: {
       if (list.length === 0) return
       const first = list[0]!
       const last = list[list.length - 1]!
-      if (event.shiftKey && document.activeElement === first) {
+      const active = document.activeElement
+      // Initial focus may be a heading with tabindex=-1, before all tab stops.
+      const onTabStop = list.some((element) => element === active)
+      if (event.shiftKey && (active === first || !onTabStop)) {
         event.preventDefault()
         last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
         event.preventDefault()
         first.focus()
       }

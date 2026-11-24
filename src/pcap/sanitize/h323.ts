@@ -20,6 +20,8 @@ const Q931_CALLING = 0x6c
 const Q931_CALLED = 0x70
 const Q931_DISPLAY = 0x28
 const Q931_CAUSE = 0x08
+/** H.225.0 codes the User-user IE length in two octets (unlike plain Q.931). */
+const Q931_USER_USER = 0x7e
 
 export function isH323PortHint(src: number, dst: number): boolean {
   return H225_PORTS.has(src) || H225_PORTS.has(dst)
@@ -89,6 +91,23 @@ export function sanitizeH323(
       continue
     }
     if (pos + 1 >= qEnd) break
+    if (iei === Q931_USER_USER) {
+      const uuLen = pos + 2 < qEnd ? (buffer[pos + 1]! << 8) | buffer[pos + 2]! : -1
+      if (uuLen < 0 || pos + 3 + uuLen > qEnd) {
+        maskPayloadSpan(collector, pos, qEnd - pos, intents, packetIndex, 'h323-ie-trunc')
+        coverage.push({ protocol: 'h323-ie', offset: pos, length: qEnd - pos, status: 'malformed' })
+        issues.push('h323-ie-trunc')
+        break
+      }
+      // H.225 UUIE is ASN.1 PER without a schema here — mask contents, keep IE framing.
+      if (uuLen > 0) {
+        maskPayloadSpan(collector, pos + 3, uuLen, intents, packetIndex, 'h323-uuie')
+        coverage.push({ protocol: 'h323-uuie', offset: pos + 3, length: uuLen, status: 'redacted' })
+      }
+      coverage.push({ protocol: 'h323-ie-hdr', offset: pos, length: 3, status: 'covered' })
+      pos += 3 + uuLen
+      continue
+    }
     const ieLen = buffer[pos + 1]!
     if (pos + 2 + ieLen > qEnd) {
       maskPayloadSpan(collector, pos, qEnd - pos, intents, packetIndex, 'h323-ie-trunc')

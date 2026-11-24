@@ -7,13 +7,13 @@ import { RND_LOG_ANONYMIZER_SCHEMA_URN, SUPPORTED_SCHEMA_VERSION } from '../../s
 describe('domain invariants', () => {
   it('rejects newlines in replacements', () => {
     expect(() => assertNoNewline('ok', 'replacement')).not.toThrow()
-    expect(() => assertNoNewline('bad\n', 'replacement')).toThrow(/nového řádku/)
-    expect(() => assertNoNewline('bad\r', 'replacement')).toThrow(/nového řádku/)
+    expect(() => assertNoNewline('bad\n', 'replacement')).toThrow(/newline/)
+    expect(() => assertNoNewline('bad\r', 'replacement')).toThrow(/newline/)
   })
 
   it('rejects empty matches', () => {
     expect(() => assertNonEmptyMatch(0, 1)).not.toThrow()
-    expect(() => assertNonEmptyMatch(3, 3)).toThrow(/kladnou délku/)
+    expect(() => assertNonEmptyMatch(3, 3)).toThrow(/positive length/)
   })
 })
 

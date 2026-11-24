@@ -3,22 +3,17 @@
  * Handlers migrate from inline branches to registry entries keyed by APPLICATION_HANDLER_ORDER id.
  */
 
-import type { IntentCollector } from '../discovery/intentCollector'
-import type { MediaFlowIndex } from '../discovery/mediaFlowIndex'
 import { MediaFlowIndex as MediaFlowIndexCtor } from '../discovery/mediaFlowIndex'
-import type { MappingLike } from '../anonymization/mapping'
 import {
   APPLICATION_HANDLER_ORDER,
   type ApplicationHandlerId,
 } from '../kernel/applicationHandlers.ts'
 import { tryKernelNativeApplicationSanitize } from '../kernel/sanitizeBridge.ts'
-import type { PatchCollector } from './PatchCollector.ts'
-import type { AppLayerResult, LayerCoverage, SanitizationPolicy } from './types.ts'
+import type { AppLayerResult } from './types.ts'
 import type {
   ApplicationDispatchContext,
   ApplicationDispatchEntry,
   ApplicationDispatchHit,
-  ApplicationFlowEndpoint,
 } from './applicationDispatchTypes.ts'
 import { APPLICATION_CLUSTER_DISPATCH_ENTRIES } from './applicationDispatchRegistryClusters.ts'
 

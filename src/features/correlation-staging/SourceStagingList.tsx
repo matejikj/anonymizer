@@ -7,9 +7,10 @@ export interface SourceStagingListProps {
   readonly items: readonly StagingItem[]
   readonly summary: StagingBatchSummary
   readonly onRemove: (id: string) => void
+  readonly disabled?: boolean
 }
 
-export function SourceStagingList({ items, summary, onRemove }: SourceStagingListProps) {
+export function SourceStagingList({ items, summary, onRemove, disabled }: SourceStagingListProps) {
   const highlightIds = new Set(summary.aggregateOverLimit ? summary.largestReadyIds : [])
 
   return (
@@ -21,6 +22,11 @@ export function SourceStagingList({ items, summary, onRemove }: SourceStagingLis
         <p className="staging-list__summary type-meta">
           {cs.correlationStaging.summary(summary.readyCount, formatStagingSize(summary.totalBytes))}
         </p>
+        {summary.readyCount > 0 ? (
+          <p className="staging-list__lead type-meta" role="status">
+            {summary.readyCount === 1 ? cs.correlationStaging.singleFileHint : cs.correlationStaging.lead}
+          </p>
+        ) : null}
         {summary.aggregateOverLimit && summary.bytesToRemove != null ? (
           <p className="staging-list__limit" role="alert" data-testid="staging-aggregate-limit">
             {cs.correlationStaging.aggregateLimit(
@@ -38,6 +44,7 @@ export function SourceStagingList({ items, summary, onRemove }: SourceStagingLis
             item={item}
             highlighted={highlightIds.has(item.id)}
             onRemove={onRemove}
+            disabled={disabled}
           />
         ))}
       </ul>

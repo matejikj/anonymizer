@@ -162,13 +162,6 @@ const EXACT: Readonly<Record<string, ProtocolFamilyId>> = {
   'm3ua-trailer': 'mobile-core',
   // T25 / T09 — SIGTRAN shared mask/fallback protocol id (family label: SS7/SIGTRAN)
   sigtran: 'ss7',
-  m2pa: 'ss7',
-  'm2pa-ansi-pc': 'ss7',
-  'm2pa-identify-mask': 'ss7',
-  'm2pa-payload-data': 'ss7',
-  'm2pa-protocol-data': 'ss7',
-  'm2pa-payload-short': 'ss7',
-
   sccp: 'mobile-core',
   'sccp-udt-class': 'mobile-core',
   'sccp-address': 'mobile-core',
@@ -448,6 +441,7 @@ const EXACT: Readonly<Record<string, ProtocolFamilyId>> = {
   'h323-display': 'sip',
   'h323-ie': 'sip',
   'h323-ie-hdr': 'sip',
+  'h323-uuie': 'sip',
   'h323-number-hdr': 'sip',
   'iax2-addr': 'sip',
   'iax2-ie': 'sip',
@@ -578,13 +572,13 @@ const PREFIX_RULES: readonly { readonly prefix: string; readonly familyId: Proto
   { prefix: 'udp', familyId: 'network-headers' },
   { prefix: 'sctp', familyId: 'network-headers' },
   { prefix: 'm3ua', familyId: 'mobile-core' },
+  // RFC 4165 M2PA — SIGTRAN MTP2 peer adaptation, same SS7 signalling stack as M3UA.
+  { prefix: 'm2pa', familyId: 'mobile-core' },
   { prefix: 'sccp', familyId: 'mobile-core' },
   { prefix: 'isup', familyId: 'mobile-core' },
   { prefix: 'tcap', familyId: 'mobile-core' },
   { prefix: 'map', familyId: 'mobile-core' },
   { prefix: 'sigtran', familyId: 'ss7' },
-  { prefix: 'm2pa', familyId: 'ss7' },
-
   { prefix: 'llc', familyId: 'network-headers' },
   { prefix: 'sll', familyId: 'network-headers' },
   { prefix: 'ether-', familyId: 'network-headers' },

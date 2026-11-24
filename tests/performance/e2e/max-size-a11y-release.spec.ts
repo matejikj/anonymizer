@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from '../../e2e/helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { cs } from '../../../src/i18n/cs.ts'
@@ -36,6 +37,7 @@ test.describe('Max-size — accessibility release gate', () => {
 
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await assertNoCriticalA11y(page, 'max-size-light-workspace')
   })
 

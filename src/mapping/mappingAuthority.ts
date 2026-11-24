@@ -18,6 +18,7 @@ import { formatIpv4TextFromWire, formatPortTextFromWire } from '../pcap/anonymiz
 import { maskAlphanumeric } from './textAliasEngine'
 import type { EntityCategory } from '../pcap/anonymization/entityRegistry'
 import { isPcapIdentityCategory, isTextIdentityCategory } from './identityCategories'
+import { isWireTransportPort } from './canonicalize'
 import {
   aliasForConstraint,
   aliasForSnapshotConstraintStrict,
@@ -58,7 +59,17 @@ import type {
   ResolveRequest,
   ResolveResult,
 } from './types'
-import { mappingKey, RESOLVE_ERROR, type ResolveErrorCode } from './types'
+import { RESOLVE_ERROR, type ResolveErrorCode } from './types'
+
+function stagingAliasKey(id: CanonicalIdentity, options: ResolveRequest['correlationOptions']): string {
+  const key = registryKeyForResolve(id, options)
+  const original = id.originalSpelling ?? id.canonical
+  // One shared user may need several wire lengths in the same source/batch.
+  return id.constraint.kind === 'text-ascii'
+    && crossFormatCategoryFromIdentity(id.category, original, id.constraint) === 'user'
+    ? JSON.stringify([key, id.constraint.byteLength])
+    : key
+}
 
 function dispositionFor(
   id: CanonicalIdentity,
@@ -256,7 +267,7 @@ export class MappingAuthority {
         return { ok: false, code: RESOLVE_ERROR.cancelled, message: 'Resolve cancelled mid-batch' }
       }
 
-      const key = registryKeyForResolve(id, this.activeCorrelationOptions)
+      const key = stagingAliasKey(id, this.activeCorrelationOptions)
       let alias = stagingAliases.get(key)
       if (alias === undefined) {
         alias = this.resolveAlias(id, stagingPcap, stagingText)
@@ -290,7 +301,7 @@ export class MappingAuthority {
 
     for (const id of batch.identities) {
       const regKey = registryKeyForResolve(id, this.activeCorrelationOptions)
-      const alias = batch.stagingAliases.get(regKey) ?? batch.stagingAliases.get(mappingKey(id.category, id.canonical))!
+      const alias = batch.stagingAliases.get(stagingAliasKey(id, this.activeCorrelationOptions))!
       const disp = dispositionFor(id, alias, batch.customRules)
       const fingerprint = fingerprintCanonicalIdentitySync(
         this.fingerprintKey,
@@ -398,7 +409,7 @@ export class MappingAuthority {
 
     for (const id of batch.identities) {
       const regKey = registryKeyForResolve(id, this.activeCorrelationOptions)
-      const alias = batch.stagingAliases.get(regKey) ?? batch.stagingAliases.get(mappingKey(id.category, id.canonical))!
+      const alias = batch.stagingAliases.get(stagingAliasKey(id, this.activeCorrelationOptions))!
       const disp = dispositionFor(id, alias, batch.customRules)
       const existing = this.registry.findByRegistryKey(regKey) ?? this.registry.findByKey(id.category, id.canonical)
       // An identity already committed by an earlier correlation source may not yet carry an
@@ -542,6 +553,9 @@ export class MappingAuthority {
     const source = isPcapIdentityCategory(id.category) ? 'pcap' as const : 'text' as const
     const cfCanon = canonicalizeCrossFormatCategory(cf, original, source)
     if (!cfCanon) return null
+    if (cf === 'user' && id.constraint.kind === 'text-ascii') {
+      return stagingText.mapUserAlias(cfCanon, original, id.constraint.byteLength, id.source?.ruleId)
+    }
     const storage = storageCategoryForCrossFormat(cf)
     return stagingText.get(storage, cfCanon)
       ?? stagingText.map(storage, cfCanon, original, id.source?.ruleId)
@@ -555,18 +569,21 @@ export class MappingAuthority {
     if (id.constraint.kind !== 'text-ascii' || !isPcapIdentityCategory(id.category)) {
       return null
     }
-    // Dual-listed categories (hostname, port): text detectors must use TextAliasEngine
+    // A transport-qualified port (`udp/5070`) only ever comes from PCAP (text logs canonicalize
+    // to bare digits), so SIP/SDP text ports always reuse the wire alias: the header then agrees
+    // with the UDP/TCP header and preserved signaling ports stay preserved in text too.
+    if (id.category === 'port' && isWireTransportPort(id.canonical)) {
+      const wireMapped = stagingPcap.get('port', id.canonical) ?? stagingPcap.map('port', id.canonical)
+      const portNum = Number.parseInt(wireMapped.split('/')[1]!, 10)
+      return formatPortTextFromWire(portNum, original)
+    }
+    // Dual-listed categories (hostname): text detectors must use TextAliasEngine
     // for deterministic host-N / length-stable text. Only PCAP-sourced text-ascii spans
     // reshape an existing wire alias into a fixed-length text slot (CF-02 / CF-07).
     if (isTextIdentityCategory(id.category) && id.source?.detectorId !== 'pcap') {
       return null
     }
     const cat = id.category as EntityCategory
-    if (cat === 'port' && id.canonical.includes('/')) {
-      const wireMapped = stagingPcap.get('port', id.canonical) ?? stagingPcap.map('port', id.canonical)
-      const portNum = Number.parseInt(wireMapped.split('/')[1]!, 10)
-      return formatPortTextFromWire(portNum, original)
-    }
     if (cat === 'ipv4') {
       const wire = stagingPcap.get('ipv4', id.canonical) ?? stagingPcap.map('ipv4', id.canonical)
       try {
@@ -606,6 +623,11 @@ export class MappingAuthority {
   ): string {
     const original = id.originalSpelling ?? id.canonical
     const regKey = registryKeyForResolve(id, this.activeCorrelationOptions)
+    if (crossFormatCategoryFromIdentity(id.category, original, id.constraint) === 'user'
+      && id.constraint.kind === 'text-ascii') {
+      const userAlias = this.resolveCrossFormatTextAlias(id, stagingText, original)
+      if (userAlias !== null) return userAlias
+    }
     const existing = this.registry.findByRegistryKey(regKey) ?? this.registry.findByKey(id.category, id.canonical)
     if (existing) {
       const cf = crossFormatCategoryFromIdentity(id.category, original, id.constraint)

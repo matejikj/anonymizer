@@ -200,7 +200,7 @@ describe('Stage 6 PcapCoverageViewModel', () => {
     expect(vm.summary.primaryAction).toBe('export-safe')
   })
 
-  it('structural-only unsupported on high-privacy truncates; diagnostic leaves risk', () => {
+  it('structural-only unsupported on high-privacy truncates; diagnostic masks in place', () => {
     expect(
       userVerdictForProtocol({
         layerKind: 'structural',
@@ -209,6 +209,7 @@ describe('Stage 6 PcapCoverageViewModel', () => {
         preset: 'high-privacy',
       }),
     ).toBe('recognized-truncated-safe')
+    // The diagnostic level's unsupportedPayloadPolicy is mask-in-place: the export masks it.
     expect(
       userVerdictForProtocol({
         layerKind: 'structural',
@@ -216,7 +217,40 @@ describe('Stage 6 PcapCoverageViewModel', () => {
         truncateUnsupported: false,
         preset: 'diagnostic',
       }),
+    ).toBe('protected-export-no-full-analysis')
+    // Only an explicit preserve-unsafe policy leaves the payload as a risk.
+    expect(
+      userVerdictForProtocol({
+        layerKind: 'structural',
+        dominantStatus: 'unsupported',
+        truncateUnsupported: false,
+        preset: 'diagnostic',
+        unsupportedPayloadPolicy: 'preserve-unsafe',
+      }),
     ).toBe('recognized-risk-diagnostic')
+  })
+
+  it('heuristic stays a review verdict regardless of level', () => {
+    for (const preset of ['diagnostic', 'high-privacy'] as const) {
+      expect(userVerdictForProtocol({
+        layerKind: 'sanitizer', dominantStatus: 'heuristic', truncateUnsupported: preset === 'high-privacy', preset,
+      })).toBe('heuristic')
+    }
+  })
+
+  it('redacted content is protected, never reported as preserved', () => {
+    for (const layerKind of ['sanitizer', 'structural', 'both'] as const) {
+      for (const preset of ['diagnostic', 'high-privacy'] as const) {
+        expect(
+          userVerdictForProtocol({
+            layerKind,
+            dominantStatus: 'redacted',
+            truncateUnsupported: preset === 'high-privacy',
+            preset,
+          }),
+        ).toBe('protected-export-no-full-analysis')
+      }
+    }
   })
 
   it('both layer kind and recognized-and-protected for covered both', () => {

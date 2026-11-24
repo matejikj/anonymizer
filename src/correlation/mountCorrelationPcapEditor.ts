@@ -67,6 +67,7 @@ export function mountCorrelationPcapEditor(
     packetDiscovery: srcDiscovery.packetDiscovery,
     unifiedCoverage: srcDiscovery.unifiedCoverage,
     entityOccurrenceIndex: srcDiscovery.entityOccurrenceIndex,
+    coverageRollup: container.coverageRollup,
     plan: plan.plan,
     mappingRevision: plan.mappingRevision,
     profile,

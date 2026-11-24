@@ -51,11 +51,20 @@ describe('PCAP anonymization levels (step 2)', () => {
     const bundled = JSON.parse(
       readFileSync(join(profilesDir, 'rnd-team-production.json'), 'utf8'),
     )
+    const overview = readFileSync(
+      join(profilesDir, '..', 'docs/PCAP_ANONYMIZATION_OVERVIEW.md'),
+      'utf8',
+    )
+    const levelModule = readFileSync(join(srcDir, 'pcap/profile/pcapAnonymizationLevel.ts'), 'utf8')
+
     expect(profile.preset).toBe('diagnostic')
     expect(profile.name).toBe(getPresetDefinition('diagnostic').defaultName)
     expect(profile.name).toBe(cs.pcap.presets.diagnosticName)
     expect(bundled).not.toHaveProperty('pcapProfile')
     expect(JSON.stringify(bundled)).not.toMatch(/"pcapProfile"/)
+    expect(overview).toMatch(/Diagnostické pro AI|diagnostic/)
+    expect(levelModule).toContain('PcapAnonymizationLevel')
+    expect(overview).not.toContain('PcapProfileEditor')
     expect(profile.protocols.dns).toBe(true)
     expect(cs.pcap.presets.diagnosticImpact).toMatch(/Zachová pakety, timing a protokolové chyby/)
     expect(profileToSanitizationPolicy(profile)).toEqual(DIAGNOSTIC_POLICY)

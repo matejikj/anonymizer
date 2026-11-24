@@ -129,7 +129,9 @@ export interface BuiltExportPacket {
 /** Bumped for T58 — NGAP 5G APER sanitizer + typed N2 adapter (SCTP PPID 60). */
 /** Bumped for T61 — 5G SBI HTTP/JSON + multipart N1/N2 (REL-18 pinned subset). */
 /** Bumped for T25 M2PA (SCTP PPID 5) + T26 GTPv2 piggyback baseline. */
-export const PCAP_ENGINE_VERSION = '2.35.0'
+/** Bumped — journal port encoding (mapped ports were written as 0) + SIP/SDP text port wire alias. */
+/** Bumped — fail-closed DHCPv4/v6 options, H.225.0 two-octet User-user IE, heuristic syslog MSG. */
+export const PCAP_ENGINE_VERSION = '2.37.0'
 
 export { EMPTY_INCIDENT_LOG_SNAPSHOT }
 

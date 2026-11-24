@@ -43,7 +43,7 @@ function writeU16be(buf: Uint8Array, o: number, v: number): void {
 }
 
 describe('T41 registry', () => {
-  it('registers messaging handlers, family, ports, and engine 2.35.0', () => {
+  it('registers messaging handlers, family, ports, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toEqual(
       expect.arrayContaining([
@@ -65,7 +65,7 @@ describe('T41 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(9092)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(4222)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(12201)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

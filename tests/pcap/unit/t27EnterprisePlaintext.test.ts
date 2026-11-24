@@ -36,7 +36,7 @@ describe('T27 registry', () => {
     expect(ids).toEqual(expect.arrayContaining(['smtp', 'imap', 'pop3', 'ftp', 'telnet', 'smb']))
     expect(familyForProtocol('ftp-data').familyId).toBe('management')
     expect(familyForProtocol('smb2').familyId).toBe('directory')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

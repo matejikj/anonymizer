@@ -63,13 +63,13 @@ const MAKE_CALL_XML = [
 ].join('')
 
 describe('T49 registry', () => {
-  it('registers csta handler, family, and engine 2.35.0', () => {
+  it('registers csta handler, family, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('csta')
     expect(familyForProtocol('csta').familyId).toBe('csta')
     expect(familyForProtocol('csta-xml').familyId).toBe('csta')
     expect(familyForProtocol('sip-csta').familyId).toBe('csta')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

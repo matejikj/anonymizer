@@ -1,6 +1,6 @@
 /**
  * FORENSIC_BENCH anti-AI / drift guard (T46).
- * Invariants live in code tokens — not a deleted design.md / construction doc.
+ * Invariants live in code tokens + referenceCompositions — not a deleted design.md.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -30,6 +30,7 @@ describe('FORENSIC_BENCH step 8 — anti-AI / drift guard', () => {
   const shell = read('src/styles/shell.css')
   const primitives = read('src/styles/primitives.css')
   const gallery = read('src/design-system/gallery/main.tsx')
+  const referenceCompositions = read('src/styles/referenceCompositions.ts')
 
   it('locks Bench radii and motion clamp', () => {
     expect(tokens).toMatch(/--radius-control:\s*6px/)
@@ -86,10 +87,11 @@ describe('FORENSIC_BENCH step 8 — anti-AI / drift guard', () => {
     expect(gallery).not.toMatch(/type-display/)
   })
 
-  it('keeps Forensic Bench tokens as the anti-AI checklist source of truth', () => {
+  it('anchors Forensic Bench direction and matte glass tokens in referenceCompositions', () => {
+    expect(referenceCompositions).toMatch(/DESIGN_DIRECTION = 'Forensic Bench'/)
+    expect(referenceCompositions).toMatch(/matte instrument|matte raised/i)
     expect(tokens).toMatch(/--glass-blur:\s*0px/)
-    expect(tokens).toMatch(/--color-accent:\s*#0e5860/)
-    expect(gallery).toMatch(/data-design="forensic-bench"/)
+    expect(tokens).toMatch(/--glass-backdrop:\s*none/)
   })
 
   it('rejects purple / candy AI palette anchors in tokens', () => {

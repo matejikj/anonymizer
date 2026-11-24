@@ -133,6 +133,7 @@ function sanitizeNbName(
     const encAbs = base + pos + 1
     const enc = buffer.subarray(encAbs, encAbs + 32)
     const raw = decodeNetbiosFirstLevel(enc)
+    let mapped = false
     if (raw) {
       const split = splitNetbiosName(raw)
       if (split) {
@@ -145,7 +146,7 @@ function sanitizeNbName(
             'hostname',
             canon,
             32,
-            { kind: 'text-ascii', byteLength: 32 },
+            constraint,
             split.host,
           )
           collector.addDeferred(encAbs, 32, ({ mapping: live }) => {
@@ -178,9 +179,16 @@ function sanitizeNbName(
               })
             }
           }, { fallbackKind: 'text-x', protocol: 'nbns', category: 'hostname', packetIndex })
+          mapped = true
           void mapping
         }
       }
+    }
+    if (!mapped) {
+      // OEM names and malformed first-level labels must never become passthrough.
+      const placeholder = encodeNetbiosFirstLevel(joinNetbiosName('ANONYMIZED', raw?.[15] ?? 0)!)!
+      collector.add(encAbs, placeholder)
+      intents?.recordFixedRedaction(packetIndex, encAbs, 32)
     }
     // skip label + root null
     let next = pos + 1 + labelLen
@@ -274,11 +282,17 @@ function sanitizeDatagram(
     mask(collector, intents, packetIndex, offset, length, 'nbdg-trunc')
     return
   }
-  // Source IP at offset 8 (4 bytes) in common datagram header layout
-  mapIpv4(buffer, offset + 8, collector, mapping, intents, packetIndex)
-  // Remainder after header often carries browser/SMB — mask fail-closed
-  if (length > 14) {
-    mask(collector, intents, packetIndex, offset + 14, length - 14, 'nbdg-payload')
+  // RFC 1002: type(1), flags(1), id(2), source IP(4), port(2), length(2), offset(2).
+  mapIpv4(buffer, offset + 4, collector, mapping, intents, packetIndex)
+  // Preserve the name framing; the following browser/SMB body is unverified.
+  let body = 14
+  for (let i = 0; i < 2; i++) {
+    const next = sanitizeNbName(buffer, offset, body, length, collector, mapping, intents, packetIndex)
+    if (next < 0) break
+    body = next
+  }
+  if (length > body) {
+    mask(collector, intents, packetIndex, offset + body, length - body, 'nbdg-payload')
     issues.push('nbdg-payload-masked')
   }
   void mapping

@@ -104,7 +104,9 @@ describe('SessionMapping', () => {
 
   describe('CSPRNG randomness (Krok 1)', () => {
     it('consecutive IPv4 mappings for different inputs are not a simple counter sequence', () => {
-      const m = new SessionMapping();
+      // Randomness belongs to privacy mode; diagnostic mode may allocate sequential
+      // free slots while keeping addresses in the same topology bucket.
+      const m = new SessionMapping({ ...DEFAULT_MAPPING_CONFIG, ip: 'privacy-preserving' });
       const lastOctets: number[] = [];
       for (let i = 0; i < 20; i++) {
         const mapped = m.map('ipv4', `172.16.${(i >> 8) & 0xff}.${i & 0xff}`);

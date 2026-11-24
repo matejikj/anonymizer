@@ -705,6 +705,12 @@ export function sanitizeHttpBody(input: {
     return maskBodyInPlace(collector, intents, packetIndex, bodyAbsOffset, bodyLength, fields)
   }
 
+  // HTML contains entity-escaped identities, display names and build fingerprints outside
+  // the text detector grammar. Without a schema for that document, redact the whole body.
+  if (/^(?:text\/html|application\/xhtml\+xml)(?:\s*;|$)/i.test(headers.contentType ?? '')) {
+    return maskBodyInPlace(collector, intents, packetIndex, bodyAbsOffset, bodyLength, fields)
+  }
+
   // T55 — CWMP SOAP (TR-069) before generic text/* / unverified mask.
   {
     const fullText = new TextDecoder('latin1').decode(body)

@@ -53,6 +53,9 @@ export class TextAliasEngine {
   private readonly _map = new Map<string, string>()
   private readonly _counters: TextReplacementCounters = createTextReplacementCounters()
   private readonly _customRulesById = new Map<string, CustomRule>()
+  private readonly _userRepresentations = new Map<string, string>()
+  private readonly _usedUserAliases = new Set<string>()
+  private readonly _nextUserAliasByLength = new Map<number, number>()
   private _overflow = false
 
   constructor(customRules: readonly CustomRule[] = []) {
@@ -73,6 +76,9 @@ export class TextAliasEngine {
     Object.assign(copy._counters, this._counters)
     copy._overflow = this._overflow
     for (const [k, v] of this._customRulesById) copy._customRulesById.set(k, v)
+    for (const [k, v] of this._userRepresentations) copy._userRepresentations.set(k, v)
+    for (const v of this._usedUserAliases) copy._usedUserAliases.add(v)
+    for (const [k, v] of this._nextUserAliasByLength) copy._nextUserAliasByLength.set(k, v)
     return copy
   }
 
@@ -87,6 +93,55 @@ export class TextAliasEngine {
     for (const [k, v] of staging._map) this._map.set(k, v)
     Object.assign(this._counters, staging._counters)
     this._overflow = staging._overflow
+    this._userRepresentations.clear()
+    for (const [k, v] of staging._userRepresentations) this._userRepresentations.set(k, v)
+    this._usedUserAliases.clear()
+    for (const v of staging._usedUserAliases) this._usedUserAliases.add(v)
+    this._nextUserAliasByLength.clear()
+    for (const [k, v] of staging._nextUserAliasByLength) this._nextUserAliasByLength.set(k, v)
+  }
+
+  /** Allocate the final wire-sized shared user alias, before publishing the snapshot. */
+  mapUserAlias(canonical: string, original: string, byteLength: number, ruleId?: string): string {
+    if (!Number.isSafeInteger(byteLength) || byteLength < 1) {
+      throw new Error('Invalid user alias length')
+    }
+    // Explicit fixed rules are intentionally non-bijective and may change text length.
+    if (ruleId && this._customRulesById.get(ruleId)?.replacementMode === 'fixed') {
+      return this.map('user-id', canonical, original, ruleId)
+    }
+    const key = JSON.stringify([canonical, byteLength])
+    const existing = this._userRepresentations.get(key)
+    if (existing !== undefined) return existing
+    if (this._overflow) return 'x'.repeat(byteLength)
+
+    const primary = this.map('user-id', canonical, original, ruleId)
+    const available = (alias: string) => !this._usedUserAliases.has(alias)
+      && alias.toLowerCase() !== original.trim().toLowerCase()
+    // Keep readable account-N aliases when they fit. Never truncate their distinguishing suffix.
+    let alias = primary.padEnd(byteLength, 'x')
+    if (primary.length > byteLength || !available(alias)) {
+      const capacity = 36 ** byteLength
+      let next = this._nextUserAliasByLength.get(byteLength) ?? 0
+      let found = false
+      // Fixed-width base36 uses the whole slot; the used set detects wrap/exhaustion.
+      for (let attempts = 0; attempts < capacity; attempts++) {
+        alias = next.toString(36).padStart(byteLength, '0')
+        next = next + 1 < capacity ? next + 1 : 0
+        if (available(alias)) {
+          found = true
+          break
+        }
+      }
+      this._nextUserAliasByLength.set(byteLength, next)
+      if (!found) {
+        this._overflow = true
+        alias = 'x'.repeat(byteLength)
+      }
+    }
+    this._userRepresentations.set(key, alias)
+    this._usedUserAliases.add(alias)
+    return alias
   }
 
   get(category: IdentityCategory, canonical: string): string | undefined {

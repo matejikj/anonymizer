@@ -5,17 +5,17 @@
  *
  * | Preset / state     | Summary verdict              | Primary CTA              | Coverage dual cols | Export confirm sections |
  * |--------------------|------------------------------|--------------------------|--------------------|-------------------------|
- * | high-privacy + covered | Safe to export            | Export                   | recognized/protected (cs UI) | n/a (direct export)     |
- * | diagnostic + risk      | Export possible / caution | Review / Export          | risk verdict       | optional confirm        |
- * | malformed/blocked  | Export blocked               | Export unavailable       | blocking           | blocked hint            |
- * | sanitizer-only DNS | Protected without full analysis | Export                | N/M dual counts    | n/a                     |
+ * | high-privacy + covered | Lze bezpečně exportovat   | Exportovat               | rozpoznáno/chráněno| n/a (direct export)     |
+ * | diagnostic + risk      | Export možný / pozornost  | Zkontrolovat / Export    | risk verdict       | optional confirm        |
+ * | malformed/blocked  | Export blokován              | Export není dostupný     | blocking           | blocked hint            |
+ * | sanitizer-only DNS | Chráněno bez plné analýzy    | Exportovat               | N/M dual counts    | n/a                     |
  *
- * Usability walkthrough checklist (moderated; Czech product copy in app):
- * 1. Decide whether export is safe — expected ≤2 steps (summary → CTA).
- * 2. Find an unsupported protocol — Coverage tab + click → filter.
- * 3. recognized vs protected — dual columns + legend.
- * 4. Remove active filter — chip ×.
- * 5. Help keyboard-only — Help open, Tab trap, Escape, focus restore.
+ * Usability walkthrough checklist (moderated):
+ * 1. Zjistit, zda lze bezpečně exportovat — očekáváno ≤2 kroky (summary → CTA).
+ * 2. Najít nepodporovaný protokol — Coverage tab + klik → filtr.
+ * 3. Rozdíl rozpoznáno vs chráněno — dual columns + legend.
+ * 4. Odstranit aktivní filtr — chip ×.
+ * 5. Nápověda jen klávesnicí — Help open, Tab trap, Escape, focus restore.
  */
 
 export const STAGE6_COVERAGE_STATE_MATRIX = [
@@ -25,4 +25,10 @@ export const STAGE6_COVERAGE_STATE_MATRIX = [
   'sanitizer-only-dns',
 ] as const
 
-export type Stage6CoverageState = (typeof STAGE6_COVERAGE_STATE_MATRIX)[number]
+export const STAGE6_USABILITY_TASKS = [
+  'can-export-safely',
+  'find-unsupported-protocol',
+  'explain-recognized-vs-protected',
+  'remove-active-filter',
+  'help-keyboard-only',
+] as const

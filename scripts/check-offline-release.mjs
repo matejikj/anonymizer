@@ -120,11 +120,11 @@ if (existsSync(distHtml)) {
   ok('dist/ (optional until build)', 'not built — verify runs build before this check in CI')
 }
 
-// 7. In-app Czech docs remain available as UI content (not construction markdown)
-if (existsSync(path.join(root, 'src/i18n/anonymizationDocs.cs.md'))) {
-  ok('src/i18n/anonymizationDocs.cs.md present')
+// 7. Release checklist doc
+if (existsSync(path.join(root, 'docs/RELEASE_CHECKLIST.md'))) {
+  ok('docs/RELEASE_CHECKLIST.md present')
 } else {
-  fail('src/i18n/anonymizationDocs.cs.md present', 'missing')
+  fail('docs/RELEASE_CHECKLIST.md present', 'missing')
 }
 
 const failed = checks.filter((c) => !c.ok)

@@ -6,7 +6,8 @@ import type { PacketEnvelope } from '../domain/types'
 import type { SanitizationPolicy } from '../sanitize/types'
 import { analyzePackets } from '../protocols/analysis'
 import type { PacketInput } from '../sanitize/engine'
-import { discoverPacket } from './discoverPacket'
+import { discoverPacket, withoutMergedHints } from './discoverPacket'
+import { openIdentityInternScope, type IdentityInternScope } from '../kernel/identityIntern'
 import { CoapBlock2Session } from '../sanitize/industrial/coapBlock2Session.ts'
 import { OpcuaChannelSession } from '../sanitize/industrial/opcuaChannelSession.ts'
 import { MediaFlowIndex } from './mediaFlowIndex'
@@ -37,6 +38,22 @@ export function runDiscoveryPipeline(
   sourceId: string,
   options: DiscoverBatchOptions = {},
 ): SourceDiscovery {
+  const internScope = openIdentityInternScope()
+  try {
+    return runDiscoveryPipelineScoped(packets, policy, generationId, sourceId, options, internScope)
+  } finally {
+    internScope.close()
+  }
+}
+
+function runDiscoveryPipelineScoped(
+  packets: readonly PacketEnvelope[],
+  policy: SanitizationPolicy,
+  generationId: string,
+  sourceId: string,
+  options: DiscoverBatchOptions,
+  internScope: IdentityInternScope,
+): SourceDiscovery {
   const batchSize = options.batchSize ?? DEFAULT_PROCESSING_BATCH_SIZE
   const analysis = analyzePackets(packets)
 
@@ -63,15 +80,14 @@ export function runDiscoveryPipeline(
         originalLength: pkt.originalLength,
         linkType: pkt.linkType,
       }
-      packetDiscovery.push(discoverPacket(
+      const pd = discoverPacket(
         input,
         pkt.packetNumber,
         policy,
         mediaFlowIndex,
         options.reassemblyContext,
         { generationId, sourceId, coapBlock2, opcuaChannel },
-      ))
-      const pd = packetDiscovery[packetDiscovery.length - 1]!
+      )
       allIntents.push(...pd.intents)
       if (pd.portFlowHints) {
         for (const [canonical, flow] of pd.portFlowHints) {
@@ -84,12 +100,14 @@ export function runDiscoveryPipeline(
           mediaPortPairs.set(a, b)
         }
       }
+      packetDiscovery.push(withoutMergedHints(pd))
     }
 
     options.onProgress?.(end, packets.length)
   }
 
   coapBlock2.finalizeDiscovery(packetDiscovery)
+  internScope.close()
 
   const exactOccurrences = buildExactOccurrences(
     analysis.entities,
@@ -131,7 +149,9 @@ export function runDiscoveryPipeline(
   }
 }
 
-export function identitiesFromDiscovery(discovery: SourceDiscovery): CanonicalIdentity[] {
+export function identitiesFromDiscovery(
+  discovery: Pick<SourceDiscovery, 'sourceId' | 'analysis' | 'intents' | 'portFlowHints' | 'mediaPortPairs'>,
+): CanonicalIdentity[] {
   type ConstraintSlot = {
     constraint: CanonicalIdentity['constraint']
     spellings: Set<string>
@@ -276,7 +296,9 @@ function buildExactOccurrences(
   return out
 }
 
-export function summarizeDiscovery(discovery: SourceDiscovery) {
+export function summarizeDiscovery(
+  discovery: Pick<SourceDiscovery, 'generationId' | 'sourceId' | 'totalPackets' | 'analysis' | 'intents'>,
+) {
   return {
     generationId: discovery.generationId,
     sourceId: discovery.sourceId,

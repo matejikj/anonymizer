@@ -8,7 +8,7 @@
  * Only the source/destination radio IDs (subscriber/talkgroup) are mapped — the AMBE
  * voice payload is left untouched. Voice is opaque and not meaningfully anonymizable;
  * touching it would also contradict this engine's "replayable anonymized traffic"
- * non-goal (voice payload rewrite is out of scope).
+ * non-goal (replayable anonymized traffic is out of scope for this engine).
  */
 
 import type { PatchCollector } from './PatchCollector';

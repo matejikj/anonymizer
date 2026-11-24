@@ -1,7 +1,13 @@
 /**
- * T12 — phase-1 local regression gate over gitignored `logs/` fixtures.
- * Same skip mode as other private captures: absent files → skip, never commit
- * anonymized output or raw seeds. Drop private PCAPs/logs into `logs/` locally only.
+ * T12 — phase-1 local regression gate over gitignored `anonymizer/logs/` fixtures.
+ * Same skip mode as dt.pcap: absent files → skip, never commit anonymized output or raw seeds.
+ *
+ * Expected fixtures (when available):
+ *   logs/hi2-20261012-001-sip.pcap
+ *   logs/obc2.pcap
+ *   logs/obc2.pcap.gz
+ *   logs/obc2.log.gz
+ * Optional later: Grandstream Call-ID capture, production MGCP capture.
  */
 
 import { describe, expect, it } from 'vitest'

@@ -31,7 +31,7 @@ function latin1(buf: Uint8Array): string {
 }
 
 describe('T50 registry', () => {
-  it('registers ami/ari handlers, family, ports, and engine 2.35.0', () => {
+  it('registers ami/ari handlers, family, ports, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('ami')
     expect(ids).toContain('ari')
@@ -42,7 +42,7 @@ describe('T50 registry', () => {
     expect(familyForProtocol('ari-json').familyId).toBe('ami-ari')
     expect(SEMANTIC_SERVICE_PORTS.has(5038)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(8088)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

@@ -22,11 +22,11 @@ import { PatchCollector } from '../../../src/pcap/sanitize/PatchCollector'
 import { PCAP_ENGINE_VERSION } from '../../../src/pcap/export/planSnapshot'
 
 describe('T56 registry / engine', () => {
-  it('exposes two toy schemas and engine 2.35.0 with S1AP/NGAP schemas (T57/T58)', () => {
+  it('exposes two toy schemas and engine 2.36.1 with S1AP/NGAP schemas (T57/T58)', () => {
     expect(APER_SCHEMA_REGISTRY.size).toBe(4)
     expect(getAperSchema(TOY_MODULE_A.id)?.revision).toBe('t56-1')
     expect(getAperSchema(TOY_MODULE_B.id)?.root.kind).toBe('choice')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

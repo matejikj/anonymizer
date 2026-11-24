@@ -53,7 +53,8 @@ describe('conformance — PCAP worker ports', () => {
   })
 
   it('exposes stable worker protocol version map', () => {
-    expect(WORKER_PROTOCOL_VERSIONS.pcapProcessing).toBe(5)
+    // 6 — R10 packed discover transfer; 7 — rollup reassembly/malformed span counts.
+    expect(WORKER_PROTOCOL_VERSIONS.pcapProcessing).toBe(9)
     expect(WORKER_PROTOCOL_VERSIONS.pcapExport).toBe(3)
   })
 })

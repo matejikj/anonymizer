@@ -1,4 +1,6 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
+import { cs } from '../../src/i18n/cs.ts'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -8,6 +10,7 @@ test.describe('Anonymized log export', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('export-bar')).toBeVisible()
 
     const downloadPromise = page.waitForEvent('download')
@@ -29,6 +32,7 @@ test.describe('Anonymized log export', () => {
     await page.goto('/')
     await page.getByTestId('file-input').setInputFiles(src)
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
 
     const downloadPromise = page.waitForEvent('download')
     await page.getByTestId('export-download').click()
@@ -45,9 +49,10 @@ test.describe('Anonymized log export', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('export-copy')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     // AppShell Ctrl/Cmd+Shift+C clicks this same control (OS-level shortcut opens DevTools).
     await page.getByTestId('export-copy').click()
-    await expect(page.getByTestId('app-toast')).toContainText('Zkopírováno', {
+    await expect(page.getByTestId('app-toast')).toContainText(cs.export.copied, {
       timeout: 15_000,
     })
     const text = await page.evaluate(() => navigator.clipboard.readText())
@@ -59,6 +64,7 @@ test.describe('Anonymized log export', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.getByTestId('review-tab-entities').click()
     const firstSwitch = page.locator('[data-testid^="entity-switch-"]').first()
     await firstSwitch.click()
@@ -79,6 +85,7 @@ test.describe('Anonymized log export', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('export-bar')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.waitForFunction(
       () => typeof window.__RND_LOG_ANONYMIZER_E2E__?.markExportBlocked === 'function',
     )

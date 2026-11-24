@@ -1,5 +1,5 @@
 /**
- * Step 9 — diagnostic vs. privacy UX: card copy, summaries, safe errors, disposition.
+ * Step 9 — diagnostika vs. soukromí UX: card copy, summaries, safe errors, disposition.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -52,7 +52,7 @@ function modelFromProtocol() {
 }
 
 describe('step 9 diagnostic card copy', () => {
-  it('names the default preset per cs.pcap.presets.diagnosticName', () => {
+  it('names the default preset Diagnostické pro AI — doporučeno', () => {
     expect(DEFAULT_PCAP_PRESET).toBe('diagnostic')
     expect(cs.pcap.presets.diagnosticName).toBe('Diagnostické pro AI — doporučeno')
     expect(cs.pcap.presets.defaultPresetBadge).toBe('doporučeno')

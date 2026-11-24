@@ -33,53 +33,6 @@ import type { InnerTransportHandler } from './tunnel';
 import { sanitizeTunnel, sanitizeIcmpEmbedded, sanitizeVxlan, sanitizeIcmpv6Ndp, MAX_TUNNEL_DEPTH } from './tunnel';
 import { sanitizeEsp, sanitizeAh, IPPROTO_ESP, IPPROTO_AH } from './esp';
 import { sanitizeSctp, IPPROTO_SCTP } from './sctp';
-import { sanitizeHttp } from './http';
-import { sanitizeHttp2, looksLikeHttp2Preface, looksLikeHttp2Frame } from './http2';
-import { sanitizeWebSocket, looksLikeWebSocketFrame } from './websocket';
-import { sanitizeSyslog, looksLikeSyslog, isSyslogPortHint } from './syslog';
-import { sanitizeSnmp, looksLikeSnmp, isSnmpPortHint } from './snmp';
-import { sanitizeNtp, looksLikeNtp, isNtpPortHint } from './ntp';
-import { sanitizeTftp, looksLikeTftp, isTftpPortHint } from './tftp';
-import { sanitizeLlmnr, looksLikeLlmnr, isLlmnrPortHint } from './llmnr';
-import { sanitizeNbns, looksLikeNbns, isNbnsPortHint } from './nbns';
-import { sanitizeSsdp, looksLikeSsdp, isSsdpPortHint } from './ssdp';
-import { sanitizeWsDiscovery, looksLikeWsDiscovery, isWsDiscoveryPortHint } from './wsDiscovery';
-import { sanitizeRadius, looksLikeRadius, isRadiusPortHint } from './radius';
-import { sanitizeTacacs, looksLikeTacacs, isTacacsPortHint } from './tacacs';
-import { sanitizeDiameter, looksLikeDiameter, isDiameterPortHint } from './diameter';
-import { sanitizeHep, looksLikeHep, isHepPortHint } from './hep';
-import { sanitizeTzsp, looksLikeTzsp, isTzspPortHint } from './tzsp';
-import {
-  sanitizeNetflowV5,
-  sanitizeNetflowV9OrIpfix,
-  looksLikeNetflowV5,
-  looksLikeNetflowV9OrIpfix,
-  isNetflowV5PortHint,
-  isIpfixPortHint,
-} from './flowExport';
-import { sanitizeSflow, looksLikeSflow, isSflowPortHint } from './sflow';
-import { sanitizeLdap, looksLikeLdap, isLdapPortHint } from './ldap';
-import { sanitizeKerberos, looksLikeKerberos, isKerberosPortHint } from './kerberos';
-import {
-  sanitizeGtp,
-  looksLikeGtp,
-  isGtpPortHint,
-  isGtpUPort,
-} from './gtp';
-import {
-  sanitizeSmtp,
-  sanitizeImap,
-  sanitizePop3,
-  looksLikeSmtp,
-  looksLikeImap,
-  looksLikePop3,
-  isSmtpPortHint,
-  isImapPortHint,
-  isPop3PortHint,
-} from './enterpriseMail';
-import { sanitizeFtp, looksLikeFtp, isFtpPortHint } from './ftp';
-import { sanitizeTelnet, looksLikeTelnet, isTelnetPortHint } from './telnet';
-import { sanitizeSmb, looksLikeSmb, isSmbPortHint } from './smb';
 import { sanitizeLldp, ETHERTYPE_LLDP } from './lldp';
 import { sanitizeLacp, ETHERTYPE_SLOW } from './lacp';
 import {
@@ -121,9 +74,6 @@ import {
   identifyUnsupportedApplicationPayload,
   unsupportedCoverageProtocolId,
 } from './unsupportedIdentification';
-import { sanitizeDmr } from './dmr';
-import { sanitizeMototrboIpsc } from './mototrbo';
-import { sanitizeRndDispatchLite } from './rndDispatchLite';
 import {
   IPPROTO_OSPF,
   IPPROTO_EIGRP,
@@ -133,28 +83,9 @@ import {
   sanitizeEigrp,
   sanitizePim,
   sanitizeIgmp,
-  sanitizeRip,
-  sanitizeBfd,
-  sanitizeHsrpGlbp,
-  sanitizeBgp,
   sanitizeIsis,
-  sanitizeLdp,
   sanitizeTcpAuthOptions,
 } from './routing/index.ts';
-import {
-  sanitizeRdp,
-  sanitizeVnc,
-  sanitizeX11,
-  sanitizeIpmi,
-  sanitizeCitrix,
-  sanitizeAmtHttp,
-  isRdpPortHint,
-  isVncPortHint,
-  isX11PortHint,
-  isIpmiPortHint,
-  isCitrixPortHint,
-  isAmtPortHint,
-} from './remoteAccess/index.ts';
 import {
   LINKTYPE_IEEE802_11,
   LINKTYPE_IEEE802_11_RADIO,
@@ -166,74 +97,11 @@ import {
   sanitizeIeee80211,
   sanitizeBluetoothHci,
   sanitizeBluetoothLeLl,
-  sanitizeGsmtap,
-  isGsmtapPortHint,
 } from './wireless/index.ts';
-import {
-  sanitizeAmqp,
-  sanitizeKafka,
-  sanitizeNats,
-  sanitizeStomp,
-  sanitizeXmpp,
-  sanitizeGelf,
-  sanitizeFluentForward,
-  sanitizeOtlp,
-  isAmqpPortHint,
-  isKafkaPortHint,
-  isNatsPortHint,
-  isStompPortHint,
-  isXmppPortHint,
-  isGelfPortHint,
-  isFluentPortHint,
-  isOtlpPortHint,
-} from './messaging/index.ts';
-import {
-  sanitizePostgres,
-  sanitizeMysql,
-  sanitizeTds,
-  sanitizeRedis,
-  sanitizeMongodb,
-  isPostgresPortHint,
-  isMysqlPortHint,
-  isTdsPortHint,
-  isRedisPortHint,
-  isMongodbPortHint,
-} from './database/index.ts';
-import {
-  sanitizeMqtt,
-  sanitizeCoap,
-  sanitizeModbus,
-  sanitizeIec104,
-  sanitizeDnp3,
-  sanitizeOpcua,
-  isMqttPortHint,
-  isCoapPortHint,
-  isModbusPortHint,
-  isIec104PortHint,
-  isDnp3PortHint,
-  isOpcuaPortHint,
-} from './industrial/index.ts';
-import {
-  sanitizeDcerpc,
-  sanitizeIscsi,
-  sanitizePortmapper,
-  sanitizeNfs,
-  isDcerpcPortHint,
-  isIscsiPortHint,
-  isPortmapperPortHint,
-  isNfsPortHint,
-  looksLikeDcerpc,
-} from './storage/index.ts';
 import { LINKTYPE_PPI } from '../protocols/types';
-import { sanitizeMrcp, isMrcpPortHint, looksLikeMrcp } from './mrcp.ts'
-import { sanitizeCwmp, isCwmpPortHint, looksLikeCwmp } from './cwmp.ts'
-import { sanitizeUspRecord, looksLikeUspRecord } from './usp.ts'
-import { sanitizeNas, looksLikeNas } from './nas.ts'
-import { sanitizeSbi5g, looksLikeSbi } from './sbi5g.ts'
-import { sanitizePfcp, looksLikePfcp, isPfcpPortHint } from './pfcp.ts'
 import { resolveExportBoundary } from './exportBoundary';
 import { patchVlanTci } from './vlanPatch';
-import { createMaskFill, createProtocolNeutralMaskFill } from './maskFill';
+import { createProtocolNeutralMaskFill } from './maskFill';
 import { ipv6Bytes16ToText, ipv6TextToBytes16 } from './ipv6Wire';
 import {
   FingerprintSession,

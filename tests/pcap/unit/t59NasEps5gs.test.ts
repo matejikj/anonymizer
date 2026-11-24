@@ -55,12 +55,12 @@ function mobileIdentityImsi(digits: string): Uint8Array {
 }
 
 describe('T59 registry', () => {
-  it('registers nas handler, mobile-core family, engine 2.35.0', () => {
+  it('registers nas handler, mobile-core family, engine 2.36.1', () => {
     expect(APPLICATION_HANDLER_ORDER.map((h) => h.id)).toContain('nas')
     expect(familyForProtocol('nas-emm').familyId).toBe('mobile-core')
     expect(familyForProtocol('nas-imsi').familyId).toBe('mobile-core')
     expect(familyForProtocol('nas-5gmm').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

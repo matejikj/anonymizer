@@ -3,6 +3,7 @@
  */
 
 import type { FilterExpr, PacketFilterContext } from './types'
+import { familyForProtocol } from '../coverage/protocolFamilies'
 
 export function evaluateDisplayFilter(expr: FilterExpr | null, ctx: PacketFilterContext): boolean {
   if (!expr) return true
@@ -54,6 +55,10 @@ function evalCompare(
       return compareBool(op, Boolean(value), ctx.hasIssue)
     case 'protocol':
       return compareStr(op, String(value).toLowerCase(), ctx.protocols.join(',').toLowerCase())
+    case 'protocol.family': {
+      const matches = (protocol: string) => compareStr(op, String(value).toLowerCase(), familyForProtocol(protocol).familyId)
+      return op === '!=' ? ctx.protocols.every(matches) : ctx.protocols.some(matches)
+    }
     default:
       return false
   }

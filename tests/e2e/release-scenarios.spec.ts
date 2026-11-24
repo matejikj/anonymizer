@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -53,6 +54,7 @@ test.describe('Release integration scenarios', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('log-search')).toBeVisible()
 
     const orig = page.getByTestId('log-search-input')
@@ -80,6 +82,7 @@ test.describe('Release integration scenarios', () => {
     // Text
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.getByTestId('close-log').click()
     await expect(page.getByTestId('landing')).toBeVisible({ timeout: 15_000 })
 
@@ -93,12 +96,14 @@ test.describe('Release integration scenarios', () => {
     // Text again proves no sticky exclusive session
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
   })
 
   test('security surfaces keep a single primary export CTA', async ({ page }) => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('export-download')).toBeVisible()
     await expect(page.getByTestId('export-bar').locator('.btn--primary')).toHaveCount(1)
 
@@ -120,5 +125,6 @@ test.describe('Release integration scenarios', () => {
     await expect(page.getByTestId('landing')).toBeVisible({ timeout: 15_000 })
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
   })
 })

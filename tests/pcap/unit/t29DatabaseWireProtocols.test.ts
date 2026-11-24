@@ -50,7 +50,7 @@ function writeU32le(buf: Uint8Array, o: number, v: number): void {
 }
 
 describe('T29 registry', () => {
-  it('registers database handlers, family, ports, and engine 2.35.0', () => {
+  it('registers database handlers, family, ports, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toEqual(
       expect.arrayContaining(['postgres', 'mysql', 'tds', 'redis', 'mongodb']),
@@ -62,7 +62,7 @@ describe('T29 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(5432)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(3306)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(6379)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

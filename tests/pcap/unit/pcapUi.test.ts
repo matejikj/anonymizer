@@ -46,6 +46,40 @@ describe('pcapSession (Stage 9 slim)', () => {
     clearPcapSession()
   })
 
+  it('resets capture-local selection and history while preserving filters and layout', () => {
+    const store = usePcapStore.getState()
+    store.resetToEmpty()
+    store.setFilter({ protocol: 'udp' })
+    store.setSelectedPacketIndex(7)
+    store.setSelectedFieldPath('frame/network')
+    store.setSelectedByteOffset(34)
+    store.setActiveByteSourceId('old-payload')
+    store.setExpandedTreeNodes(['frame'])
+    store.toggleMarkedPacket(7)
+    store.setDetailTab('changes')
+    store.pushSelectionSnapshot({ packetIndex: 7, fieldPath: 'frame/network', byteOffset: 34 })
+    const ratio = store.detailsPanelRatio
+
+    store.resetPacketSelection()
+    const reset = usePcapStore.getState()
+    expect(reset.selectedPacketIndex).toBe(-1)
+    expect(reset.selectedFieldPath).toBeNull()
+    expect(reset.selectedByteOffset).toBeNull()
+    expect(reset.activeByteSourceId).toBe('frame')
+    expect(reset.expandedTreeNodes).toEqual([])
+    expect(reset.markedPackets).toEqual([])
+    expect(reset.selectionHistory).toEqual([])
+    expect(reset.selectionHistoryIndex).toBe(-1)
+    expect(reset.detailTab).toBe('tree')
+    expect(reset.filter.protocol).toBe('udp')
+    expect(reset.detailsPanelRatio).toBe(ratio)
+    store.setSelectedPacketIndex(0)
+    store.pushSelectionSnapshot({ packetIndex: 0, fieldPath: null, byteOffset: null })
+    store.navigateSelectionHistory(-1)
+    expect(usePcapStore.getState().selectedPacketIndex).toBe(0)
+    store.resetToEmpty()
+  })
+
   it('creates slim session with plan and statuses', async () => {
     const packets = [
       makeEthIpPacket([192, 168, 1, 10], [10, 0, 0, 1], 1),

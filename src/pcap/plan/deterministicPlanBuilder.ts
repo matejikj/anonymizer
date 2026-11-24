@@ -32,6 +32,7 @@ import {
   recordIsolationIncident,
 } from '../sanitize/packetIsolation'
 import { createPayloadTimeSession } from '../kernel/payloadTimeCodec'
+import { resolveFrozenPacketPlan } from '../kernel/frozenPlan'
 
 /** Matches discoveryPipeline.ts's DEFAULT_PROCESSING_BATCH_SIZE — same reporting granularity. */
 const PROGRESS_BATCH_SIZE = 64
@@ -53,8 +54,8 @@ export function buildSanitizationFromSnapshot(
    */
   packetDiscovery?: readonly PacketDiscoveryResult[],
   /** UI progress splash — reported every PROGRESS_BATCH_SIZE packets, matching discovery's
-   * own batching (discoveryPipeline.ts's DEFAULT_PROCESSING_BATCH_SIZE) so the "Building
-   * overview" step (cs: Sestavuji přehled) moves instead of sitting at 0 for the whole plan-build phase. */
+   * own batching (discoveryPipeline.ts's DEFAULT_PROCESSING_BATCH_SIZE) so the plan-build
+   * overview step advances instead of sitting at 0 for the whole phase. */
   onProgress?: (done: number, total: number) => void,
   /** T-01 — captured lengths when `packets` are payload-less descriptor stubs. */
   bufferLengths?: readonly number[],
@@ -101,11 +102,16 @@ export function buildSanitizationFromSnapshot(
         protocol: 'processing-failed',
       })
     }
-    if (discovered?.resolvePatches) {
+    // Frozen discovery plan (production) or an explicit resolve callback (adapters/tests).
+    const frozenPlan = discovered?.frozenPlan
+    const resolveDiscovered = frozenPlan
+      ? (ctx: typeof resolveCtx) => resolveFrozenPacketPlan(frozenPlan, ctx)
+      : discovered?.resolvePatches
+    if (discovered && resolveDiscovered) {
       try {
         results.push({
           packetIndex: i,
-          patches: discovered.resolvePatches(resolveCtx),
+          patches: resolveDiscovered(resolveCtx),
           truncatedLength: discovered.truncatedLength,
           coverage: [...discovered.coverage],
           drop: discovered.drop,
@@ -218,6 +224,7 @@ export function buildSanitizationFromSnapshot(
         packets,
         bufferLengths,
         payloadTime,
+        policy.preset === 'high-privacy',
       )
     } catch {
       // T07: reassembly failure must not abort plan — leave per-packet results as-is.

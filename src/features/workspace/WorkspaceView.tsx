@@ -2,7 +2,7 @@ import { TextProgressView } from '../import-log/TextProgressView.tsx'
 import { WorkspaceCommandStrip, OversizedLineBanner } from './WorkspaceCommandStrip.tsx'
 import { DualLogView } from './DualLogView.tsx'
 import { ReviewPanel } from '../review/ReviewPanel.tsx'
-import { TextAnonymizationOutcomePanel } from '../review/TextAnonymizationOutcomePanel.tsx'
+import { TextOutcomeDialog } from '../review/TextOutcomeDialog.tsx'
 import { useAppStore } from '../../app/store.ts'
 
 export function WorkspaceView() {
@@ -20,7 +20,7 @@ export function WorkspaceView() {
     <section className="workspace" data-testid="workspace" data-reference="text-workspace">
       <WorkspaceCommandStrip />
       <OversizedLineBanner />
-      <TextAnonymizationOutcomePanel />
+      <TextOutcomeDialog />
       <div className="workspace__stage" data-testid="workspace-stage">
         <DualLogView />
         <ReviewPanel />

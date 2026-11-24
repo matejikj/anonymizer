@@ -16,6 +16,7 @@ export const DESCRIPTOR_TEMPLATE: WireProtocolDescriptor = {
   title: 'TODO: vendor / dialect title',
   profileVersion: '0.0.0-template',
   specRefs: [
+    'docs/PROPRIETARY_PROTOCOL_ONBOARDING.md',
     // TODO: pin RFC / vendor PDF revision + licence note
   ],
   transport: {

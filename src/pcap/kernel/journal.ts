@@ -61,6 +61,34 @@ export function frozenPlanFromJournalRecord(record: PacketJournalRecord): Frozen
 
 export const KERNEL_ENGINE_VERSION = 't01-1.0.0'
 
+/** Approximate V8 sizes (64-bit, no pointer compression) — conservative for the browser. */
+const JOURNAL_RECORD_BYTES = 112
+const ARRAY_HEADER_BYTES = 32
+const POINTER_BYTES = 8
+/** TransformationIntent / LayerCoverage row (plain objects, ~8 fields) and issue-token pointer. */
+const INTENT_BYTES = 80
+const COVERAGE_ROW_BYTES = 64
+const NO_FACT_IDS: readonly number[] = []
+
+function isShareableOp(op: SymbolicOperation): boolean {
+  return op.kind === 'map' || op.kind === 'mask' || op.kind === 'secret' || op.kind === 'preserve'
+}
+
+/** Object bytes of one op; identity strings and constraints are interned (shared). */
+function symbolicOpBytes(op: SymbolicOperation): number {
+  switch (op.kind) {
+    case 'map':
+      return 96
+    case 'fingerprint':
+      return 152
+    case 'fixed':
+      // op object + Uint8Array view + ArrayBuffer + the bytes themselves
+      return 56 + 64 + 32 + op.data.byteLength
+    default:
+      return 80
+  }
+}
+
 export class SemanticJournalBuilder {
   private nextFactId = 1
   private readonly facts: JournalFact[] = []
@@ -71,6 +99,9 @@ export class SemanticJournalBuilder {
   readonly generationId: string
   readonly sourceId: string
   private readonly budgets: SessionBudgetAccountant
+  /** Ops shared across packets (identityIntern) — budgeted once, on first sight. */
+  private readonly countedSharedOps = new Set<SymbolicOperation>()
+  private readonly countedLists = new Set<readonly unknown[]>()
 
   constructor(
     generationId: string,
@@ -104,24 +135,40 @@ export class SemanticJournalBuilder {
 
   /** Fact ids recorded for one packet (T02.S4 SIPREC and other kernel-native spans). */
   factIdsForPacket(packetIndex: number): readonly number[] {
-    const ids: number[] = []
+    let ids: number[] | undefined
     for (const fact of this.facts) {
-      if (fact.packetIndex === packetIndex) ids.push(fact.factId)
+      if (fact.packetIndex === packetIndex) (ids ??= []).push(fact.factId)
     }
-    return ids
+    // Most packets carry no kernel facts — one shared empty list instead of one per packet.
+    return ids ?? NO_FACT_IDS
   }
 
   addPacket(record: PacketJournalRecord): void {
     this.packets.push(record)
-    // Ops descriptors + coverage rows — not mask fill buffers.
-    // Legacy intents stay on discovery.packetDiscovery (R09); do not budget-duplicate them.
-    const approx =
-      96 +
-      record.ops.length * 48 +
-      record.coverage.length * 24 +
-      (record.ops.length > 0 ? record.intents.length * 48 : 0) +
-      record.issues.length * 16
+    // Bytes retained per packet: the record, its ops and its per-packet discovery lists (the
+    // same objects packetDiscovery holds — this is the only budget that bounds them). Ops and
+    // coverage / issue lists shared across the packets of a flow (identityIntern) count once;
+    // intents carry their packetIndex and are always per packet. Mask fills are regenerated on
+    // render, never stored.
+    let approx = JOURNAL_RECORD_BYTES + ARRAY_HEADER_BYTES + record.ops.length * POINTER_BYTES
+      + record.factIds.length * POINTER_BYTES
+      + ARRAY_HEADER_BYTES + record.intents.length * (POINTER_BYTES + INTENT_BYTES)
+    approx += this.listBytesOnce(record.coverage, COVERAGE_ROW_BYTES)
+    approx += this.listBytesOnce(record.issues, 0)
+    for (const op of record.ops) {
+      if (isShareableOp(op)) {
+        if (this.countedSharedOps.has(op)) continue
+        this.countedSharedOps.add(op)
+      }
+      approx += symbolicOpBytes(op)
+    }
     this.budgets.reserve('journal', approx)
+  }
+
+  private listBytesOnce(list: readonly unknown[], rowBytes: number): number {
+    if (list.length === 0 || this.countedLists.has(list)) return 0
+    this.countedLists.add(list)
+    return ARRAY_HEADER_BYTES + list.length * (POINTER_BYTES + rowBytes)
   }
 
   addImpact(entry: DiagnosticImpactEntry): void {

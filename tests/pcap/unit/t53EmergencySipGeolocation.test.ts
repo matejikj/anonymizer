@@ -50,14 +50,14 @@ const PIDF_BODY = [
 ].join('')
 
 describe('T53 registry', () => {
-  it('registers pidf/lost handlers, family, and engine 2.35.0', () => {
+  it('registers pidf/lost handlers, family, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('pidf')
     expect(ids).toContain('lost')
     expect(familyForProtocol('sip-pidf').familyId).toBe('emergency-location')
     expect(familyForProtocol('sip-lost').familyId).toBe('emergency-location')
     expect(familyForProtocol('pidf').familyId).toBe('emergency-location')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

@@ -60,7 +60,7 @@ const CREDENTIAL_HEADERS = new Set([
 
 // NB: User-Agent is deliberately NOT preserved here. A first pass at this audit finding
 // considered moving it to a preserve disposition (generic vendor/version banners are low-risk
-// diagnostic value elsewhere), but the local private regression capture disproves that assumption for this
+// diagnostic value elsewhere), but the real dt.pcap capture disproves that assumption for this
 // traffic: its User-Agent values are deployment-identifying device/product strings (radio
 // terminal model + firmware build, internal gateway build/revision timestamps) — exactly what
 // "removes identities" (this tool's own diagnostic-profile promise) must redact. `Server`

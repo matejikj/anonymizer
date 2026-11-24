@@ -3,6 +3,7 @@
  */
 
 import { getPcapSession } from './pcapSession'
+import { sanitizerCoverageForExport } from '../processing/packedCaptureWire'
 import {
   buildPcapCoverageViewModel,
   buildPlanRevision,
@@ -33,6 +34,7 @@ export function getPcapCoverageViewModel(): PcapCoverageViewModel | null {
   if (cachedViewModel && cachedPlanRevision === revision) return cachedViewModel
 
   const model = buildPcapCoverageViewModel({
+    sanitizerCoverage: sanitizerCoverageForExport(session.packetDiscovery, session.coverageRollup),
     unifiedCoverage: session.unifiedCoverage,
     policy: session.policy,
     plan: session.plan,

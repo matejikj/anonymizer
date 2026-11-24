@@ -18,8 +18,13 @@ import {
   nextCompareLayout,
 } from './pcapCompareLayout.ts'
 import { columnsForWorkspaceWidth } from './pcapUiPrefs.ts'
+import { PcapPanelScrollSyncProvider } from './pcapPanelScrollSync.tsx'
 
 export function PcapComparisonWorkspace() {
+  return <PcapPanelScrollSyncProvider><ComparisonWorkspace /></PcapPanelScrollSyncProvider>
+}
+
+function ComparisonWorkspace() {
   const compareLayout = usePcapStore((s) => s.compareLayout)
   const setCompareLayout = usePcapStore((s) => s.setCompareLayout)
   const setWorkspaceWidth = usePcapStore((s) => s.setWorkspaceWidth)

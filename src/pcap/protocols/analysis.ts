@@ -151,6 +151,7 @@ function collectTree(
   histogram: Map<string, number>,
   coverageMap: Map<string, { packetCount: number; unsupportedCount: number; issues: Set<string> }>,
 ): void {
+  const firstInPacket = !protocols.includes(node.protocolId);
   protocols.push(node.protocolId);
   histogram.set(node.protocolId, (histogram.get(node.protocolId) ?? 0) + 1);
 
@@ -159,7 +160,7 @@ function collectTree(
     entry = { packetCount: 0, unsupportedCount: 0, issues: new Set() };
     coverageMap.set(node.protocolId, entry);
   }
-  entry.packetCount++;
+  if (firstInPacket) entry.packetCount++;
 
   for (const issue of node.issues) {
     issues.push(issue);

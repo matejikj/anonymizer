@@ -11,7 +11,7 @@ import { decodeLatin1Span } from './bytes';
 import { extractSipEntities } from './extract';
 import { buildSipRedactionPlan, SIP_REDACT_MASK_BYTE } from './redactPlan';
 import type { SipRedactionOperation } from './entities';
-import { resolveIdentityAlias, type PortContext } from './mappingWire';
+import { resolveIdentityAlias, wirePortCanonical, type PortContext } from './mappingWire';
 import { shiftSessionVersion } from '../sdp/sessionVersionShift';
 import { sdpSessionIdDigits } from '../../../../mapping/pcapCanonical';
 import {
@@ -212,8 +212,12 @@ export function applyCombinedSipSdpPlan(
             length,
             {
               fallbackKind: sipTextFallbackKind(mappingCategory),
+              // Same key as discovery (recordMappedEntity) and resolveIdentityAlias: text ports
+              // are registered as `udp/<n>` / `tcp/<n>`, never the bare digits.
               canonical:
-                canonicalizeIdentity(mappingCategory, canonicalText) ?? canonicalText,
+                mappingCategory === 'port'
+                  ? wirePortCanonical(canonicalText, transport, portContext)
+                  : canonicalizeIdentity(mappingCategory, canonicalText) ?? canonicalText,
             },
           );
     collector.addDeferred(

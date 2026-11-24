@@ -187,9 +187,30 @@ describe('PF-19: PCAP level switch refreshes discovery-derived disposition', () 
     expect(after.packetDiscovery).not.toBe(before.packetDiscovery)
     // High-privacy has heuristicScan off, so the very same bytes fall through to plain
     // 'unsupported' instead — this can only be true if discovery actually re-ran under the
-    // new policy, not if only the plan's patch bytes were rebuilt.
-    const afterCoverage = after.packetDiscovery[0]!.coverage
-    expect(afterCoverage.some((c) => c.protocol === 'heuristic')).toBe(false)
-    expect(afterCoverage.some((c) => c.protocol === 'payload' && c.status === 'unsupported')).toBe(true)
+    // new policy, not if only the plan's patch bytes were rebuilt. R10: the re-run discover
+    // arrives packed (no per-packet rows on the UI thread), so check the worker rollup.
+    expect(before.statuses.heuristicCount).toBeGreaterThan(0)
+    expect(after.packetDiscovery).toEqual([])
+    expect(after.coverageRollup).toBeDefined()
+    expect(after.coverageRollup!.totalHeuristicSpans).toBe(0)
+    expect(after.coverageRollup!.totalUnsupportedSpans).toBeGreaterThan(0)
+    expect(after.unifiedCoverage.totalUnsupportedSpans).toBeGreaterThan(0)
+    expect(after.statuses.heuristicCount).toBe(0)
+  })
+
+  it('keeps worker coverage rollup in statuses across a same-policy plan rebuild', async () => {
+    await buildDiagnosticSession('rollup-keep.pcap')
+    await getPcapPlanRebuildPort().rebuildPlan('high-privacy')
+    const switched = getPcapSession()!
+    const rollup = switched.coverageRollup!
+    expect(rollup.totalUnsupportedSpans).toBeGreaterThan(0)
+
+    // Same level again → fast plan-only rebuild; statuses must still reflect the rollup.
+    const again = await getPcapPlanRebuildPort().rebuildPlan('high-privacy')
+    expect(again.applied).toBe(true)
+    const after = getPcapSession()!
+    expect(after.coverageRollup).toBe(rollup)
+    expect(after.statuses.unsupportedCount).toBe(switched.statuses.unsupportedCount)
+    expect(after.statuses.issueCount).toBe(switched.statuses.issueCount)
   })
 })

@@ -62,7 +62,7 @@ describe('T21 registry', () => {
     expect(familyForProtocol('netflow-v5').familyId).toBe('flow-export')
     expect(familyForProtocol('ipfix').familyId).toBe('flow-export')
     expect(familyForProtocol('sflow').familyId).toBe('flow-export')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

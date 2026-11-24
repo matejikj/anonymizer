@@ -42,20 +42,25 @@ describe('Step 5 — cleanup and definition of done', () => {
     }
   })
 
-  it('code exposes two runtime levels, not editable PCAP profiles', () => {
-    const levelSrc = readFileSync(join(srcDir, 'pcap/profile/pcapAnonymizationLevel.ts'), 'utf8')
-    expect(levelSrc).toMatch(/PcapAnonymizationLevel|diagnostic/)
-    expect(levelSrc).toMatch(/high-privacy/)
-    expect(() => readFileSync(join(srcDir, 'features/profiles/PcapProfileEditor.tsx'), 'utf8')).toThrow()
+  it('pcapAnonymizationLevel and README document two runtime levels, not editable PCAP profiles', () => {
+    const level = readSrc('pcap/profile/pcapAnonymizationLevel.ts')
+    const readme = readFileSync(join(root, 'README.md'), 'utf8')
+    expect(level).toMatch(/PcapAnonymizationLevel/)
+    expect(level).toMatch(/diagnostic.*high-privacy|high-privacy.*diagnostic/)
+    expect(readme).toMatch(/diagnostic.*high-privacy|high-privacy.*diagnostic/i)
+    expect(readme).not.toMatch(/PcapProfileEditor/)
+    expect(readme).not.toMatch(/pcapProfiles store/)
+    expect(readme).not.toMatch(/addresses-only preset/)
+    expect(readme).not.toMatch(/pcap-safe-example/)
   })
 
   it('README describes text profile and PCAP level separately', () => {
     const readme = readFileSync(join(root, 'README.md'), 'utf8')
     expect(readme).toMatch(/text profile|text rules/i)
-    expect(readme).toMatch(/diagnostic|high-privacy/)
     expect(readme).not.toMatch(/embedded PCAP/)
     expect(readme).not.toMatch(/pcap-\*-example/)
   })
+
   it('removed PCAP profile UI components do not exist', () => {
     for (const removed of [
       'features/profiles/PcapProfileSelector.tsx',

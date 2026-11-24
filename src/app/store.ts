@@ -80,6 +80,7 @@ export interface AppShellState {
   pendingSwitchMode: AppMode | null
   helpOpen: boolean
   docsOpen: boolean
+  textOutcomeDialogOpen: boolean
   themePreference: ThemePreference
   resourceConflict: ResourceConflict | null
   /** T43 — last text import encoding / structured format (report metadata). */
@@ -119,6 +120,7 @@ export interface AppShellState {
   setPendingSwitchMode: (mode: AppMode | null) => void
   setHelpOpen: (open: boolean) => void
   setDocsOpen: (open: boolean) => void
+  setTextOutcomeDialogOpen: (open: boolean) => void
   setThemePreference: (pref: ThemePreference) => void
   setResourceConflict: (conflict: ResourceConflict | null) => void
   setTextSourceMeta: (meta: AppShellState['textSourceMeta']) => void
@@ -175,6 +177,7 @@ export const useAppStore = create<AppShellState>((set) => ({
   pendingSwitchMode: null,
   helpOpen: false,
   docsOpen: false,
+  textOutcomeDialogOpen: false,
   themePreference: loadThemePreference(),
   resourceConflict: null,
   textSourceMeta: null,
@@ -214,6 +217,7 @@ export const useAppStore = create<AppShellState>((set) => ({
   setPendingSwitchMode: (pendingSwitchMode) => set({ pendingSwitchMode }),
   setHelpOpen: (helpOpen) => set({ helpOpen }),
   setDocsOpen: (docsOpen) => set({ docsOpen }),
+  setTextOutcomeDialogOpen: (textOutcomeDialogOpen) => set({ textOutcomeDialogOpen }),
   setThemePreference: (themePreference) => {
     saveThemePreference(themePreference)
     applyThemePreference(themePreference)
@@ -270,6 +274,7 @@ export const useAppStore = create<AppShellState>((set) => ({
       pendingSwitchMode: null,
       helpOpen: false,
       docsOpen: false,
+      textOutcomeDialogOpen: false,
       resourceConflict: null,
       // keep wrap + splitter + theme + profileDirty / active profile across log sessions
     }),

@@ -4,6 +4,7 @@
  */
 
 import { CaptureFormat } from '../domain/types'
+import { openIdentityInternScope, type IdentityInternScope } from '../kernel/identityIntern'
 import type {
   ClassicPcapHeader,
   PacketEnvelope,
@@ -30,8 +31,8 @@ import {
   identitiesFromDiscovery,
   summarizeDiscovery,
 } from '../discovery/discoveryPipeline'
-import type { ExactOccurrence, SourceDiscovery, TransformationIntent } from '../discovery/types'
-import { discoverPacket } from '../discovery/discoverPacket'
+import type { SourceDiscovery, TransformationIntent } from '../discovery/types'
+import { discoverPacket, withoutMergedHints } from '../discovery/discoverPacket'
 import { CoapBlock2Session } from '../sanitize/industrial/coapBlock2Session.ts'
 import { OpcuaChannelSession } from '../sanitize/industrial/opcuaChannelSession.ts'
 import { MediaFlowIndex } from '../discovery/mediaFlowIndex'
@@ -48,11 +49,7 @@ import { containerToWire } from './containerWireAdapter'
 import { packContainerBody } from './packedCaptureWire'
 import { constraintKey } from '../../mapping/constraintKey'
 import { entityOccurrencesToWire } from '../coverage'
-import {
-  buildOccurrenceIndexFromIntents,
-  buildUnifiedCoverageModel,
-} from '../coverage'
-import type { StructuralSpanInput } from '../coverage/buildUnifiedCoverage'
+import { buildOccurrenceIndexFromIntents } from '../coverage'
 import { mergePortFlowHints, type PortFlowHint } from '../anonymization/portPolicy.ts'
 import { BufferLeaseArena } from '../kernel/leases'
 import { SessionBudgetAccountant } from '../kernel/budgets'
@@ -61,17 +58,21 @@ import {
   SemanticJournalBuilder,
   type SemanticJournal,
 } from '../kernel/journal'
-import { resolveFrozenPacketPlan } from '../kernel/frozenPlan'
 import { getSharedProtocolManifest } from '../kernel/catalog'
 import type { BudgetSnapshot } from '../kernel/budgets'
 import type { LeaseStats } from '../kernel/leases'
 import type { PacketDiscoveryResult } from '../discovery/types'
 import type { PacketInput } from '../sanitize/engine'
-import { canonicalizePcapIdentity } from '../../mapping/pcapCanonical'
-import type { EntityCategory } from '../anonymization/entityRegistry'
 
 /** Target live raw working set per hydrate window (well under 64 MiB kernel cap). */
 const STREAMING_RAW_WINDOW_BYTES = 48 * 1024 * 1024
+
+/**
+ * Worker-side discovery. Unified coverage and exact occurrences are UI projections: the main
+ * thread rebuilds them from the wire payload, nothing in the worker reads them, and on a
+ * 225k-packet capture they (plus the structural spans that only feed them) cost ~1.3 KB/packet.
+ */
+export type ProcessingDiscovery = Omit<SourceDiscovery, 'unifiedCoverage' | 'exactOccurrences'>
 
 export interface ProcessingSession {
   generationId: string
@@ -84,7 +85,7 @@ export interface ProcessingSession {
   descriptors: PacketRecordDescriptor[]
   checkpoints: SparseCheckpoint[]
   issues: ParseIssue[]
-  discovery: SourceDiscovery
+  discovery: ProcessingDiscovery
   reassembly: ReassemblyContext
   classicHeader?: ClassicPcapHeader
   pcapngSections?: PcapngSectionInfo[]
@@ -120,6 +121,18 @@ export async function processCapture(input: ProcessCaptureInput): Promise<Proces
 
   // Ensure manifest is compiled once for this realm (analysis + kernel share it).
   getSharedProtocolManifest().compile()
+  const internScope = openIdentityInternScope()
+  try {
+    return await processCaptureScoped(input, internScope)
+  } finally {
+    internScope.close()
+  }
+}
+
+async function processCaptureScoped(
+  input: ProcessCaptureInput,
+  internScope: IdentityInternScope,
+): Promise<ProcessingSession> {
 
   const budgets = new SessionBudgetAccountant()
   const leaseArena = new BufferLeaseArena()
@@ -206,7 +219,6 @@ export async function processCapture(input: ProcessCaptureInput): Promise<Proces
           reassemblyContext,
           { generationId: input.generationId, sourceId: input.sourceId, journal, coapBlock2, opcuaChannel },
         )
-        packetDiscovery.push(pd)
         allIntents.push(...pd.intents)
         if (pd.portFlowHints) {
           for (const [canonical, flow] of pd.portFlowHints) {
@@ -219,6 +231,7 @@ export async function processCapture(input: ProcessCaptureInput): Promise<Proces
             mediaPortPairs.set(a, b)
           }
         }
+        packetDiscovery.push(withoutMergedHints(pd))
       }
       packetsDone = batchEnd
       input.onProgress?.('discovering', packetsDone, totalPackets)
@@ -234,19 +247,9 @@ export async function processCapture(input: ProcessCaptureInput): Promise<Proces
   releaseStubPayloadsExcept(stubs, new Set(), budgets)
 
   coapBlock2.finalizeDiscovery(packetDiscovery)
+  internScope.close()
 
   const analysis = mergeAnalysisResults(analysisParts, totalPackets)
-  const exactOccurrences = buildExactOccurrencesFromParts(
-    analysis,
-    allIntents,
-    stubs,
-  )
-  const unifiedCoverage = buildUnifiedCoverageModel({
-    packetCount: totalPackets,
-    analysis,
-    packetDiscovery,
-    structuralSpans: analysis.structuralSpans,
-  })
   const entityOccurrenceIndex = buildOccurrenceIndexFromIntents(
     analysis.entities,
     analysis.entityOccurrenceLists,
@@ -258,7 +261,7 @@ export async function processCapture(input: ProcessCaptureInput): Promise<Proces
       })),
   )
 
-  const discovery: SourceDiscovery = {
+  const discovery: ProcessingDiscovery = {
     generationId: input.generationId,
     sourceId: input.sourceId,
     totalPackets,
@@ -267,8 +270,6 @@ export async function processCapture(input: ProcessCaptureInput): Promise<Proces
     packetDiscovery,
     portFlowHints,
     mediaPortPairs,
-    exactOccurrences,
-    unifiedCoverage,
     entityOccurrenceIndex,
   }
 
@@ -494,7 +495,6 @@ function mergeAnalysisResults(
   >()
   const entityMap = new Map<string, AnalysisResult['entities'][number]>()
   const summaries: AnalysisResult['summaries'][number][] = new Array(totalPackets)
-  const structuralSpans: StructuralSpanInput[][] = Array.from({ length: totalPackets }, () => [])
   const entityOccurrenceLists = new Map<string, number[]>()
   const unsupportedLinkTypes = new Set<number>()
   let decodedPackets = 0
@@ -528,13 +528,6 @@ function mergeAnalysisResults(
     }
     for (let i = 0; i < analysis.summaries.length; i++) {
       summaries[offset + i] = analysis.summaries[i]!
-    }
-    for (let i = 0; i < analysis.structuralSpans.length; i++) {
-      const spans = analysis.structuralSpans[i] ?? []
-      structuralSpans[offset + i] = spans.map((s) => ({
-        ...s,
-        packetIndex: s.packetIndex + offset,
-      }))
     }
     for (const [key, indices] of analysis.entityOccurrenceLists) {
       const merged = [...(entityOccurrenceLists.get(key) ?? []), ...indices.map((i) => i + offset)]
@@ -571,56 +564,10 @@ function mergeAnalysisResults(
     decodedPackets,
     unsupportedLinkTypes,
     entityOverflow,
-    structuralSpans,
+    // Only ever fed buildUnifiedCoverageModel, which the worker session no longer builds.
+    structuralSpans: [],
     entityOccurrenceLists,
   }
-}
-
-function buildExactOccurrencesFromParts(
-  analysis: AnalysisResult,
-  intents: readonly TransformationIntent[],
-  packets: readonly PacketEnvelope[],
-): ExactOccurrence[] {
-  const out: ExactOccurrence[] = []
-  const seen = new Set<string>()
-
-  for (const entity of analysis.entities) {
-    const category = entity.category as EntityCategory
-    const canonical = canonicalizePcapIdentity(category, entity.value)
-    if (canonical === null) continue
-    const indices = analysis.entityOccurrenceLists.get(entity.key) ?? []
-    for (const packetIndex of indices) {
-      const sig = `${entity.key}:${packetIndex}`
-      if (seen.has(sig)) continue
-      seen.add(sig)
-      const pkt = packets[packetIndex]
-      out.push({
-        entityKey: entity.key,
-        category,
-        canonical,
-        packetIndex,
-        packetNumber: pkt?.packetNumber ?? entity.firstPacket,
-      })
-    }
-  }
-
-  for (const intent of intents) {
-    if (intent.kind !== 'entity-replacement') continue
-    const entityKey = `${intent.category}:${intent.canonical}`
-    const sig = `${entityKey}:${intent.packetIndex}`
-    if (seen.has(sig)) continue
-    seen.add(sig)
-    const pkt = packets[intent.packetIndex]
-    out.push({
-      entityKey,
-      category: intent.category,
-      canonical: intent.canonical,
-      packetIndex: intent.packetIndex,
-      packetNumber: pkt?.packetNumber ?? intent.packetIndex,
-    })
-  }
-
-  return out
 }
 
 /**
@@ -658,7 +605,6 @@ function packetDiscoveryForPlanBuild(
       drop: rec.drop,
       truncatedLength: rec.truncatedLength,
       frozenPlan: mergedPlan,
-      resolvePatches: (ctx) => resolveFrozenPacketPlan(mergedPlan, ctx),
     }
   })
 }
@@ -722,6 +668,7 @@ export function containerMetadataFromSessionTransferable(session: ProcessingSess
   transfers: ArrayBuffer[]
 } {
   const { packed, transfers } = packContainerBody({
+    summaries: session.discovery.analysis.summaries,
     descriptors: session.descriptors,
     checkpoints: session.checkpoints,
     issues: session.issues,
@@ -746,7 +693,7 @@ export function containerMetadataFromSessionTransferable(session: ProcessingSess
 }
 
 export function discoveryToWire(
-  discovery: SourceDiscovery,
+  discovery: ProcessingDiscovery,
   options?: { readonly uniqueIdentityIntents?: boolean },
 ): WireSourceDiscoveryPayload {
   const summary = summarizeDiscovery(discovery)

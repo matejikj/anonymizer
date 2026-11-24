@@ -3,7 +3,7 @@
  */
 
 import { canonicalizeIdentity } from '../../mapping/canonicalize'
-import type { IdentityCategory } from '../../mapping/identityCategories'
+import { isPcapIdentityCategory, type IdentityCategory } from '../../mapping/identityCategories'
 import { defaultWireConstraint } from '../../mapping/pcapCanonical'
 import type { WireEncoderKind } from '../kernel/operations'
 import type { DeferredPatchMeta } from './types'
@@ -22,6 +22,8 @@ function wireMapFields(
   category: IdentityCategory,
   canonical: string,
 ): Pick<DeferredPatchMeta, 'canonical' | 'constraint' | 'encoder'> | null {
+  // Text-only categories (email, person, …) have no binary wire shape.
+  if (!isPcapIdentityCategory(category)) return null
   const constraint = defaultWireConstraint(category, canonical)
   const encoder = WIRE_ENCODER[category]
   if (!constraint || !encoder) return null

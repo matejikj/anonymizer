@@ -147,7 +147,7 @@ export function disposeActiveSession(): void {
   disposeActiveSessionInternal({ projectUi: true })
 }
 
-/** Full application reset (ErrorBoundary, "new session" flow in cs UI). Idempotent. */
+/** Full application reset (ErrorBoundary, new session). Idempotent. */
 export function resetApplication(): void {
   disposeActiveSessionInternal({ projectUi: true })
   projectEmptyUi(cs.status.ready)

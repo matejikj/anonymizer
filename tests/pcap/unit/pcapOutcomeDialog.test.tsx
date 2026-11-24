@@ -7,6 +7,7 @@ import { PcapOutcomeDialog } from '../../../src/pcap/ui/PcapOutcomeDialog'
 import { usePcapStore } from '../../../src/pcap/ui/pcapStore'
 import { clearPcapSession } from '../../../src/pcap/ui/pcapSession'
 import type { AnonymizationOutcome } from '../../../src/pcap/coverage/anonymizationOutcome'
+import { protocolPrivacyGuidance } from '../../../src/pcap/coverage/protocolPrivacyGuidance'
 
 const sampleOutcome: AnonymizationOutcome = {
   summarySentence: 'Ve vašem souboru jsou protokoly SIP. Anonymizace vypadá v pořádku.',
@@ -23,6 +24,7 @@ const sampleOutcome: AnonymizationOutcome = {
       recommendation: 'V pořádku',
       filterProtocol: 'sip',
       probable: false,
+      protocols: [{ ...protocolPrivacyGuidance('sip'), state: 'anonymized', needsReview: false }],
     },
   ],
   incidents: [],
@@ -71,6 +73,7 @@ describe('PcapOutcomeDialog', () => {
     render(<PcapOutcomeDialog />)
     fireEvent.click(screen.getByTestId('pcap-workspace-outcome-show-sip'))
     expect(usePcapStore.getState().outcomeDialogOpen).toBe(false)
-    expect(usePcapStore.getState().filter.protocol).toBe('sip')
+    expect(usePcapStore.getState().filter.protocol).toBe('')
+    expect(usePcapStore.getState().displayFilterApplied).toBe('protocol.family == "sip"')
   })
 })

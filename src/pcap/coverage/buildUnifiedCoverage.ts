@@ -9,6 +9,7 @@ import type { DecodedNode } from '../protocols/types'
 import type { UnifiedCoverageModel, UnifiedLayerCoverage, UnifiedProtocolSummary } from './types'
 import { dominantStatus, mergePacketSpans } from './mergeRules'
 import { SANITIZER_PROTOCOL_IDS } from './protocolRegistry'
+import { familyForProtocol } from './protocolFamilies'
 
 /** Every sanitizer span gets an empty `issues` array — share one instance instead of
  * allocating millions of identical empty arrays for a large capture. */
@@ -109,6 +110,7 @@ export function buildUnifiedCoverageModel(input: {
 }): UnifiedCoverageModel {
   const perPacket: UnifiedLayerCoverage[][] = []
   const histogram = new Map<string, number>()
+  const familyCounts = new Map<string, number>()
   let totalUnsupportedSpans = 0
   let totalTruncatedSpans = 0
   let totalHeuristicSpans = 0
@@ -197,6 +199,33 @@ export function buildUnifiedCoverageModel(input: {
     for (const p of protocolsInPacket) {
       histogram.set(p, (histogram.get(p) ?? 0) + 1)
     }
+    for (const family of new Set([...protocolsInPacket].map(p => familyForProtocol(p).familyId))) {
+      familyCounts.set(family, (familyCounts.get(family) ?? 0) + 1)
+    }
+  }
+
+  // Slim discovery omits byte spans, but decode's aggregate coverage still proves which
+  // protocols were structurally recognized. Do not mistake the missing detail for mask-only.
+  for (const c of input.analysis.coverage) {
+    if (c.packetCount <= 0) continue
+    const status = c.unsupportedCount > 0
+      ? dominantStatus(structuralStatus(c.issues), 'unsupported')
+      : structuralStatus(c.issues)
+    let acc = protocolAcc.get(c.protocolId)
+    if (!acc) {
+      acc = { packetCount: c.packetCount, lastPacketIndex: -1, spanCount: 0, unsupportedCount: c.unsupportedCount,
+        structuralSpanCount: 0, sanitizerSpanCount: 0, dominantStatus: status,
+        issues: new Set(c.issues) }
+      protocolAcc.set(c.protocolId, acc)
+    }
+    if (acc.structuralSpanCount === 0) {
+      acc.structuralSpanCount = c.packetCount
+      acc.spanCount += c.packetCount
+      acc.packetCount = Math.max(acc.packetCount, c.packetCount)
+    }
+    acc.dominantStatus = dominantStatus(acc.dominantStatus, status)
+    acc.unsupportedCount = Math.max(acc.unsupportedCount, c.unsupportedCount)
+    for (const issue of c.issues) acc.issues.add(issue)
   }
 
   // Ensure sanitizer registry protocols appear even with zero packets (Stage 10 checklist).
@@ -219,6 +248,7 @@ export function buildUnifiedCoverageModel(input: {
     .map(([protocol, acc]) => ({
       protocol,
       packetCount: acc.packetCount,
+      familyPacketCount: familyCounts.get(familyForProtocol(protocol).familyId),
       spanCount: acc.spanCount,
       unsupportedCount: acc.unsupportedCount,
       structuralSpanCount: acc.structuralSpanCount,
@@ -247,7 +277,13 @@ export function unifiedProtocols(model: UnifiedCoverageModel): readonly string[]
 }
 
 export function packetHasProtocol(model: UnifiedCoverageModel, packetIndex: number, protocol: string): boolean {
-  return (model.perPacket[packetIndex] ?? []).some((s) => s.protocol === protocol)
+  if ((model.perPacket[packetIndex] ?? []).some((s) => s.protocol === protocol)) return true
+  const index = model.packetProtocols
+  if (!index || packetIndex < 0 || packetIndex + 1 >= index.offsets.length) return false
+  for (let at = index.offsets[packetIndex]!; at < index.offsets[packetIndex + 1]!; at++) {
+    if (index.protocols[index.protocolIds[at]!] === protocol) return true
+  }
+  return false
 }
 
 export function countUnsupportedFromUnified(model: UnifiedCoverageModel): number {

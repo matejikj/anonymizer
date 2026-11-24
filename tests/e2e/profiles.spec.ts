@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import { createDefaultRulesetConfig } from '../../src/domain/configSchema.ts'
 import { serializeRulesetConfig } from '../../src/domain/rulesetValidate.ts'
@@ -26,10 +27,48 @@ test.describe('JSON profiles', () => {
     await page.keyboard.press('Escape')
     await page.getByTestId('profile-new').click()
     await expect(page.getByTestId('profile-select')).not.toHaveValue('rnd-team-production')
+    const createdId = await page.getByTestId('profile-select').inputValue()
     await page.getByTestId('profile-menu-btn').click()
     await expect(page.getByTestId('profile-delete')).toBeEnabled()
     await page.getByTestId('profile-delete').click()
     await expect(page.getByTestId('profile-select')).toHaveValue('rnd-team-production')
+    await expect(page.getByTestId('profile-select').locator(`option[value="${createdId}"]`)).toHaveCount(0)
+    await page.reload()
+    await openDetectionSettings(page)
+    await expect(page.getByTestId('profile-select')).toHaveValue('rnd-team-production')
+    await expect(page.getByTestId('profile-select').locator('option')).toHaveCount(1)
+  })
+
+  test('new unused profile can be removed directly without opening the editor', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 950 })
+    await expect(page.getByTestId('profile-delete-direct')).toBeDisabled()
+    await page.getByTestId('profile-new').click()
+    await expect(page.getByTestId('profile-select')).not.toHaveValue('rnd-team-production')
+    await expect(page.getByTestId('profile-select').locator('option')).toHaveCount(2)
+    await page.getByTestId('profile-delete-direct').click()
+    await expect(page.getByTestId('profile-select')).toHaveValue('rnd-team-production')
+    await expect(page.getByTestId('profile-select').locator('option')).toHaveCount(1)
+    await page.reload()
+    await openDetectionSettings(page)
+    await expect(page.getByTestId('profile-select').locator('option')).toHaveCount(1)
+  })
+
+  test('deleting one custom profile preserves another saved profile', async ({ page }) => {
+    await page.getByTestId('profile-new').click()
+    await page.getByTestId('profile-edit').click()
+    await page.getByTestId('profile-name').fill('Profil, který má zůstat')
+    await page.getByTestId('profile-editor-save').click()
+    const keptId = await page.getByTestId('profile-select').inputValue()
+    await page.getByTestId('profile-new').click()
+    await expect(page.getByTestId('profile-select')).not.toHaveValue(keptId)
+    await page.getByTestId('profile-delete-direct').click()
+    await expect(page.getByTestId('profile-select').locator('option')).toHaveCount(2)
+    await page.reload()
+    await openDetectionSettings(page)
+    await expect(page.getByTestId('profile-select').locator('option')).toHaveCount(2)
+    await page.getByTestId('profile-select').selectOption(keptId)
+    await expect(page.getByTestId('profile-select')).toHaveValue(keptId)
+    await expect(page.getByTestId('profile-select').locator('option:checked')).toHaveText('Profil, který má zůstat')
   })
 
   test('import valid JSON as copy and export downloads .rnd-log-anonymizer.json', async ({ page }) => {
@@ -83,6 +122,7 @@ test.describe('JSON profiles', () => {
   test('adding a rule marks profile dirty until save', async ({ page }) => {
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.getByTestId('review-tab-rules').click()
     await page.getByTestId('add-rule').click()
     await page.getByTestId('rule-pattern').fill('LoginController')

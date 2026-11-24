@@ -133,8 +133,11 @@ export function planFromWire(wire: WirePlanSnapshot, profileId: string): PcapPla
           for (let i = 0; i < wire.packets.length; i++) yield getPacket(i)
         }
       }
-      if (typeof prop === 'string' && /^\d+$/.test(prop)) {
-        return getPacket(Number(prop))
+      if (typeof prop === 'string' && /^(0|[1-9]\d*)$/.test(prop)) {
+        const index = Number(prop)
+        // Selection can briefly outlive a replaced/empty plan. Match normal array
+        // reads: optional chaining must receive undefined rather than throw here.
+        return index < wire.packets.length ? getPacket(index) : undefined
       }
       if (prop === 'map') {
         return (
@@ -153,7 +156,14 @@ export function planFromWire(wire: WirePlanSnapshot, profileId: string): PcapPla
         }
       }
       const value = Reflect.get(_target, prop, receiver)
-      return typeof value === 'function' ? value.bind(_target) : value
+      // Array methods are generic over length/index access: run them on the proxy, not on the
+      // empty target, so filter/forEach/some/reduce/slice… see every (lazily built) packet.
+      return typeof value === 'function' ? value.bind(receiver) : value
+    },
+    // filter/forEach/reduce/… check HasProperty(index) before reading it.
+    has(_target, prop) {
+      if (typeof prop === 'string' && /^(0|[1-9]\d*)$/.test(prop)) return Number(prop) < wire.packets.length
+      return Reflect.has(_target, prop)
     },
   })
 

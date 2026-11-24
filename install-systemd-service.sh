@@ -5,20 +5,20 @@ usage() {
   cat <<'EOF'
 Usage: sudo ./install-systemd-service.sh <app_dir> [port] [run_user]
 
-Installs and starts rnd-log-anonymizer as a systemd unit that serves the
+Installs and starts rnd-log-anonymizer as a systemd service that serves the
 built static app (dist/ contents) via "python3 -m http.server".
 
-The app is available under path /anonym (e.g. http://rnd-ai/anonym), NOT as
-rnd-ai:<port>. This is done by having python http.server serve a dedicated
+The app is available at path /anonym (e.g. http://example.com/anonym), NOT as
+example.com:<port>. This is done by having python http.server serve a dedicated
 webroot containing only a symlink "anonym" -> app_dir — so URL /anonym/...
-maps through the symlink to the real files without exposing the rest of the disk.
+maps through the symlink to the real files without exposing the rest of disk.
 
   app_dir   Directory with the built app (where deploy.sh uploaded dist/), e.g. ~/anonym
   port      Port the app listens on (default: 80 — standard HTTP, no port in URL)
   run_user  User the service runs as (default: user invoking sudo)
 
 Example:
-  sudo ./install-systemd-service.sh /home/matejik/anonym
+  sudo ./install-systemd-service.sh /opt/anonym
 
 Requires root (sudo) — writes a unit file to /etc/systemd/system/ and creates
 /srv/rnd-log-anonymizer-webroot. The service itself then runs as run_user (not root);
@@ -49,7 +49,7 @@ if [[ ! -d "$APP_DIR" ]]; then
 fi
 
 if [[ ! -f "${APP_DIR}/index.html" ]]; then
-  echo "warning: ${APP_DIR}/index.html not found — is APP_DIR really the dist/ contents?" >&2
+  echo "warning: ${APP_DIR}/index.html not found — is APP_DIR really dist/ contents?" >&2
 fi
 
 PYTHON_BIN="$(command -v python3)" || {
@@ -58,7 +58,7 @@ PYTHON_BIN="$(command -v python3)" || {
 }
 
 if ! id "$RUN_USER" &>/dev/null; then
-  echo "error: user '${RUN_USER}' does not exist on this host" >&2
+  echo "error: user '${RUN_USER}' does not exist on this machine" >&2
   exit 1
 fi
 
@@ -68,7 +68,7 @@ chmod 755 "$WEBROOT"
 ln -sfn "$APP_DIR" "${WEBROOT}/anonym"
 
 if ! sudo -u "$RUN_USER" test -x "$WEBROOT"; then
-  echo "error: user '${RUN_USER}' cannot traverse ${WEBROOT} even after chmod 755." >&2
+  echo "error: user '${RUN_USER}' cannot enter ${WEBROOT} even after chmod 755." >&2
   echo "        Check parent directory permissions (e.g. /srv), e.g.: namei -om ${WEBROOT}" >&2
   exit 1
 fi
@@ -118,5 +118,5 @@ echo "Useful commands:"
 echo "  systemctl status ${SERVICE_NAME}"
 echo "  systemctl restart ${SERVICE_NAME}"
 echo "  systemctl stop ${SERVICE_NAME}"
-echo "  systemctl disable --now ${SERVICE_NAME}   # disable permanently"
+echo "  systemctl disable --now ${SERVICE_NAME}   # permanently disable"
 echo "  journalctl -u ${SERVICE_NAME} -f"

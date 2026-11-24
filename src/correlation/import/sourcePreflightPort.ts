@@ -38,8 +38,18 @@ function looksLikeEmailMime(head: Uint8Array): boolean {
   const text = new TextDecoder('utf-8', { fatal: false }).decode(head.subarray(0, Math.min(head.byteLength, 4096)))
   const lines = text.split(/\r?\n/).slice(0, 40)
   let headerish = 0
+  let hasHeader = false
   for (const line of lines) {
     if (line.trim() === '') break
+    // Only inspect a leading RFC-style header block. SIP/HTTP dumps in ordinary
+    // logs also contain From/To and MIME headers, after a log or protocol line.
+    if (/^[ \t]/.test(line)) {
+      if (!hasHeader) break
+      continue // Folded value of the preceding header.
+    }
+    // RFC field names allow printable ASCII other than a colon.
+    if (!/^[!-9;-~]+[ \t]*:/.test(line)) break
+    hasHeader = true
     if (/^(from|to|cc|bcc|subject|date|mime-version|content-type|message-id|return-path)\s*:/i.test(line)) {
       headerish += 1
     }

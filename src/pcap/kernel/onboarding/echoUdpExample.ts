@@ -22,7 +22,7 @@ export const echoUdpExampleModule: KernelProtocolModule = {
     selectors: [{ kind: 'udp-port', value: ECHO_UDP_EXAMPLE_PORT }],
     title: 'Echo UDP example (T-01 onboarding)',
     priority: 50,
-    specRefs: ['tasks/anonymizer-robustness/T-01-unified-streaming-protocol-kernel.md'],
+    specRefs: ['docs/PROPRIETARY_PROTOCOL_ONBOARDING.md'],
   }),
 
   probe(view: BorrowedByteView, _context: ProbeContext): ProbeResult {

@@ -14,6 +14,7 @@ export type DisplayFilterField =
   | 'frame.issue'
   | 'eth.addr'
   | 'protocol'
+  | 'protocol.family'
 
 export type CompareOp = '==' | '!=' | 'contains' | '>=' | '<=' | '>' | '<'
 

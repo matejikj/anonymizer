@@ -5,7 +5,7 @@ import { computeExposedSummary } from './entityState.ts'
 import { CATEGORY_LABELS } from './categoryLabels.ts'
 import { resolveTextExportGate } from '../../pcap/trust/exportGate.ts'
 
-/** Compact security status for the workspace command strip (T08 three-state gate). */
+/** Compact security status for the workspace command strip (T08 export gate). */
 export function SecuritySummaryBar({ compact = false }: { readonly compact?: boolean }) {
   const sessionEpoch = useAppStore((s) => s.sessionEpoch)
   const phase = useAppStore((s) => s.phase)

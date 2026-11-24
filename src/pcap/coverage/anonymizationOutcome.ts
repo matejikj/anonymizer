@@ -22,6 +22,7 @@ import {
   type SupportRequestItem,
 } from '../docs/protocolSupportMatrix.ts'
 import { familyForProtocol, isUnsupportedProtocolId, protocolFamilyLabel } from './protocolFamilies'
+import { protocolPrivacyGuidance } from './protocolPrivacyGuidance'
 
 export const OUTCOME_FAMILY_STATES = [
   'anonymized',
@@ -44,6 +45,16 @@ export interface OutcomeFamilyRow {
   /** Protocol id for filterPacketIndices / display filter. */
   readonly filterProtocol: string | null
   readonly probable: boolean
+  readonly protocols: readonly OutcomeProtocolRow[]
+}
+
+export interface OutcomeProtocolRow {
+  readonly id: string
+  readonly label: string
+  readonly state: OutcomeFamilyState
+  readonly method: string
+  readonly check: string
+  readonly needsReview: boolean
 }
 
 export interface OutcomeIncidentRow {
@@ -98,9 +109,6 @@ function worseState(a: OutcomeFamilyState, b: OutcomeFamilyState): OutcomeFamily
 
 function stateFromProtocolRow(row: PcapProtocolCoverageRow): OutcomeFamilyState {
   if (row.dominantStatus === 'processing-failed') return 'processing-failed'
-  if (row.dominantStatus === 'encrypted' || row.userVerdict === 'encrypted-preserved') {
-    return 'encrypted-kept'
-  }
   if (
     row.userVerdict === 'unsupported-preserved'
     || row.userVerdict === 'recognized-risk-diagnostic'
@@ -111,8 +119,13 @@ function stateFromProtocolRow(row: PcapProtocolCoverageRow): OutcomeFamilyState 
   ) {
     return 'needs-attention'
   }
+  if (row.dominantStatus === 'encrypted' || row.userVerdict === 'encrypted-preserved') {
+    return 'encrypted-kept'
+  }
   if (
-    row.userVerdict === 'protected-export-no-full-analysis'
+    // Missing legacy decode detail does not mean the sanitizer masked the whole payload.
+    // A covered protocol was parsed/sanitized; fail-closed dispositions remain explicit below.
+    (row.userVerdict === 'protected-export-no-full-analysis' && row.dominantStatus !== 'covered')
     || row.userVerdict === 'heuristic'
     || row.userVerdict === 'requires-reassembly'
     || row.userVerdict === 'recognized-truncated-safe'
@@ -249,6 +262,47 @@ function buildSummarySentence(input: {
     .replace('{attention}', attention)
 }
 
+/** One entry per detected protocol, merging its internal fields without hiding the worst result. */
+function protocolDetails(rows: readonly PcapProtocolCoverageRow[], failed: readonly string[]): OutcomeProtocolRow[] {
+  const details = new Map<string, OutcomeProtocolRow>()
+  const heuristicIds = new Set<string>()
+  for (const row of rows) {
+    const guide = protocolPrivacyGuidance(row.protocol)
+    let state = stateFromProtocolRow(row)
+    const heuristic = heuristicIds.has(guide.id) || row.dominantStatus === 'heuristic' || row.userVerdict === 'heuristic'
+    if (heuristic) heuristicIds.add(guide.id)
+    if (!guide.known && state === 'anonymized') {
+      state = row.dominantStatus === 'redacted' ? 'masked-without-analysis' : 'needs-attention'
+    }
+    const previous = details.get(guide.id)
+    state = previous ? worseState(previous.state, state) : state
+    const method = state === 'needs-attention' ? cs.pcap.outcome.protocolUnverified
+      : state === 'processing-failed' ? cs.pcap.outcome.protocolFailed
+      : state === 'masked-without-analysis' ? (heuristic ? cs.pcap.outcome.protocolHeuristic : cs.pcap.outcome.protocolLimited)
+        : guide.method
+    details.set(guide.id, {
+      id: guide.id, label: guide.label, state, method,
+      check: heuristic ? cs.pcap.outcome.checkHeuristic : guide.check,
+      needsReview: previous?.needsReview === true || heuristic || state === 'needs-attention',
+    })
+  }
+  const failedIds = new Set<string>()
+  for (const protocol of failed) {
+    const guide = protocolPrivacyGuidance(protocol)
+    if (failedIds.has(guide.id)) continue
+    failedIds.add(guide.id)
+    const previous = details.get(guide.id)
+    details.set(guide.id, {
+      id: guide.id, label: guide.label,
+      state: previous ? worseState(previous.state, 'processing-failed') : 'processing-failed',
+      method: cs.pcap.outcome.protocolFailed,
+      check: `${previous?.check ?? guide.check} ${cs.pcap.outcome.recommend.processingFailed}`,
+      needsReview: previous?.needsReview ?? false,
+    })
+  }
+  return [...details.values()].sort((a, b) => STATE_RANK[b.state] - STATE_RANK[a.state] || a.label.localeCompare(b.label, 'cs'))
+}
+
 export function buildAnonymizationOutcome(input: {
   readonly protocols: readonly PcapProtocolCoverageRow[]
   readonly gate: GateResult
@@ -261,6 +315,8 @@ export function buildAnonymizationOutcome(input: {
    * up to 1M plan packets on the main thread — use incident list instead.
    */
   readonly maskedPacketRanges?: readonly string[]
+  /** The final byte-level export gate is authoritative; UI may be more conservative. */
+  readonly source?: 'preview' | 'verified-export'
 }): AnonymizationOutcome {
   const maxShown = input.maxIncidentsShown ?? MAX_INCIDENTS_SHOWN
   const incidentsSnap = input.incidents ?? input.plan.incidents ?? null
@@ -272,10 +328,14 @@ export function buildAnonymizationOutcome(input: {
     packetCount: number
     filterProtocol: string | null
     probable: boolean
+    hasFamilyPacketCount: boolean
+    protocols: PcapProtocolCoverageRow[]
+    failedProtocols: string[]
   }
   const byFamily = new Map<string, Acc>()
 
   for (const row of input.protocols) {
+    if (row.recognizedPacketCount <= 0) continue
     const family = familyForProtocol(row.protocol)
     const familyId = row.familyId || family.familyId
     const state = stateFromProtocolRow(row)
@@ -285,14 +345,21 @@ export function buildAnonymizationOutcome(input: {
         familyId,
         familyLabel: row.familyLabel || protocolFamilyLabel(family),
         state,
-        packetCount: row.recognizedPacketCount,
+        packetCount: row.familyPacketCount ?? row.recognizedPacketCount,
+        hasFamilyPacketCount: row.familyPacketCount !== undefined,
         filterProtocol: row.filterProtocol,
         probable: row.probableIdentification || family.probable,
+        protocols: [row],
+        failedProtocols: [],
       })
       continue
     }
     prev.state = worseState(prev.state, state)
-    prev.packetCount += row.recognizedPacketCount
+    prev.protocols.push(row)
+    if (row.familyPacketCount !== undefined) {
+      prev.packetCount = prev.hasFamilyPacketCount ? Math.max(prev.packetCount, row.familyPacketCount) : row.familyPacketCount
+      prev.hasFamilyPacketCount = true
+    } else if (!prev.hasFamilyPacketCount) prev.packetCount += row.recognizedPacketCount
     prev.probable = prev.probable || row.probableIdentification || family.probable
     if (!prev.filterProtocol) prev.filterProtocol = row.filterProtocol
   }
@@ -304,19 +371,33 @@ export function buildAnonymizationOutcome(input: {
     const prev = byFamily.get(family.familyId)
     if (prev) {
       prev.state = worseState(prev.state, 'processing-failed')
+      prev.failedProtocols.push(inc.protocol)
     } else {
       byFamily.set(family.familyId, {
         familyId: family.familyId,
         familyLabel: protocolFamilyLabel(family),
         state: 'processing-failed',
         packetCount: 1,
+        hasFamilyPacketCount: false,
         filterProtocol: inc.protocol,
         probable: family.probable,
+        protocols: [],
+        failedProtocols: [inc.protocol],
       })
     }
   }
 
-  const families: OutcomeFamilyRow[] = [...byFamily.values()]
+  const familyDetails = [...byFamily.values()].map(acc => {
+    const protocols = protocolDetails(acc.protocols, acc.failedProtocols)
+    return { ...acc, protocols, state: protocols.reduce((state, p) => worseState(state, p.state), acc.state) }
+  })
+  // A presentation must never be greener than its actual rows, even with stale/coarse gate input.
+  const gate = input.source === 'verified-export' ? input.gate
+    : familyDetails.some(f => f.state === 'needs-attention' || f.protocols.some(p => p.needsReview))
+    ? 'NOT_AI_READY'
+    : input.gate === 'AI_READY' && (familyDetails.some(f => f.state === 'masked-without-analysis' || f.state === 'processing-failed') || (incidentsSnap?.totalFailures ?? 0) > 0)
+      ? 'AI_READY_WITH_GAPS' : input.gate
+  const families: OutcomeFamilyRow[] = familyDetails
     .map((acc) => ({
       familyId: acc.familyId,
       familyLabel: acc.familyLabel,
@@ -324,9 +405,10 @@ export function buildAnonymizationOutcome(input: {
       stateLabel: stateLabel(acc.state),
       packetCount: acc.packetCount,
       explanation: explanationFor(acc.state, acc.packetCount, acc.probable),
-      recommendation: recommendationFor(acc.state, input.gate, input.preset, acc.packetCount),
+      recommendation: recommendationFor(acc.state, gate, input.preset, acc.packetCount),
       filterProtocol: acc.filterProtocol,
       probable: acc.probable,
+      protocols: acc.protocols,
     }))
     .sort((a, b) => STATE_RANK[b.state] - STATE_RANK[a.state] || b.packetCount - a.packetCount)
 
@@ -344,9 +426,9 @@ export function buildAnonymizationOutcome(input: {
   const incidentMoreCount = Math.max(0, incidentTotal - incidentRows.length)
 
   const summarySentence = buildSummarySentence({
-    gate: input.gate,
+    gate,
     familyLabels: families.map((f) => f.familyLabel),
-    needsAttention: families.filter((f) => f.state === 'needs-attention').map((f) => f.familyLabel),
+    needsAttention: families.filter((f) => f.state === 'needs-attention' || f.protocols.some(p => p.needsReview)).map((f) => f.familyLabel),
     masked: families
       .filter((f) => f.state === 'masked-without-analysis' || f.state === 'processing-failed')
       .map((f) => f.familyLabel),
@@ -356,8 +438,8 @@ export function buildAnonymizationOutcome(input: {
 
   return {
     summarySentence,
-    gate: input.gate,
-    gateLabel: gateLabel(input.gate),
+    gate,
+    gateLabel: gateLabel(gate),
     families,
     incidents: incidentRows,
     incidentTotal,
@@ -382,6 +464,7 @@ function buildUnsupportedSupportRequests(
 ): OutcomeSupportRequest[] {
   const byCode = new Map<string, SupportRequestItem>()
   for (const row of protocols) {
+    if (row.recognizedPacketCount <= 0) continue
     if (!isUnsupportedProtocolId(row.protocol)) continue
     const prev = byCode.get(row.protocol)
     const family = protocolFamilyLabel(familyForProtocol(row.protocol))
@@ -485,6 +568,7 @@ export function coverageRowsFromProtocolSummaries(
       familyLabel: protocolFamilyLabel(family),
       probableIdentification: family.probable || isUnsupportedProtocolId(p.protocol),
       recognizedPacketCount: p.packetCount,
+      familyPacketCount: p.familyPacketCount,
       protectedPacketCount: 0,
       layerKind,
       dominantStatus: p.dominantStatus,
@@ -517,6 +601,7 @@ export function buildAnonymizationOutcomeForExport(input: {
     incidents: input.incidents,
     preset: input.preset,
     maskedPacketRanges: computeMaskedPacketRanges(input.plan),
+    source: 'verified-export',
   })
   return anonymizationOutcomeForReport(outcome, input.incidents ?? input.plan.incidents)
 }

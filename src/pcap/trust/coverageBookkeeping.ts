@@ -112,10 +112,12 @@ export function summarizeSanitizationCoverage(input: {
   for (const span of coverage) {
     const disposition = resolveCoverageDisposition(policy, span.status, span.protocol)
     const kind = classifyDisposition(disposition)
+    // R10 rollup entries stand for many spans (length = their total bytes).
+    const regions = span.aggregateCount ?? 1
     if (kind === 'fail-closed') {
-      failClosedRegions += 1
+      failClosedRegions += regions
     } else if (kind === 'exposed') {
-      exposedRegions += 1
+      exposedRegions += regions
       secretPassthroughBytes += Math.max(0, span.length)
     }
   }

@@ -4,6 +4,7 @@
  */
 
 import type { RulesetConfig } from '../domain/configSchema'
+import type { WireCoverageRollup } from '../pcap/processing/packedCaptureWire'
 import type { PackedMatchIndex, ResolvedMatch } from '../domain/types'
 import type { SourceKind } from '../domain/sourceArtifact'
 import type { CanonicalIdentity, MappingSnapshot } from '../mapping/types'
@@ -76,6 +77,8 @@ export interface PcapSourceDiscovery {
     readonly classicHeader?: ClassicPcapHeader
     readonly pcapngSections?: readonly PcapngSectionInfo[]
     readonly pcapngInterfaces?: readonly PcapngInterfaceInfo[]
+    /** R10 — worker coverage rollup; `discovery.packetDiscovery` is empty on the packed path. */
+    readonly coverageRollup?: WireCoverageRollup
   }
   readonly policy: SanitizationPolicy
 }

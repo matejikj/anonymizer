@@ -22,7 +22,9 @@ describe('transform + packed plan', () => {
     expect(a.anonymized).toContain('10.255.90.')
     expect(a.anonymized).toContain('host-')
     expect(a.anonymized).toContain('Person ')
-    expect(a.anonymized).toContain('account-')
+    const user = a.entities.find(e => e.category === 'user-id')!
+    expect(user.replacement).toHaveLength(user.originalSample.length)
+    expect(a.anonymized).toContain(user.replacement)
   })
 
   it('same entityKey gets same replacement', () => {

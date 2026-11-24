@@ -182,6 +182,6 @@ describe('T15 payload detectors + correlation', () => {
 
 describe('T15 engine version', () => {
   it('bumps PCAP_ENGINE_VERSION for text/* body detector path', () => {
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })

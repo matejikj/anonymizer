@@ -28,7 +28,7 @@
       "npm run bench:baseline"
     ],
     "note": "CPU parse/sanitize/export only — not browser heap/TTI SLA",
-    "publishedSummaryRef": "tests/performance/results/capacity-evidence.json + PCAP-CAPACITY-BENCH when regenerated",
+    "publishedSummaryRef": "docs/CAPACITY_EVIDENCE.md + tests/performance/BASELINE-REPORT.md when regenerated",
     "benchBaselineGeneratedAt": "2026-10-17T18:39:04.649Z",
     "benchBaselineMicroRows": 5,
     "benchPcapCapacityGeneratedAt": "2026-10-17T19:46:13.471Z"

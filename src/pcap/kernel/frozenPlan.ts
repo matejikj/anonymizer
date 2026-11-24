@@ -31,6 +31,7 @@ export function resolveFrozenPacketPlan(
   ctx: DeferredPatchContext,
 ): BytePatch[] {
   const fromOps = renderSymbolicOperations(plan.ops, {
+    packetIndex: plan.packetIndex,
     mapping: ctx.mapping,
     fingerprints: ctx.fingerprints,
     incidentLog: ctx.incidentLog,
@@ -48,12 +49,15 @@ export function symbolicizeMaskPatches(
   packetIndex: number,
   patches: readonly BytePatch[],
   domains: readonly string[] = ['application', 'payload', 'protocol-neutral'],
+  /** Extra candidate domains for a patch at this offset (e.g. from mask-range intents). */
+  domainsAt?: (offset: number) => readonly string[] | undefined,
 ): { readonly ops: SymbolicOperation[]; readonly remainder: BytePatch[] } {
   const ops: SymbolicOperation[] = []
   const remainder: BytePatch[] = []
   for (const p of patches) {
     let matched = false
-    for (const domain of domains) {
+    const extra = domainsAt?.(p.offset)
+    for (const domain of extra ? [...extra, ...domains] : domains) {
       const expected = createProtocolNeutralMaskFill({
         length: p.data.length,
         packetIndex,

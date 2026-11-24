@@ -8,7 +8,7 @@ import { isFilterableProtocolToken } from '../coverage/protocolFamilies'
 
 const FIELDS = new Set([
   'ip.addr', 'ip.src', 'ip.dst', 'tcp.port', 'udp.port',
-  'frame.number', 'frame.len', 'frame.changed', 'frame.issue', 'eth.addr', 'protocol',
+  'frame.number', 'frame.len', 'frame.changed', 'frame.issue', 'eth.addr', 'protocol', 'protocol.family',
 ])
 
 const PROTOCOL_TOKENS = new Set([

@@ -9,11 +9,6 @@
   overflow: hidden;
 }
 
-.workspace .anonymization-outcome--text {
-  margin: 0 var(--space-3);
-  flex: 0 0 auto;
-}
-
 .workspace__stage {
   flex: 1 1 auto;
   display: grid;

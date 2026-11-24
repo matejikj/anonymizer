@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import { cs } from '../../src/i18n/cs.ts'
 
@@ -8,6 +9,7 @@ test.describe('Custom rules', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.getByTestId('review-tab-rules').click()
     await expect(page.getByTestId('custom-rules')).toBeVisible()
   })
@@ -55,13 +57,14 @@ test.describe('Custom rules', () => {
   })
 
   test('edit, duplicate, toggle, delete with undo', async ({ page }) => {
+    const initialRuleCount = await page.locator('[data-testid^="rule-row-"]').count()
     await page.getByTestId('add-rule').click()
     await page.getByTestId('rule-pattern').fill('TenantService')
     await page.getByTestId('rule-name').fill('Tenant label')
     await page.getByTestId('rule-save').click()
     await expect(page.getByTestId('rule-form')).toHaveCount(0, { timeout: 60_000 })
 
-    const row = page.locator('[data-testid^="rule-row-"]').first()
+    const row = page.locator('[data-testid^="rule-row-"]').filter({ hasText: 'Tenant label' })
     await expect(row).toContainText('Tenant label')
     const ruleId = (await row.getAttribute('data-testid'))!.replace('rule-row-', '')
 
@@ -95,7 +98,7 @@ test.describe('Custom rules', () => {
     })
 
     await page.getByTestId(`rule-dup-${ruleId}`).click()
-    await expect(page.locator('[data-testid^="rule-row-"]')).toHaveCount(2, { timeout: 60_000 })
+    await expect(page.locator('[data-testid^="rule-row-"]')).toHaveCount(initialRuleCount + 2, { timeout: 60_000 })
 
     await page.getByTestId(`rule-delete-${ruleId}`).click()
     await expect(page.getByTestId('app-toast')).toBeVisible({ timeout: 60_000 })

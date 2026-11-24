@@ -1,4 +1,6 @@
+import { closeTextOutcomeDialog } from '../../e2e/helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
+import { cs } from '../../../src/i18n/cs.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,6 +35,7 @@ test.describe('Max-size — text release gate', () => {
     const t0 = Date.now()
     await page.getByTestId('persistent-file-input').setInputFiles(filePath)
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: isFullReleaseGate() ? 600_000 : 120_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('export-bar')).toBeVisible()
     const importMs = Date.now() - t0
 
@@ -105,6 +108,7 @@ test.describe('Max-size — text release gate', () => {
     const t0 = Date.now()
     await page.getByTestId('persistent-file-input').setInputFiles(filePath)
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: isFullReleaseGate() ? 600_000 : 120_000 })
+    await closeTextOutcomeDialog(page)
 
     recordScenario(testInfo, {
       scenario: 'text-90mib-crlf-production-profile',
@@ -118,6 +122,7 @@ test.describe('Max-size — text release gate', () => {
   test('regex timeout fail-closed blocks export', async ({ page }) => {
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.waitForFunction(
       () => typeof window.__RND_LOG_ANONYMIZER_E2E__?.markExportBlocked === 'function',
     )
@@ -186,6 +191,7 @@ test.describe('Max-size — text release gate', () => {
   test('CodeMirror render, scroll, wrap, search', async ({ page }) => {
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('dual-log')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
 
     await page.evaluate(async () => {
       const left = document.querySelector('[data-pane="original"]')?.closest('.cm-editor')
@@ -213,6 +219,7 @@ test.describe('Max-size — text release gate', () => {
     const filePath = await writeTempLog(crlf, 'crlf-canary.log')
     await page.getByTestId('persistent-file-input').setInputFiles(filePath)
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 120_000 })
+    await closeTextOutcomeDialog(page)
 
     const downloadPromise = page.waitForEvent('download')
     await page.getByTestId('export-download').click()
@@ -227,8 +234,9 @@ test.describe('Max-size — text release gate', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('export-copy')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await page.getByTestId('export-copy').click()
-    await expect(page.getByTestId('app-toast')).toContainText('Zkopírováno', { timeout: 15_000 })
+    await expect(page.getByTestId('app-toast')).toContainText(cs.export.copied, { timeout: 15_000 })
     const text = await page.evaluate(() => navigator.clipboard.readText())
     expect(text).not.toContain('10.16.1.105')
   })

@@ -40,11 +40,14 @@ describe('enterprise step 14 — offline hardening', () => {
     expect(existsSync(join(root, 'package-lock.json'))).toBe(true)
   })
 
-  it('SBOM and release-manifest generators exist', () => {
+  it('release checklist and SBOM generator exist', () => {
+    expect(existsSync(join(root, 'docs/RELEASE_CHECKLIST.md'))).toBe(true)
     expect(existsSync(join(root, 'scripts/generate-sbom.mjs'))).toBe(true)
     expect(existsSync(join(root, 'scripts/generate-release-manifest.mjs'))).toBe(true)
-    const sbomScript = readFileSync(join(root, 'scripts/generate-sbom.mjs'), 'utf8')
-    expect(sbomScript.length).toBeGreaterThan(0)
+    const checklist = readFileSync(join(root, 'docs/RELEASE_CHECKLIST.md'), 'utf8')
+    expect(checklist).toMatch(/GPG_SIGN_RELEASE/)
+    expect(checklist).toMatch(/sbom/)
+    expect(checklist).toMatch(/connect-src 'none'/)
   })
 
   it('npm run sbom produces CycloneDX file', () => {

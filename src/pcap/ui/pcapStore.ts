@@ -132,7 +132,7 @@ export interface PcapUiState {
   colorSlotsRevision: number
   coloringRulesDialogOpen: boolean
   recoverySearchDialogOpen: boolean
-  /** T10 — closable anonymization outcome dialog after analysis (cs: Výsledek anonymizace). */
+  /** T10 — closable „Výsledek anonymizace“ dialog after analysis. */
   outcomeDialogOpen: boolean
   scrollTop: number
   /** Pane-local scroll anchors (preserved across dual↔single). */
@@ -174,6 +174,7 @@ export interface PcapUiState {
   patchProgress: (patch: Partial<PcapProgress>) => void
   setErrorMessage: (message: string | null) => void
   setSelectedPacketIndex: (index: number) => void
+  resetPacketSelection: () => void
   setFilter: (filter: Partial<PcapFilterState>) => void
   setDisplayFilterDraft: (draft: string, status: ParseStatus | 'empty', error: PcapDisplayFilterError | null) => void
   applyDisplayFilter: (expression: string) => void
@@ -363,8 +364,20 @@ export const usePcapStore = create<PcapUiState>((set, get) => ({
       selectedFieldPath: null,
       selectedByteOffset: null,
       expandedTreeNodes: [],
+      detailTab: 'tree',
     })
   },
+  resetPacketSelection: () => set({
+    selectedPacketIndex: -1,
+    selectedFieldPath: null,
+    selectedByteOffset: null,
+    activeByteSourceId: 'frame',
+    expandedTreeNodes: [],
+    markedPackets: [],
+    selectionHistory: [],
+    selectionHistoryIndex: -1,
+    detailTab: 'tree',
+  }),
   setFilter: (partial) => set({ filter: { ...get().filter, ...partial } }),
   setDisplayFilterDraft: (displayFilterDraft, displayFilterStatus, displayFilterError) =>
     set({ displayFilterDraft, displayFilterStatus, displayFilterError }),
@@ -432,6 +445,7 @@ export const usePcapStore = create<PcapUiState>((set, get) => ({
       selectedPacketIndex: snapshot.packetIndex,
       selectedFieldPath: snapshot.fieldPath,
       selectedByteOffset: snapshot.byteOffset,
+      detailTab: snapshot.packetIndex === get().selectedPacketIndex ? get().detailTab : 'tree',
     })
   },
   setDetailTab: (detailTab) => set({ detailTab }),

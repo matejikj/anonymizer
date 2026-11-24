@@ -86,7 +86,7 @@ export const rndDispatchLiteDescriptor: WireProtocolDescriptor = {
   title: 'RND Dispatch Lite (synthetic proprietary pilot)',
   profileVersion: '1.0.0',
   specRefs: [
-    'synthetic proprietary pilot — see descriptor module + unit tests',
+    'docs/PROPRIETARY_PROTOCOL_ONBOARDING.md',
   ],
   transport: { udpPorts: [RND_DISPATCH_LITE_UDP_PORT] },
   framing: {

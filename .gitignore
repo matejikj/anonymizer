@@ -1,11 +1,12 @@
-# Dependencies & build
+# --- Dependencies & build ---
 node_modules
 dist
 dist-ssr
-*.local
+*.tsbuildinfo
+.vite
 .playwright-browsers
 
-# Secrets / local env
+# --- Secrets / local env ---
 .env
 .env.*
 !.env.example
@@ -16,21 +17,33 @@ dist-ssr
 id_rsa*
 credentials.json
 secrets/
+*.local
 
-# Private / non-synthetic captures & sample dumps (never commit real traffic)
+# --- Private / non-synthetic captures & sample dumps (never commit real traffic) ---
 files/*
 !files/.gitkeep
+logs/*
+!logs/.gitkeep
 *.pcap
 *.pcapng
 *.cap
+*.gz
+*.tgz
+*.tar
+*.zip
+*.eml
+*.har
+template-*.log
 *.sensitive.local.json
 dt-pcap.sensitive.local.json
+/squelch/
 
-# Logs — never commit (runtime, fixtures, templates, package managers)
+# --- Logs — never commit (runtime, fixtures, templates, package managers) ---
 *.log
 **/*.log
-logs/*
-!logs/.gitkeep
+*.log.*
+*.log.gz
+*.log.zip
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -38,20 +51,25 @@ pnpm-debug.log*
 lerna-debug.log*
 *.out
 nohup.out
-*.log.*
-*.log.gz
-*.log.zip
 
+# --- App export artifacts from manual testing ---
+*.rnd-mapping-bundle.json
+*.rnd-pcap-recovery
+*.rnd-pcap-recovery.bin
+*.anonymized.*
+*.ai-diagnostics.json
 
-# Release artifacts generated locally
+# --- Release outputs ---
 release/sbom.cdx.json
 release/SHA256SUMS
 release/SHA256SUMS.asc
 release/release-manifest.json
 
-# Test runners & generated fixtures
+# --- Tests, benches, generated fixtures ---
 test-results
 playwright-report
+blob-report
+/coverage/
 tests/performance/fixtures/
 tests/performance/results/**
 !tests/performance/results/.gitkeep
@@ -63,26 +81,26 @@ tests/pcap/fixtures/generated/
 tests/e2e/fixtures/*
 !tests/e2e/fixtures/.gitkeep
 tests/performance/*-REPORT.md
+.tmp-*/
+docs/*.pdf
 
-# Obsolete construction / internal docs (do not re-commit)
-ANONYMIZER.md
-docs/
+# --- Task scratch & construction docs (local only; never commit) ---
 tasks/
-*.REPORT.md
-ACCEPTANCE-*.md
-IMPLEMENTATION-*.md
-FINDINGS-*.md
-PROTOCOL-REVIEW.md
-PROTOCOL-IMPLEMENTATION-CONTRACT.md
+ANONYMIZER.md
+**/ARCHITECTURE.md
+**/DESIGN.md
+docs/LINT_WARNINGS_INVENTORY.md
+profiles/PRODUCTION_PROFILE_README.md
+*.construction.md
 
-# Editor / OS
+# --- Editor / OS ---
 .vscode/*
 !.vscode/extensions.json
 .idea
+.cursor/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.cursor/

@@ -6,7 +6,6 @@ import {
   applyRecommendedStagingResolutions,
   canConfirmCorrelationStaging,
   confirmCorrelationStaging,
-  continueCorrelationStagingWithSingleFile,
   getStagingConfirmBlockedReason,
   getStagingProfileCompatibilityReport,
   leaveCorrelationStaging,
@@ -35,9 +34,10 @@ export function CorrelationStagingView() {
   const report = getStagingProfileCompatibilityReport()
   const blockedReason = getStagingConfirmBlockedReason()
   const canConfirm = canConfirmCorrelationStaging() && !busy
-  const showSingleFileHint = summary.readyCount === 1 && !summary.aggregateOverLimit
 
   const onRemove = (id: string) => {
+    if (busy) return
+    setLocalError(null)
     const idx = items.findIndex((i) => i.id === id)
     const nextId = items[idx + 1]?.id ?? items[idx - 1]?.id ?? null
     removeStagingItem(id)
@@ -48,13 +48,21 @@ export function CorrelationStagingView() {
   const onAddFiles = () => fileRef.current?.click()
 
   const onFilesSelected = async (files: FileList | null) => {
-    if (!files?.length) return
+    if (!files?.length || busy) return
     setLocalError(null)
-    await addMoreStagingFiles([...files])
-    if (fileRef.current) fileRef.current.value = ''
+    setBusy(true)
+    try {
+      await addMoreStagingFiles([...files])
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : cs.correlationStaging.singleContinueFailed)
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
+      setBusy(false)
+    }
   }
 
   const onConfirm = async () => {
+    if (!canConfirm) return
     setLocalError(null)
     setBusy(true)
     try {
@@ -63,21 +71,23 @@ export function CorrelationStagingView() {
         if (!result.cancelled) setLocalError(result.message)
         return
       }
-      useAppStore.getState().setStatusMessage(cs.correlationWorkspace.readyMessage(result.sourceCount))
+      if (result.mode === 'correlation') {
+        useAppStore.getState().setStatusMessage(cs.correlationWorkspace.readyMessage(result.sourceCount))
+      }
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <section className="staging-view" aria-labelledby="staging-view-title" data-testid="correlation-staging">
+    <section className="staging-view" aria-labelledby="staging-list-title" data-testid="correlation-staging">
       <div className="staging-view__toolbar">
-        <Button variant="ghost" data-testid="staging-back" onClick={() => leaveCorrelationStaging()}>
+        <Button variant="ghost" data-testid="staging-back" disabled={busy} onClick={() => leaveCorrelationStaging()}>
           {cs.correlationStaging.back}
         </Button>
       </div>
 
-      <SourceStagingList items={items} summary={summary} onRemove={onRemove} />
+      <SourceStagingList items={items} summary={summary} onRemove={onRemove} disabled={busy} />
 
       <CorrelationCompatibilityBanner
         report={report}
@@ -95,25 +105,8 @@ export function CorrelationStagingView() {
         </p>
       ) : null}
 
-      {showSingleFileHint ? (
-        <div className="staging-view__single-hint" data-testid="staging-single-file-hint">
-          <Button
-            variant="secondary"
-            data-testid="staging-continue-single"
-            disabled={busy}
-            onClick={() => {
-              void continueCorrelationStagingWithSingleFile().then((result) => {
-                if (!result.ok) setLocalError(result.message)
-              })
-            }}
-          >
-            {cs.correlationStaging.continueSingle}
-          </Button>
-        </div>
-      ) : null}
-
       <div className="staging-view__actions">
-        <Button variant="secondary" data-testid="staging-add-files" onClick={onAddFiles} disabled={busy}>
+        <Button variant={summary.readyCount === 0 ? 'primary' : 'secondary'} data-testid="staging-add-files" onClick={onAddFiles} disabled={busy}>
           {cs.correlationStaging.addFiles}
         </Button>
         <div className="staging-view__primary">
@@ -125,7 +118,7 @@ export function CorrelationStagingView() {
             aria-describedby={!canConfirm && blockedReason ? 'staging-blocked-reason' : undefined}
             onClick={() => void onConfirm()}
           >
-            {cs.correlationStaging.confirm}
+            {summary.readyCount === 1 ? cs.correlationStaging.confirmSingle : cs.correlationStaging.confirm}
           </Button>
           {!canConfirm && blockedReason ? (
             <p
@@ -150,6 +143,7 @@ export function CorrelationStagingView() {
         type="file"
         accept={UNIVERSAL_FILE_ACCEPT}
         multiple
+        disabled={busy}
         onChange={(e) => void onFilesSelected(e.target.files)}
       />
     </section>

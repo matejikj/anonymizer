@@ -134,7 +134,7 @@ describe('T14 application services — contracts', () => {
   })
 
   it(`bumps PCAP_ENGINE_VERSION for Date rewrite (${PCAP_ENGINE_VERSION})`, () => {
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 
@@ -209,7 +209,7 @@ describe('T14 HTTP Date — export pipeline', () => {
       const result = runExportPipeline([pkt], level, 't14-http-date.pcap', `t14-http-${level}`, {
         mappingSeed: 't14-http-date',
       })
-      expect(result.discovery.packetDiscovery[0]?.resolvePatches).toBeTypeOf('function')
+      expect(result.discovery.packetDiscovery[0]?.frozenPlan).toBeDefined()
       expect(result.built.packets.length).toBe(1)
       const exported = result.built.packets[0]!.data
       const text = new TextDecoder('latin1').decode(exported)
@@ -220,7 +220,7 @@ describe('T14 HTTP Date — export pipeline', () => {
       expect(text.includes('sess=secret')).toBe(false)
       expect(dateHeader.includes('*'), `Date header was masked not shifted: ${dateHeader}`).toBe(false)
       expect(text).toMatch(/Date: [A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT/)
-      expect(result.plan.engineVersion).toBe('2.35.0')
+      expect(result.plan.engineVersion).toBe('2.37.0')
     }
   })
 })

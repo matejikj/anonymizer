@@ -105,7 +105,7 @@ export interface DetectorConfig {
 }
 
 export const DEFAULT_DETECTOR_CONFIG: DetectorConfig = {
-  hostnameSuffixes: ['.corp.example', '.vaf.local', '.example.local', '.example.invalid', '.local'],
+  hostnameSuffixes: ['.corp.example', '.lab.example', '.example.local', '.example.invalid', '.local'],
   userIdPrefixes: ['disp'],
   internalIdPatterns: [/\bMP_[A-Za-z0-9_]+\b/g, /\bGRP_[A-Za-z0-9_]+\b/g],
   customRules: [],

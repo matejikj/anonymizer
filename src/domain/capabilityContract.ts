@@ -59,8 +59,16 @@ export const PCAP_KERNEL_BUDGETS = {
   rawBuffersMaxBytes: 64 * BYTES_PER_MIB,
   /** Preview cache — must stay ≤ PCAP_PREVIEW_LIMITS.lruByteBudget and within raw aggregate. */
   previewCacheMaxBytes: PCAP_PREVIEW_LIMITS.lruByteBudget,
-  /** Packed journal + descriptors + occurrence index. */
-  journalMaxBytes: 96 * BYTES_PER_MIB,
+  /**
+   * Per-packet retained session bytes: journal records, ops, intents and coverage / issue lists
+   * (shared ops and lists counted once, see SemanticJournalBuilder.addPacket). Sized for the
+   * 100 MiB PCAP limit on RTP-heavy real traffic, measured 2026-10-20 (production build, Chromium):
+   * 47 MB / 225k packets → 264–279 MiB estimate, 271 MiB retained processing-worker heap;
+   * the same capture doubled (94 MB / 451k packets) → 524–553 MiB estimate, worker 542–582 MiB
+   * retained, peak 1.7 GB (diagnostic) / 2.2 GB (high-privacy), no crash. Denser traffic (more
+   * packets or ops per MiB) fails closed with journal-exceeded.
+   */
+  journalMaxBytes: 640 * BYTES_PER_MIB,
   /** T04 — retained AnonymizationIncident records (count). */
   incidentLogMaxRecords: 1_000,
   /** T04 — approximate serialized budget for retained incident records. */

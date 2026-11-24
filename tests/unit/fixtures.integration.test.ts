@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { analyze } from '../../src/engine/analyze.ts'
 import { transformWithPlan } from '../../src/engine/transform.ts'
 import { countPhysicalLines } from '../../src/domain/invariants.ts'
-import { FIXTURE_LOGS, readFixtureLog } from '../fixtures/loadFixtures.ts'
+import { FIXTURE_LOGS, FIXTURE_LOGS_AVAILABLE, readFixtureLog } from '../fixtures/loadFixtures.ts'
 import { allMustNotLeakTokens, MUST_NOT_LEAK } from '../fixtures/mustNotLeak.ts'
 
-describe('fixture integration (Krok 2)', () => {
+describe.skipIf(!FIXTURE_LOGS_AVAILABLE)('fixture integration (Krok 2)', () => {
   for (const name of FIXTURE_LOGS) {
     it(`anonymizes ${name} without leaking curated tokens`, () => {
       const original = readFixtureLog(name)
@@ -42,7 +42,7 @@ describe('fixture integration (Krok 2)', () => {
   })
 
   it('is deterministic across repeated analyze()', () => {
-    const original = readFixtureLog('template-flexcd.log')
+    const original = readFixtureLog('template-edge.log')
     const a = analyze(original)
     const b = analyze(original)
     expect(a.anonymized).toBe(b.anonymized)

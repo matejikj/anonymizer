@@ -260,7 +260,7 @@ export function runCaptureReassembly(
       ?? 0;
 
     if (policy.http && looksLikeHttpBuffer(view.bytes)) {
-      const httpOverlays = processHttpOverReassembledView(view, primaryIndex, payloadOffset);
+      const httpOverlays = processHttpOverReassembledView(view, primaryIndex, payloadOffset, policy.preset === 'high-privacy');
       for (const [idx, overlay] of httpOverlays) {
         mergeOverlay(overlays, idx, overlay);
       }
@@ -406,6 +406,7 @@ export function applyReassemblyPatchesToResults(
   bufferLengths?: readonly number[],
   /** T14 — capture-aligned payload time for HTTP/SIP Date on reassembled views. */
   payloadTime?: import('../kernel/payloadTimeCodec').PayloadTimeSession,
+  highPrivacy = false,
 ): void {
   for (const view of reassembly.views) {
     if (view.status !== 'complete') continue;
@@ -414,7 +415,7 @@ export function applyReassemblyPatchesToResults(
       if (view.transport === 'sctp') {
         byPacket = sanitizeSctpReassembledView(view, mapping);
       } else {
-        byPacket = sanitizeReassembledView(view, mapping, view.transport, payloadTime);
+        byPacket = sanitizeReassembledView(view, mapping, view.transport, payloadTime, highPrivacy);
       }
     } catch {
       // T07: one TCP/SIP/SCTP stream failure must not abort other flows.

@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -96,6 +97,7 @@ test.describe('Clear Glass Operations visual matrix', () => {
       await page.goto('/')
       await page.getByTestId('try-sample').click()
       await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+      await closeTextOutcomeDialog(page)
       await expect(page.getByTestId('dual-log')).toBeVisible()
       await expect(page).toHaveScreenshot(`visual-matrix-text-workspace-${theme}.png`, { animations: 'disabled' })
     })
@@ -155,6 +157,7 @@ test.describe('Clear Glass Operations visual matrix', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     const rulesTab = page.getByTestId('review-tab-rules')
     if (await rulesTab.count()) {
       await rulesTab.click()

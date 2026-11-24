@@ -14,6 +14,7 @@ import {
   getPcapSession,
   analysisFromWire,
 } from './pcapSession'
+import { mergeCoverageRollup } from '../processing/packedCaptureWire'
 import { buildSessionCoverage } from '../coverage'
 import { getActivePcapLevel, getActivePcapProfile } from '../profile/activePcapProfile'
 import { createIdlePcapProgress, usePcapStore, type PcapProgress } from './pcapStore'
@@ -158,6 +159,9 @@ async function loadPcapFileAfterPreflight(file: File, pre: PcapPreflightOk): Pro
   try {
     token.throwIfCancelled()
 
+    // Packet indices, marks and navigation history belong to the outgoing capture.
+    // Clear them only after replacement is confirmed and preflight has succeeded.
+    store.resetPacketSelection()
     teardownPcapSession()
     prepareNewPcapSession(0, generationId)
     setActiveWorkerGenerationId(generationId)
@@ -219,23 +223,7 @@ async function loadPcapFileAfterPreflight(file: File, pre: PcapPreflightOk): Pro
         packetIndex: i.packetIndex,
       })),
     })
-    const unifiedWithRollup = container.coverageRollup
-      ? {
-          ...unifiedCoverage,
-          totalUnsupportedSpans: Math.max(
-            unifiedCoverage.totalUnsupportedSpans,
-            container.coverageRollup.totalUnsupportedSpans,
-          ),
-          totalTruncatedSpans: Math.max(
-            unifiedCoverage.totalTruncatedSpans,
-            container.coverageRollup.totalTruncatedSpans,
-          ),
-          totalHeuristicSpans: Math.max(
-            unifiedCoverage.totalHeuristicSpans,
-            container.coverageRollup.totalHeuristicSpans,
-          ),
-        }
-      : unifiedCoverage
+    const unifiedWithRollup = mergeCoverageRollup(unifiedCoverage, container.coverageRollup)
 
     const descriptor: PcapSourceDescriptor = {
       fileName: file.name,

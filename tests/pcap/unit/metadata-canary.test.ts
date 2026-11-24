@@ -60,8 +60,8 @@ function buildPcapngWithMetadata(): ArrayBuffer {
   dsbV.setUint32(dsbTotalLen - 4, dsbTotalLen, true);
   blocks.push(new Uint8Array(dsb));
 
-  // ISB with canary "interface_stats_user_jakub"
-  const canary3 = new TextEncoder().encode('interface_stats_user_jakub');
+  // ISB with canary "interface_stats_user_canary"
+  const canary3 = new TextEncoder().encode('interface_stats_user_canary');
   const isbBodyLen = canary3.length;
   const isbPadded = (isbBodyLen + 3) & ~3;
   const isbTotalLen = 12 + isbPadded;
@@ -126,7 +126,7 @@ describe('Metadata canary stripping', () => {
 
     expect(outputStr).not.toContain('SECRET_HOST.internal');
     expect(outputStr).not.toContain('TLS_MASTER_SECRET_KEY_12345');
-    expect(outputStr).not.toContain('interface_stats_user_jakub');
+    expect(outputStr).not.toContain('interface_stats_user_canary');
   });
 
   it('custom/unknown blocks are not copied to output', () => {

@@ -243,7 +243,7 @@ export class MediaFlowIndex {
     // repeated SSRC, or advancing sequence numbers) is weaker signal than a confirmed
     // multi-packet or SDP-backed match, but it must still surface as *some* classification:
     // gating it out entirely regresses the first packet of every genuine no-SDP RTP/RTCP
-    // stream (confirmed against a local private regression capture's mandatory 3250 RTP / 22 RTCP regression table —
+    // stream (confirmed against dt.pcap's mandatory 3250 RTP / 22 RTCP regression table —
     // requiring evidence dropped RTCP to 21). Downstream disposition already treats
     // 'suspected' conservatively under mediaPolicy=drop (truncate, not drop-as-confirmed).
     const confidence: MediaConfidence = this.hasFlowEvidence(input, shape) ? 'confirmed' : 'suspected';

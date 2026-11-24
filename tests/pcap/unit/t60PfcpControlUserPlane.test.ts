@@ -211,12 +211,12 @@ function indexOfSubarray(hay: Uint8Array, needle: Uint8Array): number {
 }
 
 describe('T60 registry', () => {
-  it('registers pfcp handler, mobile-core family, engine 2.35.0', () => {
+  it('registers pfcp handler, mobile-core family, engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('pfcp')
     expect(familyForProtocol('pfcp').familyId).toBe('mobile-core')
     expect(familyForProtocol('pfcp-f-seid').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

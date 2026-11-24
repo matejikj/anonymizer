@@ -109,14 +109,11 @@ export function canConfirmCorrelationStaging(): boolean {
   return getStagingConfirmBlockedReason() == null
 }
 
-/** Visible reason why staging confirm ("Analyze files" in cs UI) is disabled; null when ready. */
+/** Visible reason why analysis is disabled; one ready file is sufficient. */
 export function getStagingConfirmBlockedReason(): string | null {
   const summary = buildStagingSummary()
   if (summary.readyCount === 0) {
     return cs.correlationStaging.blockedNoReady
-  }
-  if (summary.readyCount < 2) {
-    return cs.correlationStaging.blockedNeedTwo
   }
   if (summary.aggregateOverLimit) {
     return cs.correlationStaging.blockedAggregateLimit
@@ -241,10 +238,15 @@ function buildDescriptors(): StagedSourceDescriptor[] {
 }
 
 export async function confirmCorrelationStaging(): Promise<
-  { ok: true; sourceCount: number } | { ok: false; message: string; cancelled?: boolean }
+  { ok: true; sourceCount: number; mode: 'single' | 'correlation' } | { ok: false; message: string; cancelled?: boolean }
 > {
-  if (!canConfirmCorrelationStaging()) {
-    return { ok: false, message: 'Staging není připravené ke společné anonymizaci.' }
+  const blockedReason = getStagingConfirmBlockedReason()
+  if (blockedReason) {
+    return { ok: false, message: blockedReason }
+  }
+  if (getReadyStagingItems().length === 1) {
+    const result = await continueCorrelationStagingWithSingleFile()
+    return result.ok ? { ok: true, sourceCount: 1, mode: 'single' } : result
   }
 
   const resolutions = [...stagingResolutions.entries()].map(([category, resolution]) => ({
@@ -252,7 +254,8 @@ export async function confirmCorrelationStaging(): Promise<
     resolution,
   }))
 
-  return startCorrelationProcessingFromStaging(resolutions)
+  const result = await startCorrelationProcessingFromStaging(resolutions)
+  return result.ok ? { ...result, mode: 'correlation' } : result
 }
 
 async function startCorrelationProcessingFromStaging(

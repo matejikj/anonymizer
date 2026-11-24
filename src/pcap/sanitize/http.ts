@@ -69,6 +69,15 @@ export function sanitizeHttp(
   const lines = text.slice(0, headerEndIdx).split('\r\n')
   const fields: SensitiveField[] = []
   const startLine = lines[0] ?? ''
+  const request = /^([A-Z]+ )([^ ]+)( HTTP\/1\.[01])$/.exec(startLine)
+  if (request && request[2] !== '*' && request[2] !== '/') {
+    const targetOffset = offset + request[1]!.length
+    const target = request[2]!
+    // URI path/query/userinfo may carry arbitrary identifiers, beyond the Host header.
+    const replacement = target.startsWith('/') ? '/' + 'x'.repeat(target.length - 1) : 'x'.repeat(target.length)
+    patchFixedLengthAscii(collector, targetOffset, target.length, replacement)
+    intents?.recordFixedRedaction(packetIndex, targetOffset, target.length)
+  }
   const is101 = /^HTTP\/1\.[01] 101\b/i.test(startLine)
   let upgradeWebsocket = false
   let wsSubprotocol: WebSocketSubprotocol = 'unknown'
@@ -254,6 +263,8 @@ function patchHeaderLine(
     || name === 'authorization'
     || name === 'set-cookie'
     || name === 'proxy-authorization'
+    || name === 'referer'
+    || name === 'user-agent'
     || /(?:^|-)(?:token|secret|api[_-]?key|password|passwd|auth)$/i.test(name)
     || /^x-(?:private|auth|api|session|token)/i.test(name)
   ) {

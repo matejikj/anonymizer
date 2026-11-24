@@ -10,13 +10,15 @@
 
 .app-header {
   position: relative;
+  min-width: 0;
   z-index: var(--z-sticky);
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
   padding: 0 var(--space-gutter);
   min-height: 44px;
-  max-height: 48px;
+  max-height: none;
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--surface-raised);
   box-shadow: none;
@@ -29,7 +31,8 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  flex-shrink: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
 }
 
 .app-header__privacy {
@@ -57,8 +60,8 @@
 }
 
 .app-header .session-stepper {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
   border: 0;
   background: transparent;
   padding: 0;
@@ -146,9 +149,9 @@
 
 .app-header__detection {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--space-2);
   min-width: 0;
 }
@@ -161,7 +164,7 @@
   background: var(--color-border-subtle);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1600px) {
   .app-header__detection .profile-selector__field-label,
   .app-header__detection .pcap-level-select__label-text {
     position: absolute;
@@ -190,6 +193,17 @@
   display: none;
 }
 
+.app-header__limits {
+  font-size: var(--text-label);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: normal;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
 .app-shell[data-density='compact'] .app-header__name-full {
   display: none;
 }
@@ -213,12 +227,80 @@
 
 .app-header__nav {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-1);
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   justify-content: flex-end;
   min-width: 0;
   margin-left: auto;
+}
+
+@media (min-width: 1201px) {
+  .app-header .app-header__detection-scopes,
+  .app-header .profile-selector__row,
+  .app-header .profile-selector__actions {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (min-width: 1201px) and (max-width: 1600px) {
+  .app-header .profile-selector__label select {
+    max-width: 9rem;
+  }
+
+  .app-header .pcap-level-select select {
+    max-width: 11rem;
+  }
+}
+
+.app-header__utility {
+  flex-shrink: 0;
+  gap: 0.4rem;
+  padding-inline: 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+@media (max-width: 1200px) {
+  .app-header {
+    flex-wrap: wrap;
+    padding-block: var(--space-1);
+  }
+
+  .app-header__brand {
+    flex-basis: 60%;
+  }
+
+  .app-header__limits {
+    white-space: normal;
+  }
+
+  .app-header__nav {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .app-header__detection {
+    flex-wrap: wrap;
+    margin-right: auto;
+  }
+
+  .app-header__detection::before {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-header .session-stepper {
+    min-width: 0;
+  }
+
+  .app-header__detection {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
 }
 
 /* Flat instrument utilities — one height with menubar */
@@ -244,7 +326,7 @@
   box-shadow: none;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1600px) {
   .session-stepper__item:not(.session-stepper__item--active) .session-stepper__label {
     position: absolute;
     width: 1px;

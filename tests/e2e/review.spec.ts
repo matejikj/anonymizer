@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 
 test.describe('Review panel findings', () => {
@@ -5,6 +6,7 @@ test.describe('Review panel findings', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('review-panel')).toBeVisible()
   })
 

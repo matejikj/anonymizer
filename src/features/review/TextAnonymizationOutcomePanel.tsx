@@ -1,5 +1,5 @@
 /**
- * T10 — text-mode anonymization outcome panel (cs: Výsledek anonymizace).
+ * T10 — text-mode „Výsledek anonymizace“ panel.
  */
 
 import { cs } from '../../i18n/cs.ts'
@@ -33,9 +33,11 @@ function gateBadgeTone(
 export function TextAnonymizationOutcomePanel({
   className,
   testId = 'text-anonymization-outcome-panel',
+  hideTitle = false,
 }: {
   readonly className?: string
   readonly testId?: string
+  readonly hideTitle?: boolean
 } = {}) {
   const sessionEpoch = useAppStore((s) => s.sessionEpoch)
   const phase = useAppStore((s) => s.phase)
@@ -57,16 +59,16 @@ export function TextAnonymizationOutcomePanel({
 
   return (
     <RaisedPanel
-      className={['anonymization-outcome anonymization-outcome--text', className]
+      className={['anonymization-outcome anonymization-outcome--text', hideTitle ? 'anonymization-outcome--embedded' : '', className]
         .filter(Boolean)
         .join(' ')}
       data-testid={testId}
       data-gate={outcome.gate}
     >
       <header className="anonymization-outcome__head">
-        <h2 className="anonymization-outcome__title type-section-title">
+        {hideTitle ? null : <h2 className="anonymization-outcome__title type-section-title">
           {cs.pcap.outcome.textTitle}
-        </h2>
+        </h2>}
         <span data-testid={`${testId}-gate`} data-gate={outcome.gate}>
           <Badge tone={gateBadgeTone(outcome.gate)}>
             <StatusChip tone={gateTone(outcome.gate)} label={outcome.gateLabel} compact />
@@ -96,7 +98,7 @@ export function TextAnonymizationOutcomePanel({
         </p>
       ) : null}
 
-      <DataSurface className="anonymization-outcome__table-wrap" data-testid={`${testId}-categories`}>
+      <DataSurface className="anonymization-outcome__table-wrap" data-testid={`${testId}-categories`} role="region" aria-label={cs.pcap.outcome.textCategories} tabIndex={0}>
         <h3 className="type-meta">{cs.pcap.outcome.textCategories}</h3>
         {outcome.categories.length === 0 ? (
           <p className="type-meta">{cs.pcap.outcome.textNoFindings}</p>
@@ -140,7 +142,7 @@ export function TextAnonymizationOutcomePanel({
       ) : null}
 
       <details className="anonymization-outcome__incidents" data-testid={`${testId}-incidents`}>
-        <summary>
+        <summary tabIndex={0}>
           {cs.pcap.outcome.incidentsTitle}
           {outcome.incidentTotal > 0 ? ` (${outcome.incidentTotal})` : ''}
         </summary>

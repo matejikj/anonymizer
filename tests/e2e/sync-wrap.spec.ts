@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 
 /**
@@ -8,6 +9,7 @@ test.describe('Sync wrap navigation', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('dual-log')).toBeVisible()
   })
 
@@ -66,6 +68,7 @@ test.describe('Sync wrap navigation', () => {
     await page.reload()
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('wrap-toggle')).toBeChecked()
 
     // Wrap + unequal pane widths still keep top lines close
@@ -132,6 +135,7 @@ test.describe('Sync wrap navigation', () => {
     await page.reload()
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('dual-log')).toBeVisible()
     const ratio2 = await page.evaluate(() => {
       const root = document.querySelector('[data-testid="dual-log"]') as HTMLElement | null
@@ -168,6 +172,7 @@ test.describe('Sync wrap navigation', () => {
       buffer: Buffer.from('line1 10.1.1.1\nline2 10.1.1.2\nline3 end\n'),
     })
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('dual-log')).toBeVisible()
     const withNl = await page.evaluate(async () => {
       const left = document.querySelector('[data-pane="original"]')?.closest('.cm-editor')
@@ -195,6 +200,7 @@ test.describe('Sync wrap navigation', () => {
       buffer: Buffer.from('line1 10.1.1.1\nline2 10.1.1.2\nline3 end'),
     })
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('dual-log')).toBeVisible()
     const noNl = await page.evaluate(async () => {
       const left = document.querySelector('[data-pane="original"]')?.closest('.cm-editor')
@@ -219,6 +225,7 @@ test.describe('Short and long replacement lines', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('occ-next')).toBeEnabled({ timeout: 15_000 })
 
     await page.getByTestId('occ-next').click()

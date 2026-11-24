@@ -7,6 +7,7 @@ import { AnonymizationOutcomePanel } from '../../../src/pcap/ui/AnonymizationOut
 import { usePcapStore } from '../../../src/pcap/ui/pcapStore'
 import { clearPcapSession } from '../../../src/pcap/ui/pcapSession'
 import type { AnonymizationOutcome } from '../../../src/pcap/coverage/anonymizationOutcome'
+import { protocolPrivacyGuidance } from '../../../src/pcap/coverage/protocolPrivacyGuidance'
 
 vi.mock('../../../src/pcap/ui/pcapLoadController.ts', () => ({
   refreshPcapFilter: vi.fn(),
@@ -27,6 +28,7 @@ const sampleOutcome: AnonymizationOutcome = {
       recommendation: 'V pořádku',
       filterProtocol: 'sip',
       probable: false,
+      protocols: [{ ...protocolPrivacyGuidance('sip'), state: 'anonymized', needsReview: false }],
     },
   ],
   incidents: [],
@@ -60,11 +62,17 @@ describe('AnonymizationOutcomePanel', () => {
     expect(screen.getByTestId('outcome-family-sip')).toBeTruthy()
   })
 
-  it('show packets sets protocol filter', async () => {
+  it('show packets replaces stale filters with a visible family filter', async () => {
     const { refreshPcapFilter } = await import('../../../src/pcap/ui/pcapLoadController.ts')
+    usePcapStore.getState().setFilter({ protocol: 'dns', entityKey: 'ipv4:10.0.0.1', packetFrom: 100 })
+    usePcapStore.getState().applyDisplayFilter('dns')
     render(<AnonymizationOutcomePanel outcome={sampleOutcome} testId="outcome" />)
     fireEvent.click(screen.getByTestId('outcome-show-sip'))
-    expect(usePcapStore.getState().filter.protocol).toBe('sip')
+    expect(usePcapStore.getState().filter.protocol).toBe('')
+    expect(usePcapStore.getState().displayFilterApplied).toBe('protocol.family == "sip"')
+    expect(usePcapStore.getState().filter.entityKey).toBe('')
+    expect(usePcapStore.getState().filter.packetFrom).toBeNull()
+    expect(usePcapStore.getState().displayFilterDraft).toBe('protocol.family == "sip"')
     await Promise.resolve()
     expect(refreshPcapFilter).toHaveBeenCalled()
   })

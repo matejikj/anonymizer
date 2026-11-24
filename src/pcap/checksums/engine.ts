@@ -439,9 +439,6 @@ function recomputeIpv4(
       if (!patchTouchesRange(ctx.patches, icmpStart, icmpEnd)) {
         record(fields, counts, originalStateCounts, 'icmpv4', csumOff, 'unchanged', inputCsum, inputCsum, classifyOriginalChecksumState({ present: true, truncated: false, verifiedValid: null }))
       } else {
-        const newCsum = computeChecksum(data, icmpStart, icmpEnd, csumOff)
-        writeChecksum(data, csumOff, newCsum)
-        record(fields, counts, originalStateCounts, 'icmpv4', csumOff, 'recomputed', inputCsum, newCsum, classifyOriginalChecksumState({ present: true, truncated: false, verifiedValid: null }))
         // ICMP error embedded IPv4 header
         const icmpType = data[icmpStart]!
         if (icmpType === 3 || icmpType === 4 || icmpType === 5 || icmpType === 11 || icmpType === 12) {
@@ -449,13 +446,19 @@ function recomputeIpv4(
           if (embOff + 20 <= icmpEnd && (data[embOff]! >> 4) === 4) {
             const embCsumOff = embOff + 10
             const embInput = (data[embCsumOff]! << 8) | data[embCsumOff + 1]!
-            if (patchTouchesRange(ctx.patches, embOff, embOff + 20)) {
-              const embNew = computeChecksum(data, embOff, embOff + 20, embCsumOff)
+            const embHeaderEnd = embOff + (data[embOff]! & 0x0f) * 4
+            if (embHeaderEnd >= embOff + 20 && embHeaderEnd <= icmpEnd
+              && patchTouchesRange(ctx.patches, embOff, embHeaderEnd)) {
+              const embNew = computeChecksum(data, embOff, embHeaderEnd, embCsumOff)
               writeChecksum(data, embCsumOff, embNew)
               record(fields, counts, originalStateCounts, 'icmp-embedded-ipv4', embCsumOff, 'recomputed', embInput, embNew, classifyOriginalChecksumState({ present: true, truncated: false, verifiedValid: null }))
             }
           }
         }
+        // Enclosing checksum includes the finalized quoted header.
+        const newCsum = computeChecksum(data, icmpStart, icmpEnd, csumOff)
+        writeChecksum(data, csumOff, newCsum)
+        record(fields, counts, originalStateCounts, 'icmpv4', csumOff, 'recomputed', inputCsum, newCsum, classifyOriginalChecksumState({ present: true, truncated: false, verifiedValid: null }))
       }
     }
   } else if (layers.l4Proto === 'vrrp' && layers.l4Offset + 8 <= ctx.capturedLen) {

@@ -10,6 +10,7 @@ import { mergePatchesStrict } from '../../plan/mergePatchesStrict'
 import type { FrozenPacketPlan } from '../frozenPlan'
 import { symbolicizeMaskPatches } from '../frozenPlan'
 import type { SymbolicOperation } from '../operations'
+import { internCoverage, internIssues, internSharedOp, internString } from '../identityIntern'
 
 export function freezeSanitizationResult(input: {
   packetIndex: number
@@ -20,8 +21,10 @@ export function freezeSanitizationResult(input: {
   overlay?: PacketReassemblyOverlay
 }): FrozenPacketPlan {
   const { result, overlay, bufferLength, packetIndex, packetNumber, intents } = input
+  const merged = mergePacketWithReassemblyOverlay(result, overlay)
+  const domainsAt = maskDomainsFromIntents(intents)
   const resolveBase = result.resolvePatches
-  const journalOps = result.symbolicMapOps ?? []
+  const journalOps = (result.symbolicMapOps ?? []).map((op) => internSharedOp(op, packetIndex))
   const journalBackedDeferred =
     result.deferredFullySymbolized === true && overlay === undefined
 
@@ -34,10 +37,10 @@ export function freezeSanitizationResult(input: {
       packetIndex,
       packetNumber,
       bufferLength,
-      drop: result.drop,
-      truncatedLength: result.truncatedLength,
-      coverage: result.coverage,
-      issues: result.issues,
+      drop: merged.drop,
+      truncatedLength: merged.truncatedLength,
+      coverage: internCoverage(merged.coverage),
+      issues: internIssues(merged.issues),
       intents,
       ops: journalOps,
     }
@@ -45,12 +48,14 @@ export function freezeSanitizationResult(input: {
       const journalOffsets = new Set(
         journalOps.map((op) => (op.kind === 'checksum' ? -1 : op.offset)),
       )
-      // Drop zero-filled deferred placeholders already covered by journal ops.
-      const eagerPatches = result.patches.filter(
-        (p) => !journalOffsets.has(p.offset) && !isAllZeroPatch(p.data),
-      )
+      // Drop deferred placeholders — isDeferredFullySymbolized guarantees each winning one has a
+      // journal op at its offset. Never filter by content: an eager mask fill can legitimately be
+      // all zeros (1-byte RTP extension values: ~1 in 256 packets) and would export the original.
+      const eagerPatches = result.patches.filter((p) => !journalOffsets.has(p.offset))
       if (eagerPatches.length === 0) return common
-      const { ops: maskOps, remainder } = symbolicizeMaskPatches(packetIndex, eagerPatches)
+      const symbolized = symbolicizeMaskPatches(packetIndex, eagerPatches, undefined, domainsAt)
+      const maskOps = symbolized.ops.map((op) => internSharedOp(op, packetIndex))
+      const remainder = symbolized.remainder
       const fixedOps: SymbolicOperation[] = remainder.map((p) => ({
         kind: 'fixed' as const,
         packetIndex,
@@ -69,7 +74,9 @@ export function freezeSanitizationResult(input: {
     }
   }
 
-  const { ops: maskOps, remainder } = symbolicizeMaskPatches(packetIndex, result.patches)
+  const symbolized = symbolicizeMaskPatches(packetIndex, result.patches, undefined, domainsAt)
+  const maskOps = symbolized.ops.map((op) => internSharedOp(op, packetIndex))
+  const remainder = symbolized.remainder
   const fixedOps: SymbolicOperation[] = remainder.map((p) => ({
     kind: 'fixed' as const,
     packetIndex,
@@ -83,16 +90,27 @@ export function freezeSanitizationResult(input: {
     bufferLength,
     drop: result.drop,
     truncatedLength: result.truncatedLength,
-    coverage: result.coverage,
-    issues: result.issues,
+    coverage: internCoverage(result.coverage),
+    issues: internIssues(result.issues),
     intents,
     ops: [...maskOps, ...fixedOps],
   }
 }
 
-function isAllZeroPatch(data: Uint8Array): boolean {
-  for (let i = 0; i < data.length; i++) {
-    if (data[i] !== 0) return false
+/**
+ * Mask fills are seeded by a domain string the sanitizer knows but the patch does not carry.
+ * Mask-range intents recorded alongside (e.g. RTP `media-opaque:rtp`, `strip-payload` →
+ * `media-strip:<protocol>`) name it, so the mask can be stored as a regenerable op instead of
+ * a copied payload. symbolicizeMaskPatches still byte-compares, so a wrong guess is harmless.
+ */
+function maskDomainsFromIntents(
+  intents: readonly TransformationIntent[],
+): ((offset: number) => readonly string[] | undefined) | undefined {
+  let byOffset: Map<number, string[]> | undefined
+  for (const it of intents) {
+    if (it.kind !== 'mask-range') continue
+    byOffset ??= new Map()
+    byOffset.set(it.offset, [internString(it.reason), internString(`media-strip:${it.protocol}`)])
   }
-  return data.length > 0
+  return byOffset ? (offset) => byOffset.get(offset) : undefined
 }

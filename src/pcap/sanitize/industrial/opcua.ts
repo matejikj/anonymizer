@@ -301,6 +301,18 @@ function sanitizeOpenSecureChannel(
     })
   }
 
+  // The rest of the request body (RequestHeader incl. authenticationToken and auditEntryId, …)
+  // has no field-level policy here — mask it as well, so the 'redacted' claim below is true.
+  // The security mode was already read into the session above.
+  const nonceEnd = nonce && nonce.byteLength > 0 ? nonce.dataOffset + nonce.byteLength : null
+  const gaps: Array<readonly [number, number]> = nonce && nonceEnd !== null
+    ? [[extBodyStart, nonce.dataOffset], [nonceEnd, ext.next]]
+    : [[extBodyStart, ext.next]]
+  for (const [gapStart, gapEnd] of gaps) {
+    if (gapEnd > gapStart) {
+      maskBytes(collector, intents, packetIndex, gapStart, gapEnd - gapStart, 'opcua-opn', 'opcua')
+    }
+  }
   coverage.push({
     protocol: 'opcua-auth',
     offset: extBodyStart,

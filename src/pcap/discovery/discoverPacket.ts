@@ -14,8 +14,8 @@ import type { ReassemblyContext } from '../reassembly/types'
 import { mergePacketWithReassemblyOverlay } from '../reassembly/capturePhase'
 import { mergePatchesStrict } from '../plan/mergePatchesStrict'
 import { freezeSanitizationResult } from '../kernel/adapters/freezeDiscovery'
+import { internCoverage, internIssues } from '../kernel/identityIntern'
 import type { FrozenPacketPlan } from '../kernel/frozenPlan'
-import { resolveFrozenPacketPlan } from '../kernel/frozenPlan'
 
 const passthrough = new PassthroughMapping()
 
@@ -168,6 +168,16 @@ function isolationFromIssues(
   return undefined
 }
 
+/**
+ * Per-packet hint maps are merged into the session-level maps right after discovery; keeping
+ * them on every retained PacketDiscoveryResult costs a Map per RTP/SIP packet for nothing.
+ */
+export function withoutMergedHints(pd: PacketDiscoveryResult): PacketDiscoveryResult {
+  if (pd.portFlowHints === undefined && pd.mediaPortPairs === undefined) return pd
+  const { portFlowHints: _hints, mediaPortPairs: _pairs, ...rest } = pd
+  return rest
+}
+
 function buildDiscoveryReturn(input: {
   packet: PacketInput
   packetNumber: number
@@ -189,18 +199,21 @@ function buildDiscoveryReturn(input: {
     overlay: input.overlay,
   })
 
+  // Retained for every packet of the session: no per-packet resolve closure (the plan builder
+  // renders `frozenPlan` directly) and no empty per-packet hint maps (merged into session maps).
+  const portFlowHints = input.intents.portFlowHints
+  const mediaPortPairs = input.intents.mediaPortPairs
   return {
     packetIndex: input.packet.index,
     packetNumber: input.packetNumber,
     intents: input.intents.intents,
-    portFlowHints: input.intents.portFlowHints,
-    mediaPortPairs: input.intents.mediaPortPairs,
-    coverage: input.coverage,
-    issues: input.issues,
+    portFlowHints: portFlowHints.size > 0 ? portFlowHints : undefined,
+    mediaPortPairs: mediaPortPairs.size > 0 ? mediaPortPairs : undefined,
+    coverage: internCoverage(input.coverage),
+    issues: internIssues(input.issues),
     drop: input.drop,
     truncatedLength: input.truncatedLength,
     frozenPlan: frozen,
     isolationFallback: input.isolationFallback,
-    resolvePatches: (ctx) => resolveFrozenPacketPlan(frozen, ctx),
   }
 }

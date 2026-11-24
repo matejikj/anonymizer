@@ -81,7 +81,7 @@ export function analyze(
   const anonymized = transform(original, matches, byKey)
   const viaPlan = transformWithPlan(original, packed, plan)
   if (anonymized !== viaPlan) {
-    throw new Error('Reference transform a replacement plán se neshodují')
+    throw new Error('Reference transform and replacement plan disagree')
   }
   assertSameLineCount(original, anonymized)
 

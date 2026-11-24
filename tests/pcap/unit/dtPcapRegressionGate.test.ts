@@ -53,7 +53,7 @@ function scanForRawIp(data: Uint8Array, ip: readonly number[]): boolean {
   return false
 }
 
-const DT_PCAP = join(import.meta.dirname ?? '.', '../../../../dt.pcap')
+const DT_PCAP = join(import.meta.dirname ?? '.', '../../../logs/dt.pcap')
 
 /** Reviewed baseline after parser refinement (task table originally listed DHCP 83 / SIP 55). */
 const DT_BASELINE = {
@@ -236,11 +236,16 @@ describe('dt.pcap diagnostic regression gate (step 10)', () => {
     expect(countCoverageProtocol(rediscovery, 'rtp')).toBe(0)
     expect(countCoverageProtocol(rediscovery, 'rtcp')).toBe(0)
 
+    const sensitiveHp = loadDtPcapSensitive()
+    expect(
+      sensitiveHp,
+      'dt.pcap present but dt-pcap.sensitive.local.json missing — copy the .example.json and fill private canaries locally',
+    ).toBeTruthy()
     const outBuf = new Uint8Array(built.buffer)
-    for (const text of DT_PCAP_KNOWN_SENSITIVE_STRINGS) {
+    for (const text of sensitiveHp!.strings) {
       expect(Buffer.from(outBuf).toString('latin1'), `known-sensitive string leaked (high-privacy): ${text}`).not.toContain(text)
     }
-    for (const ip of DT_PCAP_KNOWN_SENSITIVE_IPS) {
+    for (const ip of sensitiveHp!.ips) {
       expect(scanForRawIp(outBuf, ip), `known-sensitive IP leaked raw (high-privacy): ${ip.join('.')}`).toBe(false)
     }
 

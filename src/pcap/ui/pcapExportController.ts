@@ -12,6 +12,7 @@ import { usePcapStore } from './pcapStore'
 import { cs } from '../../i18n/cs.ts'
 import { getPcapCoverageViewModel } from './getPcapCoverageViewModel.ts'
 import type { LayerCoverage } from '../sanitize/types'
+import { discoveryIssuesForExport, sanitizerCoverageForExport } from '../processing/packedCaptureWire'
 import { formatUnknownPlanErrorForUser } from './formatPlanError.ts'
 import { useAppStore } from '../../app/store.ts'
 import { DualExportCoordinator } from '../recovery/export/dualExportCoordinator'
@@ -36,22 +37,15 @@ type PendingExportOptions = {
 function flattenSessionCoverage(): readonly LayerCoverage[] {
   const session = getPcapSession()
   if (!session) return []
-  const out: LayerCoverage[] = []
-  for (const pd of session.packetDiscovery) {
-    for (const span of pd.coverage) out.push(span)
-  }
-  return out
+  // R10 packed discover: per-packet spans stay in the worker; use the weighted rollup kinds.
+  return sanitizerCoverageForExport(session.packetDiscovery, session.coverageRollup)
 }
 
 /** Safe issue tokens from discovery (tls-branch:*, …) — no original identities. */
 function flattenSessionIssues(): readonly string[] {
   const session = getPcapSession()
   if (!session) return []
-  const out: string[] = []
-  for (const pd of session.packetDiscovery) {
-    for (const issue of pd.issues) out.push(issue)
-  }
-  return out
+  return discoveryIssuesForExport(session.packetDiscovery, session.coverageRollup)
 }
 
 function sessionLeakOriginals(): readonly import('../trust').LeakScanOriginal[] {

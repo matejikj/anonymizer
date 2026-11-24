@@ -1,5 +1,5 @@
 /**
- * T10 — closable anonymization outcome dialog after PCAP analysis (cs: Výsledek anonymizace).
+ * T10 — closable „Výsledek anonymizace“ dialog after PCAP analysis.
  * Dual Original|Anonymized editors stay on the main layout behind the modal.
  */
 
@@ -23,6 +23,7 @@ export function PcapOutcomeDialog() {
     <AccessibleModal
       open
       wide
+      focusTitle
       onClose={onClose}
       titleId="pcap-outcome-dialog-title"
       title={cs.pcap.outcome.title}

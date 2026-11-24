@@ -5,6 +5,7 @@
 import type { IdentityCategory } from '../../mapping/identityCategories'
 import type { WireRepresentationConstraint } from '../../mapping/types'
 import { canonicalizeIdentity, defaultIdentityWireConstraint } from '../../mapping/canonicalize'
+import { internConstraint, internString } from '../kernel/identityIntern'
 import {
   mergePortFlowHints,
   type PortFlowHint,
@@ -78,9 +79,9 @@ export class IntentCollector {
       offset,
       byteLength,
       category,
-      canonical,
-      constraint: c,
-      originalSpelling: spelling !== canonical ? spelling : undefined,
+      canonical: internString(canonical),
+      constraint: internConstraint(c),
+      originalSpelling: spelling !== canonical ? internString(spelling) : undefined,
     }
     this._intents.push(intent)
   }

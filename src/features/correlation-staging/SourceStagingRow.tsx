@@ -23,9 +23,10 @@ export interface SourceStagingRowProps {
   readonly item: StagingItem
   readonly highlighted?: boolean
   readonly onRemove: (id: string) => void
+  readonly disabled?: boolean
 }
 
-export function SourceStagingRow({ item, highlighted, onRemove }: SourceStagingRowProps) {
+export function SourceStagingRow({ item, highlighted, onRemove, disabled }: SourceStagingRowProps) {
   const kindForLabel =
     item.status === 'ready' || item.status === 'duplicate-warning'
       ? item.kind
@@ -85,6 +86,7 @@ export function SourceStagingRow({ item, highlighted, onRemove }: SourceStagingR
         className="staging-row__remove"
         aria-label={cs.correlationStaging.removeNamed(item.fileName)}
         data-testid={`staging-remove-${item.id}`}
+        disabled={disabled}
         onClick={() => onRemove(item.id)}
       >
         {cs.correlationStaging.remove}

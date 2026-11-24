@@ -252,7 +252,7 @@ function sanitizeResourceRecord(
       // sequence of [1-byte length][string] sub-records, and overwriting that whole span with
       // random bytes almost always turns some byte into a bogus sub-record length that
       // overruns the record, producing a genuinely malformed packet (confirmed against the
-      // local private regression capture — Wireshark/tshark reports "Malformed Packet" on the result).
+      // real dt.pcap capture — Wireshark/tshark reports "Malformed Packet" on the result).
       if (rdLength > 0) sanitizeTxtRecord(buffer, baseOffset, rdStart, rdLength, collector, mapping, intents, packetIndex)
       break
     default:

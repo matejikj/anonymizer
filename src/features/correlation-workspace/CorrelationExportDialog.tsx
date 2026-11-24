@@ -36,7 +36,7 @@ export function CorrelationExportDialog(props: {
   const titleId = useId()
   const correlationEpoch = useAppStore((s) => s.correlationEpoch)
   const [scope, setScope] = useState<CorrelationExportScope>('set')
-  /** Default matches single-file text/PCAP: browser download to Downloads. */
+  /** Default matches single-file text/PCAP: browser download to Stažené. */
   const [destination, setDestination] = useState<'download' | 'directory'>('download')
   const [staleAck, setStaleAck] = useState(0)
 

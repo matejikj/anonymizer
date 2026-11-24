@@ -69,13 +69,13 @@ function buildBeaconWithSsid(ssid: string): Uint8Array {
 }
 
 describe('T40 registry', () => {
-  it('registers GSMTAP handler, wireless family, port, engine 2.35.0', () => {
+  it('registers GSMTAP handler, wireless family, port, engine 2.36.1', () => {
     expect(APPLICATION_HANDLER_ORDER.map((h) => h.id)).toContain('gsmtap')
     expect(familyForProtocol('ieee80211').familyId).toBe('wireless')
     expect(familyForProtocol('bluetooth-smp').familyId).toBe('wireless')
     expect(familyForProtocol('gsmtap').familyId).toBe('wireless')
     expect(SEMANTIC_SERVICE_PORTS.has(4729)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

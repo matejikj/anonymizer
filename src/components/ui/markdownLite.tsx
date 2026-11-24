@@ -1,6 +1,6 @@
 /**
  * Minimal Markdown → React renderer for the bundled "Jak anonymizujeme?" doc
- * (in-app Czech anonymization docs). Not a general-purpose Markdown engine —
+ * (docs/PCAP_ANONYMIZATION_OVERVIEW.md). Not a general-purpose Markdown engine —
  * it only understands the subset that document actually uses: headings (#/##/###),
  * paragraphs, unordered/ordered lists (with wrapped continuation lines), one GFM
  * pipe table, and inline code spans, bold, and italic emphasis. Content is our
@@ -28,7 +28,8 @@ function preprocess(raw: string): string[] {
       continue
     }
     if (PAGE_BREAK_DIV_RE.test(line)) continue
-    out.push(line)
+    if (/^<!--.*-->\s*$/.test(line)) continue
+    out.push(line.replace(/^>\s?/, ''))
   }
   return out
 }
@@ -81,7 +82,8 @@ function parseTable(lines: readonly string[], key: string): ReactNode {
   const [header, ...body] = rows
   if (!header) return null
   return (
-    <table key={key}>
+    <div className="docs-table-scroll" key={key} role="region" aria-label={rows[0]?.join(' / ')} tabIndex={0}>
+    <table>
       <thead>
         <tr>
           {header.map((cell, i) => (
@@ -99,6 +101,7 @@ function parseTable(lines: readonly string[], key: string): ReactNode {
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
 

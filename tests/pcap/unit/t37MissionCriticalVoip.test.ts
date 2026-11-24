@@ -37,7 +37,7 @@ describe('T37 registry', () => {
     expect(ids).toEqual(expect.arrayContaining(['msrp', 'bfcp', 't38', 'zrtp']))
     expect(familyForProtocol('msrp').familyId).toBe('sip')
     expect(familyForProtocol('zrtp').familyId).toBe('rtp-rtcp')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

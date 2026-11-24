@@ -124,7 +124,7 @@ function applySourceJump(ref: OccurrenceRef): void {
 
 /**
  * Jump to an occurrence whose position in the flat list is already known — e.g. the
- * ref returned by stepFlatOccurrence itself (Next/Previous in cs UI). Skips the re-lookup
+ * ref returned by stepFlatOccurrence itself (Další/Předchozí). Skips the re-lookup
  * below: a packet-kind ref only carries (sourceId, packetIndex), which several
  * different entities can share (a packet routinely contains 2+ detected entities),
  * so re-finding it by structural match can resolve to the wrong list index and snap
@@ -135,7 +135,7 @@ export function jumpToCorrelationOccurrenceAtCursor(ref: OccurrenceRef): void {
 }
 
 /** Jump to an arbitrary occurrence (e.g. clicking an entity row) and sync the flat-list
- * cursor to match, so subsequent Next/Previous navigation continues from this position. */
+ * cursor to match, so subsequent Další/Předchozí continues from this position. */
 export function jumpToCorrelationOccurrence(ref: OccurrenceRef): void {
   applySourceJump(ref)
   const list = buildFlatOccurrenceList()

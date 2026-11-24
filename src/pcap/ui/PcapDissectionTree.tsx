@@ -4,15 +4,18 @@ import { usePcapStore } from './pcapStore.ts'
 import type { DissectionNode } from '../dissection/types'
 import { nodePath } from '../dissection/types'
 import { protocolLabel } from './formatters.ts'
+import type { PcapDataView } from './pcapUiPrefs.ts'
+import { usePcapPanelScrollSync } from './pcapPanelScrollSync.tsx'
 
 const EMPTY_ROOTS: readonly DissectionNode[] = []
 
 export interface PcapDissectionTreeProps {
   readonly roots: readonly DissectionNode[]
   readonly loading?: boolean
+  readonly dataView?: PcapDataView
 }
 
-export function PcapDissectionTree({ roots: rootsProp, loading = false }: PcapDissectionTreeProps) {
+export function PcapDissectionTree({ roots: rootsProp, loading = false, dataView: view }: PcapDissectionTreeProps) {
   const roots = rootsProp.length === 0 ? EMPTY_ROOTS : rootsProp
   const expandedTreeNodes = usePcapStore((s) => s.expandedTreeNodes)
   const selectedFieldPath = usePcapStore((s) => s.selectedFieldPath)
@@ -24,6 +27,10 @@ export function PcapDissectionTree({ roots: rootsProp, loading = false }: PcapDi
   const selectedPacketIndex = usePcapStore((s) => s.selectedPacketIndex)
   const pushSelectionSnapshot = usePcapStore((s) => s.pushSelectionSnapshot)
   const treeRef = useRef<HTMLUListElement>(null)
+  const viewport = useRef<HTMLDivElement>(null)
+  const storeView = usePcapStore(s => s.dataView)
+  const onScroll = usePcapPanelScrollSync({ channel: 'tree', dataView: view ?? storeView,
+    viewport, enabled: !loading && roots.length > 0 })
 
   useEffect(() => {
     if (roots.length === 0 || expandedTreeNodes.length > 0) return
@@ -96,7 +103,7 @@ export function PcapDissectionTree({ roots: rootsProp, loading = false }: PcapDi
   }
 
   return (
-    <div className="pcap-dissection-tree-wrap">
+    <div className="pcap-dissection-tree-wrap" ref={viewport} onScroll={onScroll}>
       <ul
         ref={treeRef}
         className="pcap-tree pcap-dissection-tree"
@@ -152,8 +159,10 @@ export function PcapDissectionTree({ roots: rootsProp, loading = false }: PcapDi
                 <span className="pcap-tree__value">{node.displayValue ?? node.value}</span>
               ) : null}
               {node.length > 0 ? (
-                <span className="pcap-tree__meta">
-                  @{node.offset}+{node.length}
+                <span className="pcap-tree__meta" title={cs.pcap.detail.bytePositionHint}>
+                  {cs.pcap.detail.patchMeta
+                    .replace('{off}', String(node.offset))
+                    .replace('{len}', String(node.length))}
                 </span>
               ) : null}
             </li>

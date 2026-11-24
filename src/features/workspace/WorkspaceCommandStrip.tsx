@@ -23,6 +23,8 @@ export function WorkspaceCommandStrip({ variant = 'standalone' }: WorkspaceComma
   const occurrenceIndex = useAppStore((s) => s.occurrenceIndex)
   const focusedLine = useAppStore((s) => s.focusedLine)
   const sessionEpoch = useAppStore((s) => s.sessionEpoch)
+  const planBusy = useAppStore((s) => s.planBusy)
+  const outcomeOpen = useAppStore((s) => s.textOutcomeDialogOpen)
   const session = sessionEpoch >= 0 ? getSessionModel() : null
   const meta = session?.meta
   const inSet = variant === 'correlation'
@@ -140,6 +142,18 @@ export function WorkspaceCommandStrip({ variant = 'standalone' }: WorkspaceComma
           <span className="command-strip__stat command-strip__occ" data-testid="occ-counter">
             {occLabel}
           </span>
+          {inSet ? null : (
+            <Button
+              variant="ghost"
+              data-testid="text-outcome-dialog-open"
+              disabled={planBusy}
+              aria-haspopup="dialog"
+              aria-expanded={outcomeOpen}
+              onClick={() => useAppStore.getState().setTextOutcomeDialogOpen(true)}
+            >
+              {cs.pcap.outcome.openDialog}
+            </Button>
+          )}
         </div>
       }
       status={<SecuritySummaryBar compact />}

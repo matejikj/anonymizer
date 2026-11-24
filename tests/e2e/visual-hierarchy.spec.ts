@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import { REFERENCE_VIEWPORT } from '../../src/styles/referenceCompositions.ts'
 
@@ -34,6 +35,7 @@ test.describe('Clear Glass Operations hierarchy (tri-browser)', () => {
       await page.goto('/')
       await page.getByTestId('try-sample').click()
       await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+      await closeTextOutcomeDialog(page)
       await expect(page.getByTestId('dual-log')).toBeVisible()
       await expect(page.locator('.app-shell')).toHaveAttribute('data-density', 'compact')
       // Data plane must remain opaque class (no glass on editors)

@@ -1,17 +1,29 @@
 /**
- * Regenerates the in-memory protocol support matrix markdown helper.
- * Construction-time ANONYMIZER.md / docs overview injection was removed for the public tree;
- * this script now validates that the matrix renderer still works and prints a short summary.
+ * Validate protocol support matrix conformance.
+ * Matrix source of truth: src/pcap/docs/protocolSupportMatrix.ts
+ * (validates conformance only — no generated markdown dump in the public tree).
+ * Usage: npx tsx scripts/generate-protocol-matrix.ts
  */
-import {
-  buildProtocolSupportMatrix,
-  renderProtocolSupportMatrixMarkdown,
-} from '../src/pcap/docs/protocolSupportMatrix.ts'
 
-const rows = buildProtocolSupportMatrix()
-const markdown = renderProtocolSupportMatrixMarkdown(rows)
-if (!markdown.includes('|') || rows.length === 0) {
-  console.error('protocol support matrix render failed')
-  process.exit(1)
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { buildProtocolSupportMatrix } from '../src/pcap/docs/protocolSupportMatrix.ts'
+import { collectMatrixConformanceViolations } from '../src/pcap/docs/protocolMatrixVariantConformance.ts'
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+function main(): void {
+  const violations = collectMatrixConformanceViolations(root, (p) => fs.readFileSync(p, 'utf8'))
+  if (violations.length > 0) {
+    for (const v of violations) {
+      console.error(`T32 conformance: ${v.handlerId}: ${v.message}`)
+    }
+    process.exit(1)
+  }
+
+  const rows = buildProtocolSupportMatrix()
+  console.log(`protocol support matrix OK (${rows.length} rows)`)
 }
-console.log(`protocol support matrix ok: ${rows.length} rows (docs injection disabled)`)
+
+main()

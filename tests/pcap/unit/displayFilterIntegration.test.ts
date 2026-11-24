@@ -9,7 +9,10 @@ import {
   filterPacketIndices,
   getPacketProtocols,
   getPcapSession,
+  createSlimPcapSession,
 } from '../../../src/pcap/ui/pcapSession'
+import { buildSessionCoverage } from '../../../src/pcap/coverage/sessionCoverage'
+import { packContainerBody } from '../../../src/pcap/processing/packedCaptureWire'
 import { parseDisplayFilter } from '../../../src/pcap/displayFilter'
 import { createTestPcapSessionFromPackets } from './pcapSessionTestHelpers'
 import {
@@ -57,6 +60,27 @@ function expectFilter(expr: string, expectedCount: number): void {
 describe('displayFilter integration (session pipeline)', () => {
   beforeEach(() => {
     clearPcapSession()
+  })
+
+  it.each([false, true])('matches a payload-only other family on the packed=%s path', async (packed) => {
+    const base = await createTestPcapSessionFromPackets({ fileName: 'payload.pcap', packets: [
+      makeBareIpv4Udp([10, 0, 0, 1], [10, 0, 0, 2], 0),
+      makeBareIpv4Udp([10, 0, 0, 1], [10, 0, 0, 2], 1),
+    ] })
+    const packetDiscovery = base.packetDiscovery.map((pd, i) => ({ ...pd, coverage: i === 1 ? [
+      { protocol: 'payload', offset: 34, length: 8, status: 'redacted' as const },
+    ] : [] }))
+    const rollup = packContainerBody({ descriptors: base.descriptors, checkpoints: [], issues: [],
+      summaries: base.analysis.summaries, packetDiscovery }).packed.coverageRollup
+    const analysis = packed ? { ...base.analysis, structuralSpans: [] } : base.analysis
+    const discovery = packed ? [] : packetDiscovery
+    const coverage = buildSessionCoverage({ packetCount: 2, analysis, packetDiscovery: discovery })
+    createSlimPcapSession({ descriptor: { ...base, checkpoints: [] }, generationId: base.generationId,
+      analysis, packetDiscovery: discovery, ...coverage, coverageRollup: packed ? rollup : undefined,
+      plan: base.plan, mappingRevision: base.mappingRevision, profile: base.profile })
+    expect(getPacketProtocols(1)).not.toContain('payload')
+    expect(filterPacketIndices(DEFAULT_PCAP_FILTER, 'protocol.family == "other"')).toEqual([1])
+    expect(filterPacketIndices({ ...DEFAULT_PCAP_FILTER, protocol: 'payload' })).toEqual([1])
   })
 
   it('matches sanitizer-only protocols on VoIP UDP call flow', async () => {

@@ -41,7 +41,7 @@ test.describe('PCAP deanonymization — reversed editor', () => {
     // Chrome (and the sandbox's Chromium/Playwright pairing) silently withholds a second
     // automatic `<a download>` triggered from one click without a fresh user gesture in
     // between — so the app now downloads the anonymized PCAP and the recovery file via two
-    // separate button clicks (Export, then recovery bundle export in cs UI), each producing
+    // separate button clicks ("Export" then "Export obnovovacího souboru"), each producing
     // exactly one file. Capture the real per-file bytes directly in-page, ahead of
     // `URL.createObjectURL` (what `triggerBlobDownload` calls), which sidesteps the browser's
     // download manager entirely and is more reliable in the sandbox than `Download` events.

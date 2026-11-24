@@ -1,6 +1,6 @@
 /**
  * `application/vnd.*.radioprotocol` SIP body — previously fell entirely into the
- * generic "unsupported content-type" full-body redaction.
+ * generic "unsupported content-type" full-body redaction (for proprietary radio-protocol SIP bodies).
  * Now parsed structurally: identity fields (User, SubscriptionId, UserLocation, MessageId)
  * are pseudonymized, protocol/diagnostic fields (MessageContentType, ServiceType,
  * ProtocolVersion, MessageType, Expire, GroupType) pass through unchanged, and anything

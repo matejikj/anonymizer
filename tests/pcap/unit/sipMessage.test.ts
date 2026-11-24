@@ -415,7 +415,7 @@ describe('SIP flag parameters (RFC 3261 generic-param without "=")', () => {
     }
   });
 
-  it('parses a MESSAGE payload with ;ob without misclassifying it as malformed', () => {
+  it('parses the real-world MESSAGE payload with ;ob without misclassifying it as malformed', () => {
     const buf = latin1([
       'MESSAGE sip:RADIO2@10.230.0.20:5060 SIP/2.0\r\n',
       'Via: SIP/2.0/UDP 10.230.0.10:5060;branch=z9hG4bKabcdef\r\n',

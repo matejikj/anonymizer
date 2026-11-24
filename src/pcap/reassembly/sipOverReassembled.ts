@@ -160,13 +160,14 @@ export function sanitizeReassembledView(
   mapping: MappingLike,
   transport: 'tcp' | 'udp',
   payloadTime?: import('../kernel/payloadTimeCodec').PayloadTimeSession,
+  highPrivacy = false,
 ): Map<number, BytePatch[]> {
   if (view.status !== 'complete' || view.bytes.length === 0) {
     return new Map();
   }
 
   if (looksLikeHttpBuffer(view.bytes)) {
-    return sanitizeHttpReassembledView(view, mapping, payloadTime);
+    return sanitizeHttpReassembledView(view, mapping, payloadTime, highPrivacy);
   }
 
   try {

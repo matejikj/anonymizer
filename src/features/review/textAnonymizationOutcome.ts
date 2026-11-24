@@ -89,7 +89,7 @@ export function buildTextAnonymizationOutcome(input: {
       label: CATEGORY_LABELS[c.category],
       uniqueCount: c.uniqueCount,
       occurrenceCount: c.occurrenceCount,
-      enabledUnique: c.enabledUnique,
+      enabledUnique: c.masterEnabled ? c.enabledUnique : 0,
     }))
 
   const incidentRows: TextOutcomeIncidentRow[] = (input.incidents?.incidents ?? [])

@@ -14,7 +14,7 @@ import { defaultWireConstraint } from './pcapCanonical'
 import { defaultTextWireConstraint } from './textCanonical'
 
 /** PCAP wire ports use proto/port; text log ports are bare numbers or :port suffixes. */
-function isWireTransportPort(raw: string): boolean {
+export function isWireTransportPort(raw: string): boolean {
   const trimmed = raw.trim().toLowerCase()
   const slash = trimmed.indexOf('/')
   if (slash <= 0) return false

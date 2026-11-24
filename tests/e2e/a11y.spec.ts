@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { cs } from '../../src/i18n/cs'
@@ -33,6 +34,7 @@ test.describe('Accessibility', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await assertNoCriticalA11y(page, 'workspace')
 
     await page.getByTestId('help-open').click()
@@ -49,6 +51,7 @@ test.describe('Accessibility', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('wrap-toggle')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     const before = await page.getByTestId('wrap-toggle').isChecked()
     await page.keyboard.press('Alt+z')
     await expect(page.getByTestId('wrap-toggle')).toBeChecked({ checked: !before })

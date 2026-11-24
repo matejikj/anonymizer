@@ -155,6 +155,12 @@ export interface ChecksumOperation {
 export interface RenderContext {
   readonly mapping: MappingLike
   readonly fingerprints: FingerprintSession
+  /**
+   * The packet being rendered. Frozen plans share identical map/mask ops across the packets of
+   * a flow (identityIntern), so their own `packetIndex` is only the first creator's — always
+   * pass the plan's index when rendering a frozen plan.
+   */
+  readonly packetIndex?: number
   readonly incidentLog?: IncidentLog
   readonly sourceId?: string
   readonly packetNumber?: number
@@ -178,7 +184,7 @@ export function renderSymbolicOperations(
           if (bytes.length !== op.length) {
             throw new MappingPatchError(
               'length-mismatch',
-              `Symbolic map length mismatch at packetIndex=${op.packetIndex} offset=${op.offset}`,
+              `Symbolic map length mismatch at packetIndex=${ctx.packetIndex ?? op.packetIndex} offset=${op.offset}`,
             )
           }
           patches.push({ offset: op.offset, data: bytes })
@@ -186,7 +192,7 @@ export function renderSymbolicOperations(
           const fill = createFieldFallbackBytes({
             length: op.length,
             kind: defaultFallbackKindForCategory(op.category),
-            packetIndex: op.packetIndex,
+            packetIndex: ctx.packetIndex ?? op.packetIndex,
             offset: op.offset,
             domain: op.category,
           })
@@ -194,7 +200,7 @@ export function renderSymbolicOperations(
           ctx.incidentLog?.record({
             unit: 'field',
             sourceId: ctx.sourceId ?? 'pcap',
-            packetIndex: op.packetIndex,
+            packetIndex: ctx.packetIndex ?? op.packetIndex,
             packetNumber: ctx.packetNumber,
             category: op.category,
             stage: 'plan',
@@ -216,13 +222,13 @@ export function renderSymbolicOperations(
           op.kind === 'secret' || (op.kind === 'mask' && op.fillKind === 'protocol-neutral')
             ? createProtocolNeutralMaskFill({
                 length,
-                packetIndex: op.packetIndex,
+                packetIndex: ctx.packetIndex ?? op.packetIndex,
                 offset: op.offset,
                 domain: op.kind === 'mask' ? op.domain : 'secret',
               })
             : createMaskFill({
                 length,
-                packetIndex: op.packetIndex,
+                packetIndex: ctx.packetIndex ?? op.packetIndex,
                 offset: op.offset,
                 domain: op.kind === 'mask' ? op.domain : 'secret',
                 mode: op.kind === 'mask' && op.fillKind === 'zeros' ? 'zeros' : 'stream',
@@ -336,6 +342,20 @@ function renderSessionVersionShift(
   return out
 }
 
+/**
+ * Integer wire value of a mapped alias. Port aliases are transport-qualified (`udp/49154`);
+ * VLAN/SSRC/TEID/radio aliases are bare decimals. Anything else is unrepresentable — throw so
+ * the caller masks the field and records an incident instead of writing a silent 0.
+ */
+function wireIntegerAlias(op: MapOperation, alias: string, max: number): number {
+  const digits = op.category === 'port' ? alias.slice(alias.lastIndexOf('/') + 1) : alias
+  const n = /^\d+$/.test(digits) ? Number.parseInt(digits, 10) : Number.NaN
+  if (!Number.isInteger(n) || n < 0 || n > max) {
+    throw new MappingLookupError('representation-unavailable', { category: op.category })
+  }
+  return n
+}
+
 function encodeMappedAlias(op: MapOperation, mapping: MappingLike): Uint8Array | null {
   const alias = mapping.aliasFor(op.category, op.canonical, op.constraint, op.originalSpelling)
   if (alias === op.canonical && op.encoder !== 'fixed-ascii') {
@@ -360,19 +380,19 @@ function encodeMappedAlias(op: MapOperation, mapping: MappingLike): Uint8Array |
       return out
     }
     case 'u16-be': {
-      const n = Number(alias) & 0xffff
+      const n = wireIntegerAlias(op, alias, 0xffff)
       return new Uint8Array([(n >> 8) & 0xff, n & 0xff])
     }
     case 'u16-le': {
-      const n = Number(alias) & 0xffff
+      const n = wireIntegerAlias(op, alias, 0xffff)
       return new Uint8Array([n & 0xff, (n >> 8) & 0xff])
     }
     case 'u24-be': {
-      const n = Number(alias) & 0xffffff
+      const n = wireIntegerAlias(op, alias, 0xffffff)
       return new Uint8Array([(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff])
     }
     case 'u32-be': {
-      const n = Number(alias) >>> 0
+      const n = wireIntegerAlias(op, alias, 0xffffffff)
       return new Uint8Array([(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff])
     }
     case 'fixed-ascii':

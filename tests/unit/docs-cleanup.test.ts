@@ -67,12 +67,9 @@ describe('Production documentation and cleanup guards', () => {
     expect(levelSelect).toMatch(/aria-live/)
   })
 
-  it('only README.md is markdown at repo root; src markdown is UI i18n only', () => {
+  it('only README.md is markdown at repo root', () => {
     const rootMd = readdirSync(root).filter((name) => name.endsWith('.md'))
     expect(rootMd.sort()).toEqual(['README.md'])
-    expect(() => statSync(join(root, 'ANONYMIZER.md'))).toThrow()
-    expect(() => statSync(join(root, 'docs'))).toThrow()
-    const allowedSrcMd = new Set(['src/i18n/anonymizationDocs.cs.md'])
     const stack = ['src']
     while (stack.length) {
       const rel = stack.pop()!
@@ -81,7 +78,7 @@ describe('Production documentation and cleanup guards', () => {
         const child = `${rel}/${name}`
         const full = join(root, child)
         if (statSync(full).isDirectory()) stack.push(child)
-        else if (name.endsWith('.md')) expect(allowedSrcMd.has(child)).toBe(true)
+        else expect(name.endsWith('.md')).toBe(false)
       }
     }
   })
@@ -108,15 +105,18 @@ describe('Production documentation and cleanup guards', () => {
     expect(blocked).toEqual([])
   })
 
-  it('README documents text/PCAP limits without obsolete construction docs', () => {
+  it('README documents text/PCAP limits aligned with capabilityContract', () => {
     const readme = readFileSync(join(root, 'README.md'), 'utf8')
+    const contract = readSrc('domain/capabilityContract.ts')
     expect(readme).toMatch(/90 MiB/)
     expect(readme).toMatch(/100 MiB/)
-    expect(readme).not.toMatch(/ANONYMIZER\.md/)
+    expect(contract).toMatch(/MAX_TEXT_FILE_BYTES/)
+    expect(contract).toMatch(/MAX_PCAP_FILE_BYTES/)
     expect(readme).not.toMatch(/ARCHITECTURE\.md/)
     expect(readme).not.toMatch(/PRODUCTION_PROFILE_README/)
     expect(readme).not.toMatch(/pcap-\*-example/)
-    expect(readme).not.toMatch(/[áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/)
+    expect(readme).not.toMatch(/ANONYMIZER\.md/)
+    expect(contract).not.toMatch(/PcapProfileEditor/)
   })
 
   it('dist/ contains no profiles, fixtures, or capture inputs after build', () => {

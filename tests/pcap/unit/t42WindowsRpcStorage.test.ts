@@ -62,7 +62,7 @@ function writeUuidMs(buf: Uint8Array, o: number, hex32: string): void {
 }
 
 describe('T42 registry', () => {
-  it('registers storage handlers, families, ports, and engine 2.35.0', () => {
+  it('registers storage handlers, families, ports, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toEqual(
       expect.arrayContaining(['dcerpc', 'iscsi', 'portmapper', 'nfs']),
@@ -76,7 +76,7 @@ describe('T42 registry', () => {
     expect(SEMANTIC_SERVICE_PORTS.has(3260)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(111)).toBe(true)
     expect(SEMANTIC_SERVICE_PORTS.has(2049)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

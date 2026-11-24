@@ -6,30 +6,22 @@ import { IconButton } from '../../design-system/index.ts'
 import { IconBook, IconClose } from './icons.tsx'
 import { cs } from '../../i18n/cs.ts'
 import { renderMarkdownLite } from './markdownLite.tsx'
-import anonymizationDocsRaw from '../../i18n/anonymizationDocs.cs.md?raw'
-import {
-  buildProtocolSupportMatrix,
-  injectProtocolMatrixMarkdown,
-  renderProtocolSupportMatrixMarkdown,
-} from '../../pcap/docs/protocolSupportMatrix.ts'
+import anonymizationDocsRaw from '../../../docs/PCAP_ANONYMIZATION_OVERVIEW.md?raw'
 
-/**
- * "Jak anonymizujeme?" — read-only technical explainer for Czech customers.
- * Content lives in `src/i18n/anonymizationDocs.cs.md` (UI copy, not construction docs).
- * Bundled at build time (no runtime fetch — CSP `connect-src 'none'`); same modal
- * chrome/focus-trap pattern as HelpPanel, but a single scrollable document instead of tabs.
- */
+/** Bundled explanation of the anonymization pipeline, grouped into readable chapters. */
 export function AnonymizationDocsPanel() {
   const open = useAppStore((s) => s.docsOpen)
   const titleId = useId()
   const dialogRef = useRef<HTMLElement>(null)
-
-  // T32 — inject live matrix from the same module as `npm run docs:protocol-matrix`.
   const content = useMemo(() => {
-    const matrixMd = renderProtocolSupportMatrixMarkdown(buildProtocolSupportMatrix())
-    const body =
-      injectProtocolMatrixMarkdown(anonymizationDocsRaw, matrixMd) ?? anonymizationDocsRaw
-    return renderMarkdownLite(body)
+    const [intro = '', ...sections] = anonymizationDocsRaw.split(/^## /m)
+    return {
+      intro: renderMarkdownLite(intro.replace(/^# .*\n/, '')),
+      sections: sections.map((section) => {
+        const lineEnd = section.indexOf('\n')
+        return { title: section.slice(0, lineEnd), body: section.slice(lineEnd + 1) }
+      }),
+    }
   }, [])
 
   const onClose = () => {
@@ -89,7 +81,21 @@ export function AnonymizationDocsPanel() {
           </header>
 
           <div className="docs-panel__body" tabIndex={0} data-testid="docs-panel-body">
-            {content}
+            <ol className="docs-panel__flow" aria-label={cs.docsPanel.flowLabel}>
+              {cs.docsPanel.flow.map((step, index) => (
+                <li key={step}><span aria-hidden="true">{index + 1}</span>{step}</li>
+              ))}
+            </ol>
+            <div className="docs-panel__intro">{content.intro}</div>
+            <p className="docs-panel__section-label">{cs.docsPanel.readMore}</p>
+            {content.sections.map((section, index) => (
+              <details className="docs-panel__section" key={section.title} open={index === 0 ? true : undefined}>
+                <summary tabIndex={0}><span className="docs-panel__section-number" aria-hidden="true">{index + 1}</span>{section.title}</summary>
+                <div className="docs-panel__section-content">
+                  {renderMarkdownLite(section.body)}
+                </div>
+              </details>
+            ))}
           </div>
         </article>
       </div>

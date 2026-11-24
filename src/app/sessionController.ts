@@ -90,6 +90,7 @@ export function abortTextImportWork(): void {
   lastText = null
   lastLineEndings = null
   clearSessionModel()
+  useAppStore.getState().setTextOutcomeDialogOpen(false)
 }
 
 /** Dispose detection worker client without touching other session kinds. */
@@ -124,6 +125,7 @@ function releasePreviousSession(): void {
   lastText = null
   lastLineEndings = null
   clearSessionModel()
+  useAppStore.getState().setTextOutcomeDialogOpen(false)
 }
 
 async function ensureTextResourceClear(
@@ -149,6 +151,7 @@ function finishSession(input: {
   fileName: string | null
   byteLength: number
   mode: LogMode
+  showOutcomeDialog?: boolean
 }): DetectionResult {
   lastDetection = input.detection
   lastText = input.text
@@ -177,6 +180,7 @@ function finishSession(input: {
     failedRuleIds: input.detection.failedRuleIds,
   })
   store.setPhase('workspace')
+  if (input.showOutcomeDialog !== false) store.setTextOutcomeDialogOpen(true)
   store.setStatusMessage(
     `Hotovo · ${input.detection.entities.length} hodnot · ${input.detection.lineCount.toLocaleString('cs-CZ')} řádků`,
   )
@@ -400,6 +404,8 @@ export async function reanalyzeWithActiveProfile(): Promise<DetectionResult> {
       fileName,
       byteLength,
       mode,
+      // Keep rule/profile editing uninterrupted; the toolbar can reopen current results.
+      showOutcomeDialog: false,
     })
     const session = getSessionModel()
     if (session && preservedMasters) {

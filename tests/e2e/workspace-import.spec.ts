@@ -1,15 +1,19 @@
+import { closeTextOutcomeDialog } from './helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const rndLogAnonymizerRoot = path.resolve(here, '../../..')
+// Real template logs live in the gitignored logs/ dir; fixture tests skip when absent.
+const fixtureLogsDir = path.resolve(here, '../../logs')
 
 const FIXTURES = [
-  'template-flexcd.log',
-  'template-konos-as.log',
-  'template-konos-modules.log',
+  'template-edge.log',
+  'template-appsrv.log',
+  'template-app-modules.log',
   'template-rgw-server.log',
+  'sample_ops_20261022.log',
 ] as const
 
 test.describe('Text import and dual panes', () => {
@@ -17,6 +21,7 @@ test.describe('Text import and dual panes', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('dual-log')).toBeVisible()
     await expect(page.getByTestId('pane-original')).toBeVisible()
     await expect(page.getByTestId('pane-anonymized')).toBeVisible()
@@ -34,10 +39,12 @@ test.describe('Text import and dual panes', () => {
 
   for (const name of FIXTURES) {
     test(`loads fixture ${name}`, async ({ page }) => {
+      const filePath = path.join(fixtureLogsDir, name)
+      test.skip(!fs.existsSync(filePath), `${name} not present in logs/`)
       await page.goto('/')
-      const filePath = path.join(rndLogAnonymizerRoot, name)
       await page.getByTestId('file-input').setInputFiles(filePath)
       await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 120_000 })
+      await closeTextOutcomeDialog(page)
       await expect(page.getByTestId('pane-original')).toBeVisible()
       await expect(page.getByTestId('pane-anonymized')).toBeVisible()
       await expect(page.getByTestId('session-file-name')).toContainText(name)
@@ -60,6 +67,7 @@ test.describe('Text import and dual panes', () => {
     await page.goto('/')
     await page.getByTestId('try-sample').click()
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('close-log')).toBeVisible()
     await expect(page.getByTestId('export-download')).toBeVisible()
     await expect(page.getByTestId('mapping-bundle-export-open')).toBeVisible()
@@ -74,8 +82,9 @@ test.describe('Text import and dual panes', () => {
   })
 
   test('cancel during file import returns to empty', async ({ page }) => {
+    const filePath = path.join(fixtureLogsDir, 'template-rgw-server.log')
+    test.skip(!fs.existsSync(filePath), 'template-rgw-server.log not present in logs/')
     await page.goto('/')
-    const filePath = path.join(rndLogAnonymizerRoot, 'template-rgw-server.log')
     await page.getByTestId('file-input').setInputFiles(filePath)
     const cancel = page.getByTestId('cancel-analysis')
     // Race: either cancel while importing, or finish then close the log.
@@ -83,6 +92,7 @@ test.describe('Text import and dual panes', () => {
       await cancel.click({ timeout: 3_000 })
     } catch {
       await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 60_000 })
+      await closeTextOutcomeDialog(page)
       await page.getByTestId('close-log').click()
     }
     await expect(page.getByTestId('landing')).toBeVisible({

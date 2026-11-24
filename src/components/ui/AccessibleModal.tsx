@@ -10,6 +10,8 @@ export function AccessibleModal(props: {
   testId?: string
   /** Wider dialog for tables / dense content (e.g. anonymization outcome). */
   wide?: boolean
+  /** Readable starting point for result dialogs with long tables. */
+  focusTitle?: boolean
   children: ReactNode
   actions: ReactNode
 }): React.ReactElement | null {
@@ -35,7 +37,7 @@ export function AccessibleModal(props: {
           aria-labelledby={props.titleId}
           data-testid={props.testId}
         >
-          <h2 id={props.titleId}>{props.title}</h2>
+          <h2 id={props.titleId} tabIndex={props.focusTitle ? -1 : undefined} data-autofocus={props.focusTitle || undefined}>{props.title}</h2>
           {props.children}
           <div className="modal__actions">{props.actions}</div>
         </div>

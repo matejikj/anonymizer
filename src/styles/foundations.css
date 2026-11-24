@@ -27,7 +27,7 @@
   backdrop-filter: none;
   z-index: var(--z-sticky);
   min-height: 44px;
-  max-height: 48px;
+  max-height: none;
   padding: 0 var(--space-gutter);
   gap: var(--space-2);
 }

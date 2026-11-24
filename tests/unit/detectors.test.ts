@@ -25,10 +25,10 @@ describe('builtin detectors', () => {
   })
 
   it('detects hostnames with configured suffixes', () => {
-    const text = 'ws konosdot-ws07-brn.local sip ldap-pra.corp.example'
+    const text = 'ws desk-ws07-brn.corp.example sip ldap-pra.corp.example'
     const matches = run(detectHostnames, text)
     expect(matches.map((m) => m.normalized).sort()).toEqual([
-      'konosdot-ws07-brn.local',
+      'desk-ws07-brn.corp.example',
       'ldap-pra.corp.example',
     ])
   })

@@ -4,7 +4,7 @@
  * All PCAP UI surfaces must consume this — never reassemble from histogram ad-hoc.
  */
 
-import type { CoverageStatus, SanitizationPolicy } from '../sanitize/types'
+import type { CoverageStatus, LayerCoverage, SanitizationPolicy } from '../sanitize/types'
 import { isPreserveUnsafeMediaPolicy } from '../sanitize/types'
 import type { UnifiedCoverageModel, UnifiedCoverageStatus, UnifiedLayerCoverage } from './types'
 import { coverageStatusLabel } from './statusLabels'
@@ -14,6 +14,7 @@ import type { PcapPlanSnapshot } from '../export/planSnapshot'
 import { buildDiagnosticResidualRisk, resolveExportGate } from '../trust'
 import { buildPrivacyReport } from '../privacy/privacyReport'
 import { summarizeSanitizationCoverage, buildGateChecksFromCoverage } from '../trust/coverageBookkeeping'
+import { policyFromLevel } from '../profile/pcapAnonymizationLevel'
 
 /** Mirror of session status vocabularies — avoid importing ui/pcapSession (cycle). */
 export type AnonymizationStatus = 'covered' | 'exposed' | 'blocked'
@@ -93,6 +94,7 @@ export interface PcapProtocolCoverageRow {
   readonly probableIdentification: boolean
   /** Packets where the protocol was recognized (structural and/or sanitizer). */
   readonly recognizedPacketCount: number
+  readonly familyPacketCount?: number
   /** Packets where export will rewrite / truncate / heuristically alter the protocol. */
   readonly protectedPacketCount: number
   readonly layerKind: CoverageLayerKind
@@ -266,15 +268,21 @@ export function userVerdictForProtocol(input: {
   readonly dominantStatus: UnifiedCoverageStatus
   readonly truncateUnsupported: boolean
   readonly preset: SanitizationPolicy['preset']
+  /** Defaults to the fixed level's policy — what the export boundary applies to unsupported spans. */
+  readonly unsupportedPayloadPolicy?: SanitizationPolicy['unsupportedPayloadPolicy']
 }): UserCoverageVerdict {
   const { layerKind, dominantStatus: status, truncateUnsupported, preset } = input
 
   if (status === 'malformed') return 'malformed'
   if (status === 'requires-reassembly') return 'requires-reassembly'
   if (status === 'encrypted') return 'encrypted-preserved'
+  // Not policy-derived like 'unsupported': on TCP reassembly overlays (e.g. HTTP bodies) the
+  // export keeps detector-only text, so heuristic always needs a manual review.
   if (status === 'heuristic') return 'heuristic'
   if (status === 'preserved-unsafe') return 'recognized-risk-diagnostic'
   if (status === 'preserved-for-diagnostics') return 'recognized-and-protected'
+  // Redacted content is masked in the export; it is protected, just not structurally analysed.
+  if (status === 'redacted') return 'protected-export-no-full-analysis'
 
   if (layerKind === 'sanitizer' && (status === 'covered' || status === 'truncated')) {
     return 'protected-export-no-full-analysis'
@@ -283,6 +291,10 @@ export function userVerdictForProtocol(input: {
   if (status === 'unsupported') {
     // high-privacy fail-closed: truncate/drop unsupported
     if (truncateUnsupported || preset === 'high-privacy') return 'recognized-truncated-safe'
+    // The export boundary applies unsupportedPayloadPolicy (resolveBlockingExportDisposition);
+    // diagnostic masks in place (length-preserving) — protected, not exposed.
+    const unsupportedPolicy = input.unsupportedPayloadPolicy ?? policyFromLevel(preset).unsupportedPayloadPolicy
+    if (unsupportedPolicy === 'mask-in-place') return 'protected-export-no-full-analysis'
     if (preset === 'diagnostic') return 'recognized-risk-diagnostic'
     return 'unsupported-preserved'
   }
@@ -330,6 +342,7 @@ function buildSummary(input: {
   readonly statuses: PcapSessionStatusSnapshot
   readonly policy: SanitizationPolicy
   readonly plan: PcapPlanSnapshot
+  readonly sanitizerCoverage?: readonly LayerCoverage[]
 }): PcapCoverageSummary {
   const { statuses, policy, plan } = input
   const canExport =
@@ -452,13 +465,17 @@ function buildSummary(input: {
     },
   ]
 
+  // Sanitizer spans (weighted rollup on the R10 packed path) — without them the preview would
+  // see zero exposed regions and show a green gate for preserved-unsafe content.
   const privacy = buildPrivacyReport({
     plan,
     policy,
+    coverage: input.sanitizerCoverage,
     unsafeExportAcknowledged: false,
   })
   const coverageSummary = summarizeSanitizationCoverage({
     plan,
+    coverage: input.sanitizerCoverage,
     unsupportedLayers: statuses.unsupportedCount,
     policy,
   })
@@ -480,7 +497,12 @@ function buildSummary(input: {
   })
   // UI canExport stays plan/status based; report gate at export still enforces full checks.
   // Preview badge: fail-closed unsupported → AI_READY_WITH_GAPS (not NOT_AI_READY).
-  const gateBadge = gateOutcome.gate
+  // The session statuses already flagged readable content left in the output ('exposed');
+  // the gate preview must never be greener than that.
+  const gateBadge: PcapCoverageSummary['gateBadge'] =
+    statuses.anonymization !== 'covered' && gateOutcome.gate === 'AI_READY'
+      ? 'NOT_AI_READY'
+      : gateOutcome.gate
   const gateBadgeLabel =
     gateBadge === 'AI_READY'
       ? cs.pcap.coverageUx.gateAiReady
@@ -524,6 +546,8 @@ function buildSummary(input: {
 }
 
 export function buildPcapCoverageViewModel(input: {
+  /** Flattened sanitizer coverage for gate bookkeeping (see `sanitizerCoverageForExport`). */
+  readonly sanitizerCoverage?: readonly LayerCoverage[]
   readonly unifiedCoverage: UnifiedCoverageModel
   readonly policy: SanitizationPolicy
   readonly plan: PcapPlanSnapshot
@@ -546,6 +570,7 @@ export function buildPcapCoverageViewModel(input: {
       dominantStatus: p.dominantStatus,
       truncateUnsupported: input.policy.truncateUnsupported,
       preset: input.policy.preset,
+      unsupportedPayloadPolicy: input.policy.unsupportedPayloadPolicy,
     })
     let ui = coverageStatusToUiStatus(p.dominantStatus)
     if (userVerdict === 'recognized-risk-diagnostic' || userVerdict === 'unsupported-preserved') {
@@ -573,6 +598,7 @@ export function buildPcapCoverageViewModel(input: {
       familyLabel: protocolFamilyLabel(family),
       probableIdentification: family.probable,
       recognizedPacketCount: p.packetCount,
+      familyPacketCount: p.familyPacketCount,
       protectedPacketCount,
       layerKind,
       dominantStatus: p.dominantStatus,
@@ -586,6 +612,7 @@ export function buildPcapCoverageViewModel(input: {
   })
 
   const summary = buildSummary({
+    sanitizerCoverage: input.sanitizerCoverage,
     statuses: input.statuses,
     policy: input.policy,
     plan: input.plan,

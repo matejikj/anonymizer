@@ -4,6 +4,7 @@
  */
 
 import type { IncidentReason } from '../../domain/anonymizationIncident'
+import { internConstraint, internString } from '../kernel/identityIntern'
 import { MappingLookupError, MappingPatchError } from '../anonymization/mappingErrors'
 import { createFieldFallbackBytes, type FieldFallbackKind } from './fieldFallback'
 import type { IdentityCategory } from '../../mapping/identityCategories'
@@ -88,6 +89,7 @@ export class PatchCollector {
         this._symbolicMapByOffset.delete(p.offset)
         this._symbolicMaskByOffset.delete(p.offset)
         this._symbolicFingerprintByOffset.delete(p.offset)
+        this._symbolicSessionVersionByOffset.delete(p.offset)
       }
     }
     this._patches.length = 0
@@ -333,10 +335,10 @@ export class PatchCollector {
       offset,
       length,
       category: meta.category as IdentityCategory,
-      canonical: meta.canonical,
-      constraint: meta.constraint,
+      canonical: internString(meta.canonical),
+      constraint: internConstraint(meta.constraint),
       encoder: meta.encoder,
-      originalSpelling: meta.originalSpelling,
+      originalSpelling: internString(meta.originalSpelling),
     })
   }
 
@@ -361,8 +363,8 @@ export class PatchCollector {
       length,
       field: meta.fingerprintField,
       reasonCode: meta.reasonCode,
-      srcIp: meta.srcIp,
-      dstIp: meta.dstIp,
+      srcIp: internString(meta.srcIp),
+      dstIp: internString(meta.dstIp),
       ipProto: meta.ipProto,
       originalU16: meta.originalU16,
       originalU32: meta.originalU32,
@@ -416,7 +418,7 @@ export class PatchCollector {
       offset,
       length,
       versionDigits: meta.sessionVersionDigits,
-      sessionIdCanonical: meta.sessionIdCanonicalForVersion,
+      sessionIdCanonical: internString(meta.sessionIdCanonicalForVersion),
       reasonCode: meta.reasonCode ?? 'sdp-session-version-shift',
     })
   }

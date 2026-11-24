@@ -3,6 +3,7 @@
  */
 
 import { countUnsupportedFromUnified } from '../../pcap/coverage/buildUnifiedCoverage'
+import { discoveryIssuesForExport, sanitizerCoverageForExport } from '../../pcap/processing/packedCaptureWire'
 import type { PcapSourceDiscovery, PcapSourcePlan } from '../types'
 import {
   PcapExportCancelledError,
@@ -55,7 +56,14 @@ export async function exportPcapSourcePlan(input: {
         },
       },
       policy,
-      coverage: input.discovery.discovery.packetDiscovery.flatMap((pd) => [...pd.coverage]),
+      coverage: sanitizerCoverageForExport(
+        input.discovery.discovery.packetDiscovery,
+        input.discovery.container.coverageRollup,
+      ),
+      issues: discoveryIssuesForExport(
+        input.discovery.discovery.packetDiscovery,
+        input.discovery.container.coverageRollup,
+      ),
       // Correlation export dialog is the explicit operator acknowledgement.
       unsafeExportAcknowledged: true,
     })

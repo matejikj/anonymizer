@@ -10,6 +10,7 @@ import type { AnalysisResult } from '../protocols/analysis'
 import type { PacketDiscoveryResult } from '../discovery/types'
 import type { PortFlowHint } from '../anonymization/portPolicy.ts'
 import type { WireSourceDiscoveryPayload } from './workerProtocol'
+import { mergeCoverageRollup, type WireCoverageRollup } from './packedCaptureWire'
 
 export function analysisFromWire(wire: WireSourceDiscoveryPayload): AnalysisResult {
   const summaries = wire.summaries as AnalysisResult['summaries']
@@ -45,6 +46,7 @@ export function analysisFromWire(wire: WireSourceDiscoveryPayload): AnalysisResu
 export function sourceDiscoveryFromWire(
   wire: WireSourceDiscoveryPayload,
   packetDiscovery: readonly PacketDiscoveryResult[],
+  coverageRollup?: WireCoverageRollup,
 ): SourceDiscovery {
   const analysis = analysisFromWire(wire)
   const intents: TransformationIntent[] = wire.intents.map((intent) => ({
@@ -118,7 +120,7 @@ export function sourceDiscoveryFromWire(
     // Wire payload omits media mates today; empty map keeps identitiesFromDiscovery safe.
     mediaPortPairs: new Map<string, string>(),
     exactOccurrences,
-    unifiedCoverage: coverage.unifiedCoverage,
+    unifiedCoverage: mergeCoverageRollup(coverage.unifiedCoverage, coverageRollup),
     entityOccurrenceIndex: coverage.entityOccurrenceIndex,
   }
 }

@@ -20,7 +20,7 @@ import { analyzeMgcpMessages } from '../../../src/pcap/protocols/application/mgc
 import { recordMgcpDiscoveryIntents } from '../../../src/pcap/protocols/application/mgcp/discoverIntents'
 import { IntentCollector } from '../../../src/pcap/discovery/intentCollector'
 import { familyForProtocol } from '../../../src/pcap/coverage/protocolFamilies'
-import { buildAnonymizationOutcome } from '../../../src/pcap/coverage/anonymizationOutcome'
+import { buildAnonymizationOutcome, coverageRowsFromProtocolSummaries } from '../../../src/pcap/coverage/anonymizationOutcome'
 import { resolveExportGate, buildGateChecksFromCoverage, summarizeSanitizationCoverage } from '../../../src/pcap/trust'
 import {
   MGCP_SEED,
@@ -252,7 +252,7 @@ describe('T11 MGCP structured support', () => {
       }),
     })
     const outcome = buildAnonymizationOutcome({
-      protocols: discovery.unifiedCoverage.byProtocol,
+      protocols: coverageRowsFromProtocolSummaries(discovery.unifiedCoverage.byProtocol, 'diagnostic'),
       gate: gate.gate,
       plan,
       preset: 'diagnostic',

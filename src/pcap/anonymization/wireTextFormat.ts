@@ -24,16 +24,31 @@ export function maskDigitsPreservingFormat(originalSpelling: string, mappedDigit
 
 /** Format mapped port number into the same text shape as originalSpelling (digit count / prefix). */
 export function formatPortTextFromWire(mappedPort: number, originalSpelling: string): string {
-  const digitSlots = originalSpelling.replace(/\D/g, '').length;
+  const originalDigits = originalSpelling.replace(/\D/g, '');
+  const digitSlots = originalDigits.length;
   if (digitSlots === 0) {
     throw new MappingLookupError('representation-unavailable', { category: 'port' });
   }
-  const max = 10 ** digitSlots - 1;
-  if (mappedPort > max) {
-    const min = Math.max(1024, 1);
-    mappedPort = min + (mappedPort % (max - min + 1));
+  if (!Number.isInteger(mappedPort) || mappedPort < 0) {
+    // Never emit a non-numeric / negative text port (e.g. `0NaN`) — callers mask + record an incident.
+    throw new MappingLookupError('representation-unavailable', { category: 'port' });
   }
-  const digits = String(mappedPort).padStart(digitSlots, '0');
+  const max = 10 ** digitSlots - 1;
+  let digits = String(mappedPort).padStart(digitSlots, '0');
+  if (mappedPort > max) {
+    // Wire alias doesn't fit the text slot: fold into the slot's own range. User ports start at
+    // 1024 when the slot can hold them; narrower slots (≤3 digits) fold into 1..max.
+    const min = max >= 1024 ? 1024 : 1;
+    const span = max - min + 1;
+    let folded = min + (mappedPort % span);
+    digits = String(folded).padStart(digitSlots, '0');
+    // The alias differs from the original on the wire, so the folded text must not land back
+    // on the original digits (compared after padding, so leading zeros can't hide a match).
+    if (digits === originalDigits) {
+      folded = min + ((folded - min + 1) % span);
+      digits = String(folded).padStart(digitSlots, '0');
+    }
+  }
   let digitIndex = 0;
   const out = Array.from(originalSpelling).map((ch) => {
     if (/\d/.test(ch)) {

@@ -43,7 +43,7 @@ function rndLogAnonymizerCspPlugin(): Plugin {
 
 export default defineConfig(({ command }) => ({
   // Relative asset paths so the same build works whether served at domain root
-  // (local preview/e2e) or under a subpath like /anonym (rnd-ai deploy) — an absolute
+  // (local preview/e2e) or under a subpath like /anonym (reverse-proxy deploy) — an absolute
   // "/anonym/" base broke `vite preview`'s static serving for anything but the exact
   // subpath (it silently SPA-fallbacks to index.html instead of 404ing, masking the bug).
   base: command === 'build' ? './' : '/',

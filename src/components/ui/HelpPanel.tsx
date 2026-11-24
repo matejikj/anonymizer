@@ -239,6 +239,10 @@ function TextTab() {
       <HelpSection title={cs.help.multiTitle}>
         <p className="help-panel__lede">{cs.help.multiBody}</p>
       </HelpSection>
+      <HelpSection title={cs.help.profilesTitle}>
+        <Steps items={cs.help.profilesSteps} />
+        <Aside>{cs.help.profilesTip}</Aside>
+      </HelpSection>
     </>
   )
 }
@@ -250,6 +254,13 @@ function PcapTab() {
         <p className="help-panel__lede">{cs.help.pcapBody}</p>
         <BulletList items={cs.help.pcapItems} />
         <Aside>{cs.help.pcapTip}</Aside>
+      </HelpSection>
+      <HelpSection title={cs.help.packetTitle}>
+        <BulletList items={cs.help.packetItems} />
+      </HelpSection>
+      <HelpSection title={cs.help.outcomeTitle}>
+        <BulletList items={cs.help.outcomeItems} />
+        <Aside>{cs.help.pcapDocsTip}</Aside>
       </HelpSection>
       <HelpSection title={cs.help.pcapRecoveryTitle}>
         <p className="help-panel__lede">{cs.help.pcapRecoveryBody}</p>

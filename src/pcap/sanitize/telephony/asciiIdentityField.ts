@@ -2,7 +2,7 @@
  * Shared length-preserving ASCII identity map (T25 ISUP-adjacent paths, T37 T.30, RADIUS, H323, …).
  */
 
-import type { IdentityCategory } from '../../anonymization/entityRegistry'
+import type { IdentityCategory } from '../../../mapping/identityCategories'
 import type { MappingLike } from '../../anonymization/mapping'
 import type { IntentCollector } from '../../discovery/intentCollector'
 import { canonicalizeIdentity } from '../../../mapping/canonicalize'

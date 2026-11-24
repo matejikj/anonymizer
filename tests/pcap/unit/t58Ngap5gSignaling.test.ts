@@ -145,12 +145,12 @@ function indexOfSubarray(hay: Uint8Array, needle: Uint8Array): number {
 }
 
 describe('T58 registry', () => {
-  it('registers NGAP APER schema, mobile-core family, engine 2.35.0', () => {
+  it('registers NGAP APER schema, mobile-core family, engine 2.36.1', () => {
     expect(APER_SCHEMA_REGISTRY.size).toBe(4)
     expect(getAperSchema(NGAP_SCHEMA_MODULE.id)?.revision).toContain('38.413')
     expect(familyForProtocol('ngap').familyId).toBe('mobile-core')
     expect(familyForProtocol('ngap-n2').familyId).toBe('mobile-core')
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
     expect(PPID_NGAP).toBe(60)
     expect(NGAP_PINNED_IE_IDS.length).toBeGreaterThanOrEqual(16)
     expect(NGAP_PINNED_PROCEDURES.length).toBeGreaterThanOrEqual(10)

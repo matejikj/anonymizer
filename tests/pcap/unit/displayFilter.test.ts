@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { parseDisplayFilter, evaluateDisplayFilter, buildFilterContext } from '../../../src/pcap/displayFilter'
 
 describe('displayFilter parser', () => {
+  it('filters complete protocol families without matching unrelated or named unsupported protocols', () => {
+    const ctx = buildFilterContext({ packetIndex: 0, packetNumber: 1, capturedLength: 0, linkType: 1,
+      data: new Uint8Array(), protocols: ['ethernet', 'ipv4', 'udp'], changed: false, hasIssue: false })
+    for (const protocol of ['rtp', 'rtcp']) {
+      const positive = parseDisplayFilter('protocol.family == "rtp-rtcp"')
+      const negative = parseDisplayFilter('protocol.family != "rtp-rtcp"')
+      expect(positive.status).toBe('valid')
+      expect(negative.status).toBe('valid')
+      expect(evaluateDisplayFilter(positive.expr, { ...ctx, protocols: [...ctx.protocols, protocol] })).toBe(true)
+      expect(evaluateDisplayFilter(negative.expr, { ...ctx, protocols: [...ctx.protocols, protocol] })).toBe(false)
+      expect(evaluateDisplayFilter(positive.expr, ctx)).toBe(false)
+      expect(evaluateDisplayFilter(negative.expr, ctx)).toBe(true)
+    }
+    const sip = parseDisplayFilter('protocol.family == "sip"')
+    expect(evaluateDisplayFilter(sip.expr, { ...ctx, protocols: ['unsupported:sip'] })).toBe(false)
+  })
   it('parses hyphenated protocol token', () => {
     const r = parseDisplayFilter('sip-tls')
     expect(r.status).toBe('valid')

@@ -182,7 +182,7 @@ function buildIuaProtocolData(
 }
 
 describe('T51 registry', () => {
-  it('registers lapd/q931/iua handlers, family, port, and engine 2.35.0', () => {
+  it('registers lapd/q931/iua handlers, family, port, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('lapd')
     expect(ids).toContain('q931')
@@ -192,7 +192,7 @@ describe('T51 registry', () => {
     expect(familyForProtocol('iua').familyId).toBe('isdn')
     expect(familyForProtocol('q931-number').familyId).toBe('isdn')
     expect(SEMANTIC_SERVICE_PORTS.has(9900)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

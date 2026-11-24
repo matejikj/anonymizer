@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from '../../e2e/helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -80,6 +81,7 @@ test.describe('Baseline — browser perf diagnostics', () => {
     }, { timeout: 120_000 })
 
     await expect(page.getByTestId('export-bar')).toBeVisible()
+    await closeTextOutcomeDialog(page)
 
     await page.evaluate(() => {
       const hook = (globalThis as typeof globalThis & {

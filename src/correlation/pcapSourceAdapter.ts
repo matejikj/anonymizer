@@ -120,7 +120,11 @@ export function createPcapSourceAdapter(deps?: {
         if (request.signal?.aborted || active?.client !== client) throw new Error('cancelled')
 
         const container = containerFromWire(workerResult.container)
-        const discovery = sourceDiscoveryFromWire(workerResult.discovery, container.packetDiscovery)
+        const discovery = sourceDiscoveryFromWire(
+          workerResult.discovery,
+          container.packetDiscovery,
+          container.coverageRollup,
+        )
         const identities = identitiesFromDiscovery(discovery)
         return {
           kind: 'pcap',
@@ -138,6 +142,7 @@ export function createPcapSourceAdapter(deps?: {
             classicHeader: container.classicHeader,
             pcapngSections: container.pcapngSections,
             pcapngInterfaces: container.pcapngInterfaces,
+            coverageRollup: container.coverageRollup,
           },
           policy,
         }

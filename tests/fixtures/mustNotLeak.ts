@@ -13,13 +13,13 @@ export const MUST_NOT_LEAK = {
   ],
   hostnames: [
     'cucm-pra.corp.example',
-    'flexcd-pra.vaf.local',
-    'konosas-prod01.corp.example',
-    'konosas-prod02.corp.example',
-    'konosdot-ws07-brn.local',
+    'edge-pra.lab.example',
+    'appsrv-prod01.corp.example',
+    'appsrv-prod02.corp.example',
+    'desk-ws07-brn.corp.example',
     'ldap-brn.corp.example',
     'ldap-pra.corp.example',
-    'rgw01-pra.vaf.local',
+    'rgw01-pra.lab.example',
   ],
   userIds: [
     'disp1',

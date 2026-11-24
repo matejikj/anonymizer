@@ -11,6 +11,7 @@ import type { MappingLike } from '../anonymization/mapping'
 import type { IntentCollector } from '../discovery/intentCollector'
 import { parseRtpHeader } from '../protocols/application/rtp/classify'
 import { createMaskFill } from './maskFill'
+import { deferredBinaryMapMeta } from './deferredMapMeta.ts'
 import type { PatchCollector } from './PatchCollector'
 import { looksLikeZrtp, sanitizeZrtp } from './zrtp'
 
@@ -191,6 +192,8 @@ export function patchSsrc(
     + buffer[offset + 3]!
   const canonical = String(ssrc >>> 0)
   intents?.recordEntityReplacement(packetIndex, offset, 'ssrc', canonical, 4)
+  // Journal meta (u32-be ssrc-wire map op) lets the frozen plan render from ops alone, so an
+  // RTP packet no longer keeps its whole PatchCollector alive via legacyResolve.
   collector.addDeferred(offset, 4, ({ mapping: liveMapping }) => {
     const mapped = Number(liveMapping.map('ssrc', canonical)) >>> 0
     return new Uint8Array([
@@ -199,7 +202,7 @@ export function patchSsrc(
       (mapped >>> 8) & 0xff,
       mapped & 0xff,
     ])
-  })
+  }, deferredBinaryMapMeta('rtp', packetIndex, 'ssrc', canonical))
 }
 
 function maskRange(

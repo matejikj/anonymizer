@@ -18,8 +18,9 @@ import {
   buildPlanFromSession,
   containerMetadataFromSession,
   discoveryToWire,
+  type ProcessingDiscovery,
 } from './processingPipeline'
-import type { SourceDiscovery, TransformationIntent } from '../discovery/types'
+import type { TransformationIntent } from '../discovery/types'
 import type { PcapPlanSnapshot } from '../export/planSnapshot'
 import type { WireSourceDiscoveryPayload } from './workerProtocol'
 import type { WireContainerMetadata } from './containerWireAdapter'
@@ -33,7 +34,7 @@ import {
 import { constraintKey } from '../../mapping/constraintKey'
 
 export interface ProcessingOrchestrationResult {
-  discovery: SourceDiscovery
+  discovery: ProcessingDiscovery
   discoveryWire: WireSourceDiscoveryPayload
   containerWire: ReturnType<typeof containerMetadataFromSession>
   snapshot: MappingSnapshot

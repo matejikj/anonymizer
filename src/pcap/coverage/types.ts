@@ -21,6 +21,8 @@ export interface UnifiedLayerCoverage {
 export interface UnifiedProtocolSummary {
   readonly protocol: string
   readonly packetCount: number
+  /** Distinct packets in this protocol's family, including overlapping protocol layers. */
+  readonly familyPacketCount?: number
   readonly spanCount: number
   readonly unsupportedCount: number
   readonly structuralSpanCount: number
@@ -30,6 +32,7 @@ export interface UnifiedProtocolSummary {
 }
 
 export interface UnifiedCoverageModel {
+  readonly packetProtocols?: import('./packetProtocolIndex').PackedPacketProtocols
   readonly perPacket: readonly (readonly UnifiedLayerCoverage[])[]
   readonly byProtocol: readonly UnifiedProtocolSummary[]
   readonly histogram: ReadonlyMap<string, number>

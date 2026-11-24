@@ -47,13 +47,13 @@ function encodeMrcp(restOfStart: string, headerLines: string[], body: string): U
 }
 
 describe('T54 registry', () => {
-  it('registers mrcp handler, family, port, and engine 2.35.0', () => {
+  it('registers mrcp handler, family, port, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('mrcp')
     expect(familyForProtocol('mrcp').familyId).toBe('mrcp')
     expect(familyForProtocol('mrcp-body').familyId).toBe('mrcp')
     expect(SEMANTIC_SERVICE_PORTS.has(3242)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 

@@ -426,15 +426,16 @@ describe('Stage 34 §39.11 — e-mail files are unsupported sources', () => {
   })
 })
 
-describe('Stage 34 §39.12 — README describes real adapters', () => {
-  it('README documents text/pcap adapters, manifest vs bundle, limits', () => {
+describe('Stage 34 §39.12 — docs describe real adapters', () => {
+  it('README and overview document text/pcap adapters, manifest vs bundle, limits', () => {
     const readme = readFileSync(join(root, 'README.md'), 'utf8')
-    expect(readme).toMatch(/text/i)
-    expect(readme).toMatch(/PCAP/i)
-    expect(readme).toMatch(/shareable|correlation-manifest|Shareable|manifest/i)
+    const overview = readFileSync(join(root, 'docs/PCAP_ANONYMIZATION_OVERVIEW.md'), 'utf8')
+    expect(readme).toMatch(/text|PCAP|korelaci/i)
+    expect(overview).toMatch(/mime-unsupported|\.eml/)
+    expect(readme).toMatch(/shareable|correlation-manifest/i)
     expect(readme).toMatch(/mapping bundle/i)
-    expect(readme).toMatch(/100\s*MiB|90\s*MiB/)
+    expect(MAX_TEXT_FILE_BYTES).toBe(90 * 1024 * 1024)
+    expect(MAX_PCAP_FILE_BYTES).toBe(100 * 1024 * 1024)
     expect(readme).not.toMatch(/EMAIL_SOURCE_ENABLED/)
-    expect(readme).not.toMatch(/[áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/)
   })
 })

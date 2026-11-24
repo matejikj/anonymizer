@@ -1,3 +1,4 @@
+import { closeTextOutcomeDialog } from '../../e2e/helpers/textOutcome.ts'
 import { test, expect } from '@playwright/test'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -30,6 +31,7 @@ test.describe('Krok 10 — product UI performance smoke', () => {
     const t0 = Date.now()
     await page.getByTestId('file-input').setInputFiles(filePath)
     await expect(page.getByTestId('workspace')).toBeVisible({ timeout: 120_000 })
+    await closeTextOutcomeDialog(page)
     await expect(page.getByTestId('export-bar')).toBeVisible()
     const workspaceMs = Date.now() - t0
 

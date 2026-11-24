@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { cs } from '../../i18n/cs.ts'
 import { usePcapStore } from './pcapStore.ts'
 import { getPacketRowMeta, getPcapSession } from './pcapSession.ts'
@@ -18,14 +18,13 @@ import {
   type DissectionNode,
 } from '../dissection/types'
 import type { BytePatch } from '../sanitize/types'
+import { usePcapPanelScrollSync } from './pcapPanelScrollSync.tsx'
 
 const EMPTY_DISSECTION_ROOTS: readonly DissectionNode[] = []
 
 export interface PcapPacketDetailsProps {
   readonly dataView?: PcapDataView
 }
-
-type DetailPaneTab = 'tree' | 'changes'
 
 /**
  * Packet inspector — Wireshark-style dissection is the primary view.
@@ -44,7 +43,9 @@ export function PcapPacketDetails({ dataView: dataViewProp }: PcapPacketDetailsP
   const planPkt = session?.plan.packets[selectedPacketIndex]
   const { dissection, loading } = usePacketDissection(selectedPacketIndex, sessionEpoch, dataView)
   const { preview } = usePacketPreview(selectedPacketIndex, sessionEpoch)
-  const [tab, setTab] = useState<DetailPaneTab>('tree')
+  const detailTab = usePcapStore(s => s.detailTab)
+  const tab = detailTab === 'changes' ? 'changes' : 'tree'
+  const setTab = usePcapStore(s => s.setDetailTab)
   const expandAllTreeNodes = usePcapStore((s) => s.expandAllTreeNodes)
   const collapseAllTreeNodes = usePcapStore((s) => s.collapseAllTreeNodes)
 
@@ -92,12 +93,8 @@ export function PcapPacketDetails({ dataView: dataViewProp }: PcapPacketDetailsP
     || (planPkt?.patches.length ?? 0) > 0
 
   useEffect(() => {
-    setTab('tree')
-  }, [selectedPacketIndex])
-
-  useEffect(() => {
     if (!showChangesTab && tab === 'changes') setTab('tree')
-  }, [showChangesTab, tab])
+  }, [showChangesTab, tab, setTab])
 
   if (!meta.descriptor) {
     return (
@@ -194,7 +191,7 @@ export function PcapPacketDetails({ dataView: dataViewProp }: PcapPacketDetailsP
             aria-labelledby="pcap-detail-tab-tree"
             data-testid="pcap-detail-panel-tree"
           >
-            <PcapDissectionTree roots={dissection?.roots ?? EMPTY_DISSECTION_ROOTS} loading={loading} />
+            <PcapDissectionTree roots={dissection?.roots ?? EMPTY_DISSECTION_ROOTS} loading={loading} dataView={dataView} />
           </div>
         ) : (
           <div
@@ -205,6 +202,7 @@ export function PcapPacketDetails({ dataView: dataViewProp }: PcapPacketDetailsP
             data-testid="pcap-packet-disposition"
           >
             <ChangesPane
+              dataView={dataView}
               concrete={concrete}
               dispositionRows={dispositionRows}
               planPkt={planPkt}
@@ -222,20 +220,24 @@ export function PcapPacketDetails({ dataView: dataViewProp }: PcapPacketDetailsP
 }
 
 function ChangesPane({
+  dataView,
   concrete,
   dispositionRows,
   planPkt,
   onSelectChange,
 }: {
+  dataView: PcapDataView
   concrete: readonly ConcreteChangeRow[]
   dispositionRows: readonly PcapSpanCoverageRow[]
   planPkt: PcapPlanPacket | undefined
   onSelectChange: (row: ConcreteChangeRow) => void
 }) {
+  const viewport = useRef<HTMLDivElement>(null)
+  const onScroll = usePcapPanelScrollSync({ channel: 'changes', dataView, viewport })
   return (
     <>
       <p className="pcap-details-panel__changes-lead">{cs.pcap.detail.changesLead}</p>
-      <div className="pcap-details-panel__changes-scroll">
+      <div className="pcap-details-panel__changes-scroll" ref={viewport} onScroll={onScroll}>
       {concrete.length > 0 ? (
         <ul className="pcap-detail__list pcap-detail__list--concrete" data-testid="pcap-packet-concrete-changes">
           {concrete.map((row) => (

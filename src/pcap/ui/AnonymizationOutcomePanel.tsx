@@ -1,5 +1,5 @@
 /**
- * T10 — anonymization outcome panel (PCAP; cs: Výsledek anonymizace).
+ * T10 — „Výsledek anonymizace“ panel (PCAP).
  * Design-system only; states via StatusChip / Badge; no hardcoded colors.
  */
 
@@ -7,7 +7,6 @@ import { cs } from '../../i18n/cs.ts'
 import {
   Badge,
   Button,
-  DataSurface,
   RaisedPanel,
   StatusChip,
 } from '../../design-system/index.ts'
@@ -15,17 +14,18 @@ import type { AnonymizationOutcome, OutcomeFamilyState } from '../coverage/anony
 import type { StatusChipTone } from '../../components/ui/StatusChip.tsx'
 import { usePcapStore } from './pcapStore.ts'
 import { refreshPcapFilter } from './pcapLoadController.ts'
+import { DEFAULT_PCAP_FILTER } from './pcapSession.ts'
 
 export interface AnonymizationOutcomePanelProps {
   readonly outcome: AnonymizationOutcome
   readonly className?: string
   readonly testId?: string
-  /** When false, hide "Show packets" action (cs: Zobrazit pakety; e.g. correlation completion). */
+  /** When false, hide „Zobrazit pakety“ (e.g. correlation completion). */
   readonly showPacketActions?: boolean
   readonly announceLive?: boolean
   /** Hide the panel h2 when the host dialog already provides the title. */
   readonly hideTitle?: boolean
-  /** Called after "Show packets" applies the filter (e.g. close outcome dialog). */
+  /** Called after „Zobrazit pakety“ applies the filter (e.g. close outcome dialog). */
   readonly onAfterShowPackets?: () => void
 }
 
@@ -70,10 +70,20 @@ export function AnonymizationOutcomePanel({
   onAfterShowPackets,
 }: AnonymizationOutcomePanelProps) {
   const setFilter = usePcapStore((s) => s.setFilter)
+  const setDisplayFilterDraft = usePcapStore((s) => s.setDisplayFilterDraft)
+  const applyDisplayFilter = usePcapStore((s) => s.applyDisplayFilter)
 
-  const showPackets = (protocol: string | null) => {
-    if (!protocol) return
-    setFilter({ protocol })
+  const reviewCount = outcome.families.filter(f => f.state === 'needs-attention' || f.protocols.some(p => p.needsReview)).length
+  const limitedCount = outcome.families.filter(f => (f.state === 'masked-without-analysis' || f.state === 'processing-failed') && !f.protocols.some(p => p.needsReview)).length
+  const processedCount = outcome.families.length - reviewCount - limitedCount
+
+  const showPackets = (familyId: string) => {
+    // Navigate to the whole family, including disjoint protocols such as RTP and RTCP.
+    // Use the visible filter so the user can edit or clear this selection.
+    const expression = `protocol.family == ${JSON.stringify(familyId)}`
+    setFilter({ ...DEFAULT_PCAP_FILTER })
+    setDisplayFilterDraft(expression, 'valid', null)
+    applyDisplayFilter(expression)
     queueMicrotask(() => refreshPcapFilter())
     onAfterShowPackets?.()
   }
@@ -85,6 +95,8 @@ export function AnonymizationOutcomePanel({
         .join(' ')}
       data-testid={testId}
       data-gate={outcome.gate}
+      tabIndex={hideTitle ? 0 : undefined}
+      aria-label={hideTitle ? cs.pcap.outcome.title : undefined}
     >
       <header className="anonymization-outcome__head">
         {hideTitle ? null : (
@@ -98,75 +110,62 @@ export function AnonymizationOutcomePanel({
         </span>
       </header>
 
-      <p
-        className="anonymization-outcome__summary"
-        data-testid={`${testId}-summary`}
-        {...(announceLive
-          ? { role: 'status', 'aria-live': 'polite' as const }
-          : {})}
-      >
-        {outcome.summarySentence}
-      </p>
-      {announceLive ? (
-        <span className="visually-hidden" role="status" aria-live="polite">
-          {cs.pcap.outcome.liveAnnounce}
-        </span>
-      ) : null}
+      <section className="anonymization-outcome__decision" data-gate={outcome.gate}>
+        <h3>{cs.pcap.outcome.decisionTitle[outcome.gate]}</h3>
+        <p
+          className="anonymization-outcome__summary"
+          data-testid={`${testId}-summary`}
+          {...(announceLive ? { role: 'status', 'aria-live': 'polite' as const } : {})}
+        >
+          {outcome.summarySentence}
+        </p>
+        <dl className="anonymization-outcome__counts">
+          {[[cs.pcap.outcome.processedCount, processedCount], [cs.pcap.outcome.limitedCount, limitedCount], [cs.pcap.outcome.reviewCount, reviewCount]].map(([label, count]) => (
+            <div key={label}><dt>{label}</dt><dd>{count}</dd></div>
+          ))}
+        </dl>
+      </section>
 
-      <DataSurface className="anonymization-outcome__table-wrap" data-testid={`${testId}-families`}>
-        <table className="anonymization-outcome__table">
-          <thead>
-            <tr>
-              <th scope="col">{cs.pcap.outcome.colFamily}</th>
-              <th scope="col">{cs.pcap.outcome.colState}</th>
-              <th scope="col">{cs.pcap.outcome.colPackets}</th>
-              <th scope="col">{cs.pcap.outcome.colRecommend}</th>
-              {showPacketActions ? (
-                <th scope="col">
-                  <span className="visually-hidden">{cs.pcap.outcome.colActions}</span>
-                </th>
+      <div className="anonymization-outcome__families" data-testid={`${testId}-families`}>
+        {outcome.families.map(row => (
+          <section
+            key={row.familyId}
+            className="anonymization-outcome__family"
+            data-testid={`${testId}-family-${row.familyId}`}
+            data-family-state={row.state}
+            aria-labelledby={`${testId}-family-title-${row.familyId}`}
+          >
+            <header className="anonymization-outcome__family-head">
+              <div className="anonymization-outcome__family-name">
+                <h3 id={`${testId}-family-title-${row.familyId}`}>{row.familyLabel}</h3>
+                <span className="type-meta" data-testid={`${testId}-count-${row.familyId}`}>{cs.pcap.outcome.packetCount(row.packetCount)}</span>
+              </div>
+              <StatusChip tone={stateTone(row.state)} label={row.stateLabel} />
+              {showPacketActions && row.filterProtocol ? (
+                <Button variant="ghost" data-testid={`${testId}-show-${row.familyId}`} onClick={() => showPackets(row.familyId)}>
+                  {cs.pcap.outcome.showPackets}
+                </Button>
               ) : null}
-            </tr>
-          </thead>
-          <tbody>
-            {outcome.families.map((row) => (
-              <tr
-                key={row.familyId}
-                data-testid={`${testId}-family-${row.familyId}`}
-                data-family-state={row.state}
-              >
-                <td>
-                  {row.familyLabel}
-                  {row.probable ? (
-                    <span className="anonymization-outcome__probable"> {cs.pcap.outcome.probableNote}</span>
-                  ) : null}
-                </td>
-                <td>
-                  <StatusChip tone={stateTone(row.state)} label={row.stateLabel} />
-                </td>
-                <td>{row.packetCount}</td>
-                <td>
-                  <span className="anonymization-outcome__explain">{row.explanation}</span>
-                  <span className="anonymization-outcome__recommend">{row.recommendation}</span>
-                </td>
-                {showPacketActions ? (
-                  <td>
-                    {row.filterProtocol ? (
-                      <Button
-                        variant="ghost"
-                        data-testid={`${testId}-show-${row.familyId}`}
-                        onClick={() => showPackets(row.filterProtocol)}
-                      >
-                        {cs.pcap.outcome.showPackets}
-                      </Button>
-                    ) : null}
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </DataSurface>
+            </header>
+            {row.probable ? <p className="anonymization-outcome__probable">{cs.pcap.outcome.probableNote}</p> : null}
+            <ul className="anonymization-outcome__protocols">
+              {row.protocols.map(protocol => (
+                <li key={protocol.id} data-testid={`${testId}-protocol-${row.familyId}-${protocol.id}`} data-protocol-state={protocol.state}>
+                  <div className="anonymization-outcome__protocol-head">
+                    <h4>{protocol.label}</h4>
+                    <span className="type-meta">{cs.pcap.outcome.protocolStatus[protocol.state]}</span>
+                  </div>
+                  <p><strong>{cs.pcap.outcome.methodLabel}: </strong>{protocol.method}</p>
+                  <p className="anonymization-outcome__check"><strong>{cs.pcap.outcome.checkLabel}: </strong>{protocol.check}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="anonymization-outcome__recommend">{row.recommendation}</p>
+          </section>
+        ))}
+      </div>
+      <p className="anonymization-outcome__note type-meta">{cs.pcap.outcome.familyOverlap}</p>
+      <p className="anonymization-outcome__note type-meta" data-testid={`${testId}-assurance`}>{cs.pcap.outcome.assuranceNote}</p>
 
       <details className="anonymization-outcome__incidents" data-testid={`${testId}-incidents`}>
         <summary>

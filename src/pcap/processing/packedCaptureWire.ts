@@ -15,6 +15,13 @@ import type {
   SparseCheckpoint,
 } from '../domain/types'
 import type { PacketDiscoveryResult } from '../discovery/types'
+import type { LayerCoverage } from '../sanitize/types'
+import type { UnifiedCoverageModel, UnifiedProtocolSummary } from '../coverage/types'
+import { dominantStatus } from '../coverage/mergeRules'
+import { familyForProtocol } from '../coverage/protocolFamilies'
+import { issueImpliesCryptoModified } from '../trust/cryptoIntegrity'
+import { parseTlsBranchIssue } from '../sanitize/tlsBranches'
+import { buildPacketProtocolIndex, type PackedPacketProtocols } from '../coverage/packetProtocolIndex'
 
 export interface WirePackedCheckpoint {
   readonly packetNumber: number
@@ -49,14 +56,196 @@ export interface WirePackedDescriptors {
  * ~1.6M LayerCoverage objects on the UI thread after discover hangs Chromium.
  */
 export interface WireCoverageRollup {
+  readonly packetProtocols?: PackedPacketProtocols
   readonly totalUnsupportedSpans: number
   readonly totalTruncatedSpans: number
   readonly totalHeuristicSpans: number
   readonly preservedUnsafeSpans: number
   readonly processingFailedSpans: number
+  /** Sanitizer spans that need reassembly / are malformed — drive the integrity status. */
+  readonly requiresReassemblySpans: number
+  readonly malformedSpans: number
   readonly truncatedPacketCount: number
   readonly discoveryDropCount: number
   readonly discoveryIssueCount: number
+  /** Sanitizer spans aggregated per protocol × status (bounded by distinct ids, not packets). */
+  readonly coverageKinds: readonly WireCoverageKind[]
+  /** Bounded per-protocol summaries; no per-packet coverage objects on the UI thread. */
+  readonly protocolSummaries?: readonly UnifiedProtocolSummary[]
+  /** Distinct safe discovery issue tokens (tls-branch:*, …) — never original values. */
+  readonly issueTokens: readonly string[]
+}
+
+export interface WireCoverageKind {
+  readonly protocol: string
+  readonly status: string
+  readonly count: number
+  readonly bytes: number
+}
+
+/** Hard bounds — protocol ids / issue tokens can embed packet-controlled numbers or names. */
+export const ROLLUP_MAX_COVERAGE_KINDS = 512
+export const ROLLUP_MAX_ISSUE_TOKENS = 1024
+export const ROLLUP_MAX_ISSUE_TOKENS_HARD = 2048
+export const ROLLUP_OVERFLOW_PROTOCOL = 'other'
+
+/**
+ * Protocol ids whose exact value changes a downstream decision (media disposition in
+ * `resolveCoverageDisposition`, TLS crypto/branch matchers) — never collapsed into 'other'.
+ */
+const ROLLUP_EXACT_PROTOCOLS: ReadonlySet<string> = new Set([
+  'rtp', 'rtcp', 'srtp', 'media', 'voip-media',
+  'tls', 'tls-clienthello', 'tls-serverhello', 'tls-certificate', 'tls-1.2', 'tls-1.3', 'tls-ech',
+])
+
+/** Incremental protocol × status aggregation shared by both rollup builders. */
+class CoverageKindAccumulator {
+  private readonly kinds = new Map<string, { protocol: string; status: string; count: number; bytes: number }>()
+  private readonly protocols = new Map<string, { packetCount: number; lastPacket: number; spanCount: number; unsupportedCount: number; status: LayerCoverage['status'] }>()
+  private readonly families = new Map<string, { packetCount: number; lastPacket: number }>()
+
+  add(protocol: string, status: LayerCoverage['status'], length: number, packetIndex: number): void {
+    let key = `${protocol}\u0000${status}`
+    let k = this.kinds.get(key)
+    if (!k && this.kinds.size >= ROLLUP_MAX_COVERAGE_KINDS && !ROLLUP_EXACT_PROTOCOLS.has(protocol)) {
+      // Past the cap, packet-derived ids (e.g. `sctp-ppid-<n>`) fold per status — the status
+      // (and so exposed/fail-closed accounting) is preserved, only the protocol label is lost.
+      protocol = ROLLUP_OVERFLOW_PROTOCOL
+      key = `${protocol}\u0000${status}`
+      k = this.kinds.get(key)
+    }
+    if (k) {
+      k.count++
+      k.bytes += Math.max(0, length)
+    } else {
+      this.kinds.set(key, { protocol, status, count: 1, bytes: Math.max(0, length) })
+    }
+    let p = this.protocols.get(protocol)
+    if (!p) {
+      p = { packetCount: 0, lastPacket: -1, spanCount: 0, unsupportedCount: 0, status: 'covered' }
+      this.protocols.set(protocol, p)
+    }
+    if (p.lastPacket !== packetIndex) { p.packetCount++; p.lastPacket = packetIndex }
+    p.spanCount++
+    if (status === 'unsupported') p.unsupportedCount++
+    p.status = dominantStatus(p.status, status)
+    const familyId = familyForProtocol(protocol).familyId
+    const family = this.families.get(familyId)
+    if (!family) this.families.set(familyId, { packetCount: 1, lastPacket: packetIndex })
+    else if (family.lastPacket !== packetIndex) { family.packetCount++; family.lastPacket = packetIndex }
+  }
+
+  toArray(): WireCoverageKind[] {
+    return [...this.kinds.values()]
+  }
+
+  protocolSummaries(): UnifiedProtocolSummary[] {
+    return [...this.protocols].map(([protocol, p]) => ({
+      protocol, packetCount: p.packetCount, spanCount: p.spanCount, unsupportedCount: p.unsupportedCount,
+      structuralSpanCount: 0, sanitizerSpanCount: p.spanCount, dominantStatus: p.status, issues: [],
+      familyPacketCount: this.families.get(familyForProtocol(protocol).familyId)!.packetCount,
+    }))
+  }
+}
+
+/** Distinct safe issue tokens with a bounded footprint. */
+class IssueTokenCollector {
+  private readonly tokens = new Set<string>()
+
+  add(token: string): void {
+    if (this.tokens.has(token)) return
+    const must = issueImpliesCryptoModified(token) || parseTlsBranchIssue(token) !== null
+    if (!must && this.tokens.size >= ROLLUP_MAX_ISSUE_TOKENS) {
+      // Packet-derived suffixes (`sctp-unknown-ppid:<n>`, header names) fold to their prefix.
+      const colon = token.indexOf(':')
+      const folded = colon > 0 ? token.slice(0, colon) : token
+      if (this.tokens.size >= ROLLUP_MAX_ISSUE_TOKENS_HARD) return
+      this.tokens.add(folded)
+      return
+    }
+    this.tokens.add(token)
+  }
+
+  toArray(): string[] {
+    return [...this.tokens]
+  }
+}
+
+/**
+ * UI-side stand-in for per-span sanitizer coverage on the packed path: one entry per
+ * protocol × status, weighted by `aggregateCount` (see {@link LayerCoverage.aggregateCount}).
+ */
+export function coverageFromRollup(rollup: WireCoverageRollup): LayerCoverage[] {
+  return rollup.coverageKinds.map((k) => ({
+    protocol: k.protocol,
+    offset: 0,
+    length: k.bytes,
+    status: k.status as LayerCoverage['status'],
+    aggregateCount: k.count,
+  }))
+}
+
+/**
+ * Sanitizer coverage for export bookkeeping / privacy report / correlation gate: the real
+ * per-packet spans when present, otherwise the weighted rollup kinds (R10 packed path).
+ */
+export function sanitizerCoverageForExport(
+  packetDiscovery: readonly PacketDiscoveryResult[],
+  rollup: WireCoverageRollup | undefined,
+): LayerCoverage[] {
+  if (packetDiscovery.length === 0 && rollup) return coverageFromRollup(rollup)
+  const out: LayerCoverage[] = []
+  for (const pd of packetDiscovery) {
+    for (const span of pd.coverage) out.push(span)
+  }
+  return out
+}
+
+/** Safe discovery issue tokens for export reports (same fallback as coverage). */
+export function discoveryIssuesForExport(
+  packetDiscovery: readonly PacketDiscoveryResult[],
+  rollup: WireCoverageRollup | undefined,
+): readonly string[] {
+  if (packetDiscovery.length === 0 && rollup) return rollup.issueTokens
+  const out: string[] = []
+  for (const pd of packetDiscovery) {
+    for (const issue of pd.issues) out.push(issue)
+  }
+  return out
+}
+
+/**
+ * R10 — packed discover leaves `packetDiscovery` empty on the UI thread, so span totals built
+ * from it undercount; take the worker-side rollup totals when they are higher.
+ */
+export function mergeCoverageRollup(
+  unifiedCoverage: UnifiedCoverageModel,
+  coverageRollup: WireCoverageRollup | undefined,
+): UnifiedCoverageModel {
+  if (!coverageRollup) return unifiedCoverage
+  const protocols = new Map(unifiedCoverage.byProtocol.map(p => [p.protocol, p]))
+  for (const p of coverageRollup.protocolSummaries ?? []) {
+    const previous = protocols.get(p.protocol)
+    protocols.set(p.protocol, previous ? {
+      ...previous,
+      packetCount: Math.max(previous.packetCount, p.packetCount),
+      familyPacketCount: Math.max(previous.familyPacketCount ?? 0, p.familyPacketCount ?? 0),
+      spanCount: Math.max(previous.spanCount, p.spanCount),
+      sanitizerSpanCount: Math.max(previous.sanitizerSpanCount, p.sanitizerSpanCount),
+      unsupportedCount: Math.max(previous.unsupportedCount, p.unsupportedCount),
+      dominantStatus: dominantStatus(previous.dominantStatus, p.dominantStatus),
+    } : p)
+  }
+  const byProtocol = [...protocols.values()].sort((a, b) => a.protocol.localeCompare(b.protocol))
+  return {
+    ...unifiedCoverage,
+    packetProtocols: coverageRollup.packetProtocols ?? unifiedCoverage.packetProtocols,
+    byProtocol,
+    histogram: new Map(byProtocol.filter(p => p.packetCount > 0).map(p => [p.protocol, p.packetCount])),
+    totalUnsupportedSpans: Math.max(unifiedCoverage.totalUnsupportedSpans, coverageRollup.totalUnsupportedSpans),
+    totalTruncatedSpans: Math.max(unifiedCoverage.totalTruncatedSpans, coverageRollup.totalTruncatedSpans),
+    totalHeuristicSpans: Math.max(unifiedCoverage.totalHeuristicSpans, coverageRollup.totalHeuristicSpans),
+  }
 }
 
 export interface WirePackedPacketDiscovery {
@@ -109,6 +298,8 @@ function collectTransferBuffers(packed: WirePackedContainer): ArrayBuffer[] {
     transferBufferOf(d.ticksHi),
     transferBufferOf(d.tsProfileId),
   ]
+  const protocols = packed.coverageRollup.packetProtocols
+  if (protocols) buffers.push(transferBufferOf(protocols.offsets), transferBufferOf(protocols.protocolIds))
   return [...new Set(buffers)]
 }
 
@@ -121,14 +312,20 @@ export function coverageRollupFromDiscovery(
   let totalHeuristicSpans = 0
   let preservedUnsafeSpans = 0
   let processingFailedSpans = 0
+  let requiresReassemblySpans = 0
+  let malformedSpans = 0
+  const kinds = new CoverageKindAccumulator()
+  const issueTokens = new IssueTokenCollector()
   let truncatedPacketCount = 0
   let discoveryDropCount = 0
   let discoveryIssueCount = 0
-  for (const pd of packetDiscovery) {
+  for (const [packetIndex, pd] of packetDiscovery.entries()) {
     if (pd.drop) discoveryDropCount++
     if (pd.truncatedLength !== undefined) truncatedPacketCount++
     discoveryIssueCount += pd.issues.length
+    for (const iss of pd.issues) issueTokens.add(iss)
     for (const c of pd.coverage) {
+      kinds.add(c.protocol, c.status, c.length, packetIndex)
       switch (c.status) {
         case 'unsupported':
           totalUnsupportedSpans++
@@ -145,6 +342,12 @@ export function coverageRollupFromDiscovery(
         case 'processing-failed':
           processingFailedSpans++
           break
+        case 'requires-reassembly':
+          requiresReassemblySpans++
+          break
+        case 'malformed':
+          malformedSpans++
+          break
         default:
           break
       }
@@ -156,9 +359,14 @@ export function coverageRollupFromDiscovery(
     totalHeuristicSpans,
     preservedUnsafeSpans,
     processingFailedSpans,
+    requiresReassemblySpans,
+    malformedSpans,
     truncatedPacketCount,
     discoveryDropCount,
     discoveryIssueCount,
+    coverageKinds: kinds.toArray(),
+    protocolSummaries: kinds.protocolSummaries(),
+    issueTokens: issueTokens.toArray(),
   }
 }
 
@@ -272,32 +480,18 @@ export function packPacketDiscovery(
   const issueTable: string[] = []
   const issueIds = new Uint16Array(issueIdSlots)
 
-  let totalUnsupportedSpans = 0
-  let totalTruncatedSpans = 0
-  let totalHeuristicSpans = 0
-  let preservedUnsafeSpans = 0
-  let processingFailedSpans = 0
-  let truncatedPacketCount = 0
-  let discoveryDropCount = 0
-  let discoveryIssueCount = 0
-
   let issueAt = 0
   for (let i = 0; i < n; i++) {
     const pd = packetDiscovery[i]!
     packetIndex[i] = pd.packetIndex >>> 0
     packetNumber[i] = pd.packetNumber >>> 0
     let f = 0
-    if (pd.drop) {
-      f |= 1
-      discoveryDropCount++
-    }
+    if (pd.drop) f |= 1
     if (pd.truncatedLength !== undefined) {
       f |= 2
       truncatedLength[i] = pd.truncatedLength >>> 0
-      truncatedPacketCount++
     }
     flags[i] = f
-    discoveryIssueCount += pd.issues.length
     for (const iss of pd.issues) {
       let iid = issueIndex.get(iss)
       if (iid === undefined) {
@@ -309,27 +503,6 @@ export function packPacketDiscovery(
       issueIds[issueAt++] = iid & 0xffff
     }
     issueIds[issueAt++] = 0xffff
-    for (const c of pd.coverage) {
-      switch (c.status) {
-        case 'unsupported':
-          totalUnsupportedSpans++
-          break
-        case 'truncated':
-          totalTruncatedSpans++
-          break
-        case 'heuristic':
-          totalHeuristicSpans++
-          break
-        case 'preserved-unsafe':
-          preservedUnsafeSpans++
-          break
-        case 'processing-failed':
-          processingFailedSpans++
-          break
-        default:
-          break
-      }
-    }
   }
 
   return {
@@ -340,16 +513,8 @@ export function packPacketDiscovery(
     truncatedLength,
     issueTable,
     issueIds,
-    coverageRollup: {
-      totalUnsupportedSpans,
-      totalTruncatedSpans,
-      totalHeuristicSpans,
-      preservedUnsafeSpans,
-      processingFailedSpans,
-      truncatedPacketCount,
-      discoveryDropCount,
-      discoveryIssueCount,
-    },
+    // Single source of truth for the rollup — no second copy of the span switch to drift.
+    coverageRollup: coverageRollupFromDiscovery(packetDiscovery),
   }
 }
 
@@ -390,6 +555,7 @@ export function coverageRollupFromPacked(
 }
 
 export function packContainerBody(input: {
+  summaries?: readonly { readonly protocols: readonly string[] }[]
   descriptors: readonly PacketRecordDescriptor[]
   checkpoints: readonly SparseCheckpoint[]
   issues: readonly ParseIssue[]
@@ -398,9 +564,12 @@ export function packContainerBody(input: {
   pcapngInterfaces?: PcapngInterfaceInfo[]
   packetDiscovery: readonly PacketDiscoveryResult[]
 }): { packed: WirePackedContainer; transfers: ArrayBuffer[] } {
+  const rollup = coverageRollupFromDiscovery(input.packetDiscovery)
+  const packetProtocols = buildPacketProtocolIndex(input.descriptors.length, input.summaries ?? [],
+    input.packetDiscovery, rollup.coverageKinds)
   const packed: WirePackedContainer = {
     descriptors: packDescriptors(input.descriptors),
-    coverageRollup: coverageRollupFromDiscovery(input.packetDiscovery),
+    coverageRollup: { ...rollup, packetProtocols },
     checkpoints: input.checkpoints.map((c) => ({ packetNumber: c.packetNumber, fileOffset: c.fileOffset })),
     issues: [...input.issues],
     classicHeader: input.classicHeader,

@@ -9,8 +9,8 @@ import type { WirePlanSnapshot, WireClassicHeader } from '../export/workerProtoc
 import type { WireContainerMetadata } from './containerWireAdapter'
 import type { PcapProfile } from '../profile/schema'
 
-/** T04 — plan wire; R10 packed discover transfer (descriptors/coverage columns). */
-export const PCAP_PROCESSING_PROTOCOL_VERSION = 6
+/** T04 — plan wire; R10 packed discover; 8 — protocol/family counts in coverage rollup. */
+export const PCAP_PROCESSING_PROTOCOL_VERSION = 9
 
 /** Wire-safe closure failure — category/reason/packet only (never canonical/value). */
 export interface WireClosureFailure {

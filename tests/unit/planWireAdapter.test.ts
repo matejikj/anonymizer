@@ -119,3 +119,58 @@ describe('PF-02/perf: planToWireExport consolidated patch buffer', () => {
     expect(transfers.length).toBe(1)
   })
 })
+
+describe('planFromWire lazy packets behave like a real array', () => {
+  // Regression: the lazy Proxy only intercepted length/index/iterator/map, so every other array
+  // method ran against its empty target — the export engine's `plan.packets.filter(...)` saw no
+  // packets and every browser PCAP export contained only the 24-byte global header.
+  const plan = planFromWire(planToWireExport(makePlan(6, 1)).wire, 'diagnostic')
+  const packets = plan.packets
+  const indices = (xs: readonly PcapPlanPacket[]) => xs.map((p) => p.index)
+
+  it('filter / forEach / some / every / find / reduce / slice see every packet', () => {
+    expect(indices(packets.filter((p) => !p.drop))).toEqual([0, 1, 2, 3, 4, 5])
+    const seen: number[] = []
+    packets.forEach((p) => seen.push(p.index))
+    expect(seen).toEqual([0, 1, 2, 3, 4, 5])
+    expect(packets.some((p) => p.index === 5)).toBe(true)
+    expect(packets.every((p) => p.patches.length === 1)).toBe(true)
+    expect(packets.find((p) => p.index === 3)?.index).toBe(3)
+    expect(packets.findIndex((p) => p.index === 4)).toBe(4)
+    expect(packets.reduce((n, p) => n + p.patches.length, 0)).toBe(6)
+    expect(indices(packets.slice(2, 4))).toEqual([2, 3])
+  })
+
+  it('length, indexing, `in`, iteration and spread agree', () => {
+    expect(packets.length).toBe(6)
+    expect(packets[5]?.index).toBe(5)
+    expect(2 in packets).toBe(true)
+    expect(6 in packets).toBe(false)
+    expect(indices([...packets])).toEqual([0, 1, 2, 3, 4, 5])
+    expect(Array.isArray(packets)).toBe(true)
+  })
+
+  it('returns undefined for missing indices rather than materializing a nonexistent packet', () => {
+    expect(packets[packets.length]).toBeUndefined()
+    expect(packets[1_000_000]).toBeUndefined()
+    expect(packets[-1]).toBeUndefined()
+    expect(packets.at(packets.length)).toBeUndefined()
+    expect(packets.at(-1)?.index).toBe(5)
+  })
+
+  it('can read an empty plan safely while the UI has an old selection', () => {
+    const empty = planFromWire(planToWireExport(makePlan(0, 0)).wire, 'diagnostic').packets
+    expect(empty[0]).toBeUndefined()
+    expect(empty[5]?.patches).toBeUndefined()
+    expect([...empty]).toEqual([])
+    expect(empty.map(p => p.index)).toEqual([])
+    expect(0 in empty).toBe(false)
+  })
+
+  it('does not treat noncanonical numeric property names as array indices', () => {
+    expect(Reflect.get(packets, '01')).toBeUndefined()
+    expect(Reflect.get(packets, '000')).toBeUndefined()
+    expect('01' in packets).toBe(false)
+    expect('000' in packets).toBe(false)
+  })
+})

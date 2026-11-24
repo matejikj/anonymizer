@@ -64,7 +64,7 @@ export function sanitizeSyslog(
 
   const priMatch = /^<(\d{1,3})>/.exec(body)
   if (!priMatch) {
-    // Bare RFC5424 without PRI is rare; treat free text via detectors.
+    // Bare text without PRI: free text, masked like MSG below.
     const r = sanitizeTextPayload({
       buffer,
       absoluteOffset: bodyAbs,
@@ -73,7 +73,7 @@ export function sanitizeSyslog(
       mapping,
       intents,
       packetIndex,
-      highPrivacy,
+      highPrivacy: true,
       protocolId: 'syslog',
     })
     coverage.push({ protocol: 'syslog', offset, length, status: r.coverageStatus })
@@ -98,6 +98,10 @@ export function sanitizeSyslog(
   if (cursor < body.length) {
     const msgAbs = bodyAbs + cursor
     const msgLen = body.length - cursor
+    // Free MSG text is masked in both levels: text detectors cannot recognise custom identifiers
+    // (user names known from SIP, device names, …), so detector-only treatment would leak them.
+    // Masking here (not via the export boundary) keeps the 'redacted' status true on every path,
+    // including TCP reassembly overlays. Readable logs belong to the text mode.
     const r = sanitizeTextPayload({
       buffer,
       absoluteOffset: msgAbs,
@@ -106,14 +110,11 @@ export function sanitizeSyslog(
       mapping,
       intents,
       packetIndex,
-      highPrivacy,
+      highPrivacy: true,
       protocolId: 'syslog',
     })
-    if (r.coverageStatus === 'redacted') {
-      coverage.push({ protocol: 'syslog', offset, length, status: 'redacted' })
-    } else {
-      coverage.push({ protocol: 'syslog', offset, length, status: 'covered' })
-    }
+    if (msgAbs > offset) coverage.push({ protocol: 'syslog', offset, length: msgAbs - offset, status: 'covered' })
+    coverage.push({ protocol: 'syslog', offset: msgAbs, length: msgLen, status: r.coverageStatus })
   } else {
     coverage.push({ protocol: 'syslog', offset, length, status: 'covered' })
   }
@@ -172,8 +173,9 @@ function sanitize5424(
     if (body[cursor] === '[') break // structured-data early
     const sp = body.indexOf(' ', cursor)
     if (sp < 0) {
-      parts.push(body.slice(cursor))
-      return body.length
+      // Fewer than five header fields: nothing was mapped yet — let the MSG path mask the rest.
+      issues.push('syslog-5424-truncated')
+      return start
     }
     parts.push(body.slice(cursor, sp))
     cursor = sp + 1
@@ -232,6 +234,9 @@ function findStructuredDataEnd(body: string, start: number): number {
   return i
 }
 
+/** RFC 5424 STRUCTURED-DATA: one or more `[SD-ID *(SP PARAM-NAME="PARAM-VALUE")]`. */
+const SD_GRAMMAR = /^(?:\[[^\s=\]"]+(?: [^\s=\]"]+="(?:[^"\\]|\\.)*")*\])+$/
+
 function sanitizeStructuredData(
   body: string,
   start: number,
@@ -243,22 +248,28 @@ function sanitizeStructuredData(
   packetIndex: number,
   highPrivacy: boolean,
 ): void {
+  void highPrivacy
   const span = body.slice(start, end)
-  // Map origin ip= / host= values; high-privacy masks unknown param values.
-  const re = /\b(?:ip|host|hostname)=(?:"([^"]+)"|([^\s\]]+))/gi
+  // RFC 5424 SD-PARAM: name="value" (quoted, with \" \\ \] escapes). ip/host/hostname values are
+  // mapped; every other value is masked in both levels — SD-IDs and param names stay for diagnostics.
+  const re = /([^\s=\]"[]+)="((?:[^"\\]|\\.)*)"/g
   let m: RegExpExecArray | null
   while ((m = re.exec(span)) !== null) {
-    const val = m[1] ?? m[2] ?? ''
-    const rel = start + m.index! + m[0]!.indexOf(val)
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(val)) {
-      mapAsciiToken(body, rel, rel + val.length, bodyAbs, collector, mapping, intents, packetIndex, 'ipv4')
+    const name = m[1]!.toLowerCase()
+    const val = m[2] ?? ''
+    if (val.length === 0) continue
+    const rel = start + m.index! + m[1]!.length + 2
+    if ((name === 'ip' || name === 'host' || name === 'hostname') && !val.includes('\\')) {
+      const category = /^\d+\.\d+\.\d+\.\d+$/.test(val) ? 'ipv4' : 'hostname'
+      mapAsciiToken(body, rel, rel + val.length, bodyAbs, collector, mapping, intents, packetIndex, category)
     } else {
-      mapAsciiToken(body, rel, rel + val.length, bodyAbs, collector, mapping, intents, packetIndex, 'hostname')
+      maskAbs(collector, intents, packetIndex, bodyAbs + rel, val.length, 'syslog-sd-value')
     }
   }
-  if (highPrivacy) {
-    // Mask remaining quoted values inside SD after maps (length-stable X fill via detectors path).
-    void 0
+  // Anything outside the RFC 5424 SD grammar (stray text, unquoted values, …) has no
+  // field-level policy — mask the whole block (maskRange replaces the per-value patches above).
+  if (!SD_GRAMMAR.test(span)) {
+    maskAbs(collector, intents, packetIndex, bodyAbs + start, end - start, 'syslog-sd-unparsed')
   }
 }
 

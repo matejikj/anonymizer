@@ -71,7 +71,7 @@ function pbEmbedded(field: number, inner: Uint8Array): Uint8Array {
 }
 
 describe('T55 registry', () => {
-  it('registers cwmp/usp handlers, family, ports, and engine 2.35.0', () => {
+  it('registers cwmp/usp handlers, family, ports, and engine 2.36.1', () => {
     const ids = APPLICATION_HANDLER_ORDER.map((h) => h.id)
     expect(ids).toContain('cwmp')
     expect(ids).toContain('usp')
@@ -79,7 +79,7 @@ describe('T55 registry', () => {
     expect(familyForProtocol('cwmp').familyId).toBe('cwmp-usp')
     expect(familyForProtocol('usp-id').familyId).toBe('cwmp-usp')
     expect(SEMANTIC_SERVICE_PORTS.has(7547)).toBe(true)
-    expect(PCAP_ENGINE_VERSION).toBe('2.35.0')
+    expect(PCAP_ENGINE_VERSION).toBe('2.37.0')
   })
 })
 
