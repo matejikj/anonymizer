@@ -17,10 +17,15 @@ export {
   DEFAULT_UNKNOWN_FIELD_POLICY,
   validateFieldPolicyDictionary,
   assertFieldPolicyDictionary,
+  fieldPolicyAllowsPreserveSafe,
+  fieldPolicyRequiresCanaryAbsence,
+  resolveFieldWireSpan,
   type FieldPolicyDescriptor,
   type FieldPolicy,
   type FieldIdentityRole,
   type FieldPolicyValidationError,
+  type FieldCanaryKind,
+  type FieldWireLocator,
 } from './fieldPolicy'
 export {
   validateEncryptedClassification,

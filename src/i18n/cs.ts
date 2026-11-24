@@ -1416,6 +1416,7 @@ export const cs = {
         heuristic: 'heuristicky změněno',
         preservedUnsafe: 'zachováno (RTP/RTCP — nebezpečné)',
         preservedForDiagnostics: 'zachováno pro diagnostiku',
+        preservedSafe: 'zachováno (bez identity)',
         processingFailed: 'zpracování selhalo (fail-closed)',
       },
     },

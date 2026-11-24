@@ -905,6 +905,41 @@ if (!fs.existsSync(path.join(srcRoot, 'pcap', 'sanitize', 'statusInvariant.ts'))
   violations.push('src/pcap/sanitize/statusInvariant.ts: missing T63 status invariant')
 }
 
+// T63.2 — field-policy registry must cover every APPLICATION_HANDLER_ORDER id.
+{
+  const registryPath = path.join(srcRoot, 'pcap', 'protocols', 'fieldPolicy', 'registry.ts')
+  const handlersPath = path.join(srcRoot, 'pcap', 'kernel', 'applicationHandlers.ts')
+  if (!fs.existsSync(registryPath)) {
+    violations.push('src/pcap/protocols/fieldPolicy/registry.ts: missing T63.2 field-policy registry')
+  } else if (!fs.existsSync(handlersPath)) {
+    violations.push('src/pcap/kernel/applicationHandlers.ts: missing APPLICATION_HANDLER_ORDER')
+  } else {
+    const handlersSrc = fs.readFileSync(handlersPath, 'utf8')
+    const handlerIds = [...handlersSrc.matchAll(/\{\s*id:\s*'([^']+)'/g)].map((m) => m[1])
+    const registrySrc = fs.readFileSync(registryPath, 'utf8')
+    // Registry builds from APPLICATION_HANDLER_ORDER + DETAILED_APP overlays — require the loop.
+    if (!/APPLICATION_HANDLER_ORDER/.test(registrySrc) || !/DEFAULT_HANDLER_FIELD_POLICY/.test(registrySrc)) {
+      violations.push(
+        'src/pcap/protocols/fieldPolicy/registry.ts: must register all APPLICATION_HANDLER_ORDER via defaults',
+      )
+    }
+    if (handlerIds.length < 100) {
+      violations.push(
+        `applicationHandlers.ts: expected ≥100 APPLICATION_HANDLER_ORDER ids, found ${handlerIds.length}`,
+      )
+    }
+    for (const required of ['http', 'sip', 'dns', 'conformance']) {
+      if (required === 'conformance') {
+        if (!fs.existsSync(path.join(srcRoot, 'pcap', 'conformance', 'canaryInject.ts'))) {
+          violations.push('src/pcap/conformance/canaryInject.ts: missing T63.2 canary helper')
+        }
+      } else if (!fs.existsSync(path.join(srcRoot, 'pcap', 'protocols', 'fieldPolicy', `${required}.ts`))) {
+        violations.push(`src/pcap/protocols/fieldPolicy/${required}.ts: missing T63.2 detailed table`)
+      }
+    }
+  }
+}
+
 if (violations.length > 0) {
   console.error('Architecture guard failed:\n')
   for (const v of violations) console.error(`  - ${v}`)

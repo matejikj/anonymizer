@@ -1,0 +1,122 @@
+/**
+ * T63.2 — SIP/SDP baseline field policy (identity map / secret mask / structure preserve).
+ */
+
+import {
+  assertFieldPolicyDictionary,
+  type FieldPolicyDescriptor,
+} from '../../kernel/fieldPolicy'
+
+export const SIP_HANDLER_FIELD_POLICY: readonly FieldPolicyDescriptor[] = [
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'request-line.method',
+    valueType: 'token',
+    identityRole: 'none',
+    diagnosticAction: 'preserve',
+    highPrivacyAction: 'preserve',
+    preserveReason: 'SIP method is not an identity',
+    canaryKind: 'none',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'from.user',
+    valueType: 'sip-user',
+    identityRole: 'user',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'from.host',
+    valueType: 'host',
+    identityRole: 'address',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'to.user',
+    valueType: 'sip-user',
+    identityRole: 'user',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'to.host',
+    valueType: 'host',
+    identityRole: 'address',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'call-id',
+    valueType: 'token',
+    identityRole: 'session',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'contact.user',
+    valueType: 'sip-user',
+    identityRole: 'user',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'authorization',
+    valueType: 'opaque',
+    identityRole: 'secret',
+    diagnosticAction: 'mask',
+    highPrivacyAction: 'mask',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sip/2.0',
+    fieldPath: 'body',
+    valueType: 'opaque',
+    identityRole: 'content',
+    diagnosticAction: 'mask',
+    highPrivacyAction: 'mask',
+    canaryKind: 'binary',
+  },
+  {
+    variant: 'sdp',
+    fieldPath: 'o.username',
+    valueType: 'token',
+    identityRole: 'user',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sdp',
+    fieldPath: 'o.address',
+    valueType: 'host',
+    identityRole: 'address',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+  {
+    variant: 'sdp',
+    fieldPath: 'c.address',
+    valueType: 'host',
+    identityRole: 'address',
+    diagnosticAction: 'map',
+    highPrivacyAction: 'map',
+    canaryKind: 'ascii',
+  },
+]
+
+assertFieldPolicyDictionary(SIP_HANDLER_FIELD_POLICY)

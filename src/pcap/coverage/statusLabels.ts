@@ -12,6 +12,7 @@ const LABELS: Record<CoverageStatus, keyof typeof cs.pcap.coverage.status> = {
   heuristic: 'heuristic',
   'preserved-unsafe': 'preservedUnsafe',
   'preserved-for-diagnostics': 'preservedForDiagnostics',
+  'preserved-safe': 'preservedSafe',
   'processing-failed': 'processingFailed',
 }
 

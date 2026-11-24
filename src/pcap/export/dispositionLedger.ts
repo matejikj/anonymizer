@@ -15,6 +15,13 @@ import type { BytePatch, LayerCoverage } from '../sanitize/types'
 import { createProtocolNeutralMaskFill } from '../sanitize/maskFill'
 import type { SymbolicOperation } from '../kernel/operations'
 import { buildProtocolSupportMatrix } from '../docs/protocolSupportMatrix'
+import {
+  fieldPolicyAllowsPreserveSafe,
+} from '../kernel/fieldPolicy'
+import {
+  getHandlerFieldPolicy,
+  hasDetailedFieldPolicy,
+} from '../protocols/fieldPolicy'
 
 export const FINAL_DISPOSITIONS = [
   'map',
@@ -298,6 +305,8 @@ export interface BuildPacketLedgerInput {
   readonly patches: readonly BytePatch[]
   readonly coverage: readonly LayerCoverage[]
   readonly symbolicOps?: readonly SymbolicOperation[]
+  /** Used for level-scoped preserve-safe field policy (T63.2). */
+  readonly level?: PcapAnonymizationLevel
 }
 
 /**
@@ -432,7 +441,40 @@ export function buildPacketDispositionLedger(input: BuildPacketLedgerInput): Pac
       }
     }
 
-    if (span.status === 'covered' && isStructuredPreserveSafeProtocol(span.protocol)) {
+    if (span.status !== 'covered') continue
+
+    // T63.2 — detailed field policy with wire locators: only those preserve spans
+    // are safe; remaining covered bytes stay unclaimed for residual sweep.
+    // Tables without locators yet keep the transitional structured rule.
+    if (hasDetailedFieldPolicy(span.protocol)) {
+      const table = getHandlerFieldPolicy(span.protocol)
+      let locatedPreserve = 0
+      if (table) {
+        for (const field of table.fields) {
+          if (!fieldPolicyAllowsPreserveSafe(field, input.level)) continue
+          const wire = field.wire
+          if (!wire || wire.kind !== 'relative') continue
+          const start = span.offset + wire.offset
+          const end = start + wire.length
+          if (start < span.offset || end > spanEnd) continue
+          claimBytes(
+            claimed,
+            protocols,
+            reasons,
+            start,
+            end,
+            'preserve-safe',
+            span.protocol,
+            `field-policy:${field.fieldPath}`,
+          )
+          locatedPreserve += 1
+        }
+      }
+      if (locatedPreserve > 0) continue
+    }
+
+    // Transitional: structured handlers (or detailed tables still missing locators).
+    if (isStructuredPreserveSafeProtocol(span.protocol)) {
       claimBytes(
         claimed,
         protocols,
@@ -686,6 +728,7 @@ export function finalizePacketDisposition(input: {
     patches: input.patches,
     coverage: input.coverage,
     symbolicOps: input.symbolicOps,
+    level: input.level,
   })
 
   const sweep = applyResidualSweep({
