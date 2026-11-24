@@ -147,6 +147,16 @@ export function sanitizationPolicyRealizesTable(
   if (table.MEDIA === 'DROP' && policy.mediaPolicy !== 'drop') {
     mismatches.push('MEDIA:DROP requires mediaPolicy=drop')
   }
+  // T68 — fixed levels must never select preserve-unsafe (voice/media stay fail-closed).
+  if (policy.mediaPolicy === 'preserve-unsafe') {
+    mismatches.push(`${profile} forbids mediaPolicy=preserve-unsafe`)
+  }
+  if (policy.unsupportedPayloadPolicy === 'preserve-unsafe') {
+    mismatches.push(`${profile} forbids unsupportedPayloadPolicy=preserve-unsafe`)
+  }
+  if (policy.malformedPayloadPolicy === 'preserve-unsafe') {
+    mismatches.push(`${profile} forbids malformedPayloadPolicy=preserve-unsafe`)
+  }
 
   // UNKNOWN_UNVERIFIED — diagnostic never DROP packets via truncate/drop of whole unsupported
   if (profile === 'diagnostic') {

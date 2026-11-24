@@ -771,7 +771,16 @@ function dispatchKerberos(ctx: ApplicationDispatchContext): ApplicationDispatchH
 function dispatchDmr(ctx: ApplicationDispatchContext): ApplicationDispatchHit | null {
   if (reassemblyOwnsPayload(ctx)) return null
   if (!ctx.policy.dmr || ctx.transport !== 'udp') return null
-  const dmrResult = sanitizeDmr(ctx.data, ctx.offset, ctx.length, ctx.collector, ctx.mapping)
+  const dmrResult = sanitizeDmr(
+    ctx.data,
+    ctx.offset,
+    ctx.length,
+    ctx.collector,
+    ctx.mapping,
+    ctx.policy,
+    ctx.intents,
+    ctx.packetIndex,
+  )
   if (!dmrResult) return null
   return hitCoverageMax(ctx, dmrResult)
 }

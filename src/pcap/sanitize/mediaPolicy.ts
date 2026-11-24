@@ -86,19 +86,9 @@ export function applyVoipMediaPolicy(
     return { drop: false, protocol, status: 'unsupported' };
   }
 
-  if (isPreserveUnsafeMediaPolicy(mediaPolicy)) {
-    coverage.push({
-      protocol,
-      offset: payloadOffset,
-      length: payloadLength,
-      status: 'preserved-unsafe',
-    });
-    issues.push(`${protocol.toUpperCase()} media preserved (mediaPolicy=preserve-unsafe)`);
-    return { drop: false, protocol, status: 'preserved-unsafe' };
-  }
-
-  if (isStripPayloadMediaPolicy(mediaPolicy)) {
-    // Packet record kept; structured RTP/RTCP rewrite maps SSRC and masks media (step 6).
+  // T68 — fixed levels never select preserve-unsafe; if a caller still passes it,
+  // fail-closed to strip-payload (length-preserving mask) instead of exporting voice.
+  if (isStripPayloadMediaPolicy(mediaPolicy) || isPreserveUnsafeMediaPolicy(mediaPolicy)) {
     coverage.push({
       protocol,
       offset: payloadOffset,
@@ -106,7 +96,9 @@ export function applyVoipMediaPolicy(
       status: 'redacted',
     });
     issues.push(
-      `${protocol.toUpperCase()} media strip-payload (mediaPolicy=strip-payload); headers/stats preserved`,
+      isPreserveUnsafeMediaPolicy(mediaPolicy)
+        ? `${protocol.toUpperCase()} media strip-payload (T68: preserve-unsafe remapped); headers/stats preserved`
+        : `${protocol.toUpperCase()} media strip-payload (mediaPolicy=strip-payload); headers/stats preserved`,
     );
     return { drop: false, protocol, status: 'redacted' };
   }

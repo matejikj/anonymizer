@@ -88,7 +88,7 @@ const entries = {
   sbi5g: ['5G SBI', 'Mapujeme podporované SUPI/NF/session identity a maskujeme tokeny, auth i polohu; zpracujeme vybrané N1/N2.', 'Pouze vybrané čitelné HTTP/JSON operace; TLS neposkytuje JSON bez dešifrování.'],
   m3ua: ['M3UA / SS7', 'Mapujeme point codes, GT, telefonní a účastnické identity; auth, SMS/USSD a polohu maskujeme.', 'Neúplné segmentované zprávy a neznámé operace nemají plnou analýzu.'],
   smpp: ['SMPP', 'Mapujeme systémové/telefonní/message identity a vždy maskujeme hesla i SMS tělo.', 'Vendor delivery reporty a některé varianty zpráv se pouze maskují.'],
-  dmr: ['DMR / DMRD', 'Nahrazujeme zdrojové a cílové 24bit radio/talkgroup ID.', 'Pozor: AMBE hlas a další pole DMRD zůstávají původní. Samotná úprava ID neanonymizuje obsah hovoru.'],
+  dmr: ['DMR / DMRD', 'Nahrazujeme zdrojové a cílové 24bit radio/talkgroup ID; AMBE hlas v diagnostice maskujeme a ve vysokém soukromí zkracujeme.', 'AI neuvidí hlasový obsah; struktura a takt DMRD zůstávají podle zvolené úrovně.'],
   mototrbo: ['MOTOTRBO IPSC', 'Provádíme omezenou identifikaci a redakci payloadu.', 'Bez úplné veřejné specifikace neslibujeme strukturovanou analýzu; ověřte hlášené omezení.'],
   smtp: ['SMTP', 'Mapujeme e-mailové/host identity a maskujeme AUTH i DATA obsah.', 'Šifrovanou variantu posuzujeme jako TLS; ne všechny vendor příkazy mají plnou analýzu.'],
   imap: ['IMAP', 'Chráníme uživatele a maskujeme hesla, AUTHENTICATE a FETCH literals.', 'Obsah po COMPRESS a šifrovaný IMAPS nečteme jako plaintext.'],

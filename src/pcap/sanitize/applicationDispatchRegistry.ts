@@ -76,7 +76,7 @@ import { sanitizeSmpp, isSmppPortHint, looksLikeSmpp } from './smpp.ts'
 import { sanitizeRtpOrSrtp } from './rtp.ts'
 import { sanitizeRtcp } from './rtcp.ts'
 import { applyVoipMediaPolicy } from './mediaPolicy.ts'
-import { isStripPayloadMediaPolicy } from './types.ts'
+import { isPreserveUnsafeMediaPolicy, isStripPayloadMediaPolicy } from './types.ts'
 import { createMaskFill } from './maskFill.ts'
 import { tcpTransportSessionKey } from './protocolGraphState.ts'
 
@@ -730,8 +730,11 @@ function dispatchVoipMedia(
   if (mediaResult.drop) {
     return { lastCoveredOffset: lastCovered, drop: true }
   }
+  // T68 — preserve-unsafe is remapped to redacted in applyVoipMediaPolicy; still strip.
   if (
-    (isStripPayloadMediaPolicy(policy.mediaPolicy) || mediaResult.telephoneEvent)
+    (isStripPayloadMediaPolicy(policy.mediaPolicy)
+      || isPreserveUnsafeMediaPolicy(policy.mediaPolicy)
+      || mediaResult.telephoneEvent)
     && mediaResult.status === 'redacted'
   ) {
     if (mediaResult.protocol === 'rtcp') {
