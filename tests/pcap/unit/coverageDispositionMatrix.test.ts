@@ -23,6 +23,8 @@ const STATUSES: readonly CoverageStatus[] = [
   'heuristic',
   'preserved-unsafe',
   'preserved-for-diagnostics',
+  'preserved-safe',
+  'processing-failed',
   'truncated',
 ] as const
 
@@ -51,7 +53,10 @@ function rowsForPreset(
       && s !== 'truncated'
       && s !== 'malformed'
       && s !== 'requires-reassembly'
-      && s !== 'preserved-for-diagnostics',
+      // Proven constants and already fail-closed spans retain their dispositions.
+      && s !== 'preserved-for-diagnostics'
+      && s !== 'preserved-safe'
+      && s !== 'processing-failed',
   ).map(
     (status) => ({
       preset: policy.preset,
@@ -77,6 +82,8 @@ const MATRIX: readonly Row[] = [
       heuristic: 'mask-in-place',
       'preserved-unsafe': 'preserve-unsafe',
       'preserved-for-diagnostics': 'keep',
+      'preserved-safe': 'keep',
+      'processing-failed': 'keep',
     },
     'strip-media-payload',
   ),
@@ -93,6 +100,8 @@ const MATRIX: readonly Row[] = [
       heuristic: 'truncate',
       'preserved-unsafe': 'preserve-unsafe',
       'preserved-for-diagnostics': 'keep',
+      'preserved-safe': 'keep',
+      'processing-failed': 'keep',
     },
     'drop',
   ),

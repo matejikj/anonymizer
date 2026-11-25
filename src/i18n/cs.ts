@@ -81,8 +81,8 @@ export const cs = {
         body: 'IP adresy a hosty se ve všech výstupech nahradí stejným pseudonymem.',
       },
       export: {
-        title: 'Export až po kontrole',
-        body: 'Nejdřív projděte náhled, pak exportujte anonymizované soubory pro AI.',
+        title: 'Výsledek a export pro AI',
+        body: 'Přehled popisuje nahrazené identity a skrytý obsah. Anonymizované soubory pak můžete exportovat pro AI.',
       },
     },
   },
@@ -565,14 +565,14 @@ export const cs = {
     whatItems: [
       'Nejdřív uvidíte náhled, export až potom.',
       'Stejná identita sdílí mapování v rámci kategorie; různě dlouhé zápisy mohou mít odlišné aliasy.',
-      'Před sdílením projděte výsledek a jeho omezení; mapu / obnovu nechte u sebe.',
+      'Přehled popisuje provedené změny a zachované diagnostické údaje; mapa / obnova zůstává soukromá.',
     ],
 
     startTitle: 'Jak na to',
     startSteps: [
       'Přetáhněte log, PCAP/PCAPNG, jejich .gz nebo podporovaný ZIP/TAR support bundle; text lze i vložit.',
       'Počkejte na analýzu.',
-      'Zkontrolujte, co se nahradí.',
+      'V přehledu uvidíte nahrazené identity a skrytý obsah.',
       'Stáhněte anonymizovaný výsledek.',
     ],
     startTip: 'Více souborů najednou = společné aliasy ve všech výstupech.',
@@ -1055,7 +1055,7 @@ export const cs = {
       n === 0
         ? 'Bez doprovodných reportů'
         : `${n} ${n === 1 ? 'doprovodný report' : 'doprovodné reporty'}`,
-    stalePreview: 'Stav sady se od otevření dialogu změnil — zkontrolujte seznam znovu.',
+    stalePreview: 'Stav sady se od otevření dialogu změnil.',
     staleRefresh: 'Obnovit seznam',
     unstableSet: 'Sada se právě mění (přidávání nebo přepočet) — export není k dispozici.',
     emptyExport: 'Žádné soubory k exportu',
@@ -1074,7 +1074,7 @@ export const cs = {
       'Korelační manifest se nepřiložil (bezpečnostní kontrola). Datové soubory jsou exportované.',
     noMappingNote: 'Privátní mapa se do tohoto exportu nepřikládá.',
     partialBlockedNote: 'Některé soubory nejsou připravené — můžete exportovat pouze připravené.',
-    blockedHint: 'Vyžaduje kontrolu — vyloučeno ze společného exportu',
+    blockedHint: 'Soubor není připravený k exportu — vyloučeno ze společného exportu',
     exposedPcap: 'Část capture zůstává odkrytá',
     exposedText: 'Některé hodnoty zůstávají v exportu čitelné',
     progressTitle: 'Exportuji anonymizované soubory',
@@ -1474,14 +1474,14 @@ export const cs = {
       /** @deprecated Prefer assuranceNoteDiagnostic / assuranceNoteHighPrivacy from outcome.assuranceNote */
       assuranceNote:
         'Pro diagnostiku zůstávají časy, délky paketů a vazby mezi zařízeními; identity jsou nahrazené.',
-      processedCount: 'Anonymizované rodiny',
+      processedCount: 'Zpracované rodiny',
       limitedCount: 'Část obsahu skryta',
       packetCount: (n: number) => `${n.toLocaleString('cs-CZ')} ${n === 1 ? 'paket' : n >= 2 && n <= 4 ? 'pakety' : 'paketů'}`,
       familyOverlap: 'Počty rodin se mohou překrývat: jeden paket může obsahovat více protokolů.',
       methodLabel: 'Jak chráníme data',
-      checkLabel: 'Co AI neuvidí',
+      checkLabel: 'Vlastnosti výstupu',
       protocolLimited: 'Část provozu byla skryta (maska, zkrácení nebo zahození) bez úplného rozboru struktury.',
-      protocolUnknownLight: 'Neznámý protokol — lehce anonymizováno pro diagnostiku',
+      protocolUnknownLight: 'Obsah bez úplného rozboru protokolu byl skryt maskou, zkrácením nebo zahozením podle zvolené úrovně.',
       protocolEncrypted: 'Šifrované — ponecháno bez dešifrování',
       protocolFailed: 'U části provozu selhalo zpracování; engine použil ochranný zásah (maska).',
       checkAnonymized: 'Identity nahrazené; struktura podle zvolené úrovně.',

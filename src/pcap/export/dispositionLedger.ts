@@ -307,7 +307,7 @@ function coalesceRanges(
   let i = 0
   while (i < claimed.length) {
     const d = claimed[i]
-    if (d === null) {
+    if (d == null) {
       i++
       continue
     }

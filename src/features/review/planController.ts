@@ -76,7 +76,6 @@ export function applyWorkerPlanBuffers(buffers: ReplacementPlanBuffers): boolean
       ? new Int32Array(buffers.fenwick)
       : fenwickBuild(lengthDeltas)
 
-  const replacements: Array<string | null> = new Array(n)
   // Flags track “use category alias”; buildReplacementPlan supplies free-token when off (T71/D4).
   for (let i = 0; i < n; i++) {
     session.packed.flags[i] = enabledFlags[i] === 1 ? FLAG_ENABLED : 0

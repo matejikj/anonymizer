@@ -72,7 +72,6 @@ function hexToBytes(hex: string): Uint8Array {
 function looksLikeIpv4(buf: Uint8Array, abs: number): boolean {
   const a = buf[abs]!
   const b = buf[abs + 1]!
-  const c = buf[abs + 2]!
   const d = buf[abs + 3]!
   if (a === 0 || a >= 224) return false
   if (d === 0 || d === 255) return false

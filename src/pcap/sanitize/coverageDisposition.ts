@@ -115,6 +115,7 @@ export function resolveCoverageDisposition(
     case 'redacted':
     case 'truncated':
     case 'preserved-for-diagnostics':
+    case 'preserved-safe':
       return 'keep';
     case 'encrypted':
       return 'preserve-encrypted';

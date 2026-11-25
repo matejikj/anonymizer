@@ -28,6 +28,8 @@ import {
   sanitizeFreeText,
 } from '../../src/engine/freeText/index.ts'
 import { maskAlphanumeric } from '../../src/mapping/textAliasEngine.ts'
+import { protocolPrivacyGuidance } from '../../src/pcap/coverage/protocolPrivacyGuidance.ts'
+import { APPLICATION_HANDLER_ORDER } from '../../src/pcap/kernel/applicationHandlers.ts'
 
 const srcRoot = join(dirname(fileURLToPath(import.meta.url)), '../../src')
 
@@ -58,6 +60,13 @@ function collectStringLeaves(value: unknown, path: string, out: { path: string; 
 }
 
 describe('I1 — outcome / coverage / review copy has no call-to-action', () => {
+  it('protocol guidance describes processing without requests for manual review', () => {
+    for (const id of ['ethernet', 'arp', 'ipv4', 'ipv6', 'udp', 'tcp', 'sctp', 'ether-0x8ffd',
+      ...APPLICATION_HANDLER_ORDER.map(handler => handler.id)]) {
+      const guide = protocolPrivacyGuidance(id)
+      expect(`${guide.method} ${guide.check}`, id).not.toMatch(/ověřte|zkontrol|projděte|vyžaduje kontrolu|vyžadují kontrolu|před AI/i)
+    }
+  })
   it('forbids review verbs in pcap.outcome, coverageUx, review, and export confirm copy', () => {
     const scopes: { name: string; root: unknown }[] = [
       { name: 'pcap.outcome', root: cs.pcap.outcome },
@@ -102,6 +111,19 @@ describe('I1 — outcome / coverage / review copy has no call-to-action', () => 
     void _out
     const sampleState: OutcomeFamilyState = 'anonymized'
     expect(sampleState).toBe('anonymized')
+  })
+
+  it('onboarding, help, and combined export do not require a manual privacy review', () => {
+    for (const text of [
+      cs.onboarding.steps.export.title,
+      cs.onboarding.steps.export.body,
+      ...cs.help.whatItems,
+      ...cs.help.startSteps,
+      cs.correlationExport.stalePreview,
+      cs.correlationExport.blockedHint,
+    ]) {
+      expect(text).not.toMatch(/po kontrole|zkontrol|projděte|vyžaduje kontrolu|k prověření/i)
+    }
   })
 })
 

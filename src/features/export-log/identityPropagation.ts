@@ -162,7 +162,7 @@ export function applyIdentityPropagationToExportPlan(
   const basePlan = buildReplacementPlan(packed, entities)
   for (let idx = 0; idx < n; idx++) {
     const rep = replacements[idx]
-    if (rep === null) continue
+    if (rep == null) continue
     basePlan.replacements[idx] = rep
     basePlan.lengthDeltas[idx] = rep.length - lengths[idx]!
   }

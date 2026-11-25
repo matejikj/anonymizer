@@ -271,15 +271,15 @@ function protocolDetails(rows: readonly PcapProtocolCoverageRow[], failed: reado
     const previous = details.get(guide.id)
     state = previous ? worseState(previous.state, state) : state
     const method = state === 'anonymized-with-loss'
-      ? (guide.known ? cs.pcap.outcome.protocolLimited : cs.pcap.outcome.protocolUnknownLight)
+      ? (guide.known ? `${guide.method} ${cs.pcap.outcome.protocolLimited}` : cs.pcap.outcome.protocolUnknownLight)
       : state === 'encrypted-kept'
         ? cs.pcap.outcome.protocolEncrypted
         : guide.method
     const check = state === 'anonymized-with-loss'
-      ? cs.pcap.outcome.checkWithLoss
+      ? (guide.known ? `${guide.check} ${cs.pcap.outcome.checkWithLoss}` : cs.pcap.outcome.checkWithLoss)
       : state === 'encrypted-kept'
         ? cs.pcap.outcome.checkEncrypted
-        : cs.pcap.outcome.checkAnonymized
+        : guide.check
     details.set(guide.id, {
       id: guide.id,
       label: guide.label,

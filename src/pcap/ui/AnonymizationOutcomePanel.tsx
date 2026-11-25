@@ -70,7 +70,7 @@ export function AnonymizationOutcomePanel({
   const applyDisplayFilter = usePcapStore((s) => s.applyDisplayFilter)
 
   const limitedCount = outcome.families.filter((f) => f.state === 'anonymized-with-loss').length
-  const processedCount = outcome.families.length - limitedCount
+  const processedCount = outcome.families.length
 
   const showPackets = (familyId: string) => {
     // Navigate to the whole family, including disjoint protocols such as RTP and RTCP.

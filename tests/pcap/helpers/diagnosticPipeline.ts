@@ -52,7 +52,7 @@ export function runDiagnosticExportPipeline(
   packets: readonly PacketEnvelope[],
   fileName = 'diagnostic-gate.pcap',
   generationId = 'diagnostic-gate',
-  options?: { readonly mappingSeed?: string },
+  options?: { readonly mappingSeed?: string; readonly verifyLeaks?: boolean; readonly onStage?: (stage: string) => void },
 ): DiagnosticPipelineResult {
   return runExportPipeline(packets, 'diagnostic', fileName, generationId, options)
 }
@@ -64,11 +64,12 @@ export function runExportPipeline(
   level: PcapAnonymizationLevel,
   fileName = 'export-gate.pcap',
   generationId = 'export-gate',
-  options?: { readonly mappingSeed?: string },
+  options?: { readonly mappingSeed?: string; readonly verifyLeaks?: boolean; readonly onStage?: (stage: string) => void },
 ): DiagnosticPipelineResult {
   const policy = level === 'diagnostic' ? DIAGNOSTIC_POLICY : HIGH_PRIVACY_POLICY
   const profile = createPresetProfile(level, { id: generationId, name: `${level} gate` })
   const reassembly = runCaptureReassembly(packets, policy)
+  options?.onStage?.('reassembly')
   const discovery = runDiscoveryPipeline(packets, policy, generationId, fileName, {
     reassemblyContext: reassembly,
   })
@@ -83,6 +84,7 @@ export function runExportPipeline(
     },
     options?.mappingSeed ? { seed: options.mappingSeed } : undefined,
   )
+  options?.onStage?.('discovery')
   const identities = identitiesFromDiscovery(discovery)
   let resolved = authority.resolve({ generationId, sourceId: fileName, identities })
   if (!resolved.ok) throw new Error(`mapping resolve failed: ${resolved.message}`)
@@ -101,6 +103,12 @@ export function runExportPipeline(
     if (!closure.ok) unresolvedFailures = [...closure.failures]
   }
 
+  const leakOriginals = options?.verifyLeaks ? discovery.analysis.entities.map((entity) => ({
+    category: entity.category,
+    value: entity.value,
+    packetNumber: 0,
+  })) : undefined
+  options?.onStage?.('mapping')
   const plan = buildDeterministicPlan({
     generationId,
     profile,
@@ -119,8 +127,11 @@ export function runExportPipeline(
     packetDiscovery: discovery.packetDiscovery,
     sourceId: fileName,
     unresolvedClosureFailures: unresolvedFailures,
+    leakOriginals,
   })
+  options?.onStage?.('plan')
   const built = buildCaptureFromPlan(plan, packets)
+  options?.onStage?.('capture')
   const validation = {
     valid: built.validationValid,
     exportValidation: {
@@ -142,6 +153,8 @@ export function runExportPipeline(
       truncatedPayloads: built.truncatedPayloads,
       checksumReport: built.checksumReport,
       validation,
+      leakOriginals,
+      anonymizedBytes: options?.verifyLeaks ? new Uint8Array(built.buffer) : undefined,
     },
     0,
     discovery.unifiedCoverage.byProtocol,
@@ -158,6 +171,7 @@ export function runExportPipeline(
     },
   )
   const reportJson = JSON.stringify(report)
+  options?.onStage?.('report')
   const aiManifest = buildAiDiagnosticsManifest({
     plan,
     protocolCoverage: discovery.unifiedCoverage.byProtocol,
